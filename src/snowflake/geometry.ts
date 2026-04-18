@@ -36,9 +36,6 @@ export function buildSnowflake(
 
   const params = paramsFor(conditions);
 
-  // Central hexagonal core
-  buildCore(segments, params);
-
   const noise2D = createNoise2D(() => rand.next());
 
   // Build one primary arm along +X
@@ -71,7 +68,31 @@ export function buildSnowflake(
     }
   }
 
-  return { group: segmentsToMesh(symmetric, conditions), branchCount: symmetric.length };
+  const { group, material } = segmentsToMesh(symmetric);
+
+  // Add a solid hexagonal core
+  const coreRadius = Math.max(0.2, params.primaryThickness * 2.5);
+  const zDepthScale = getZDepthScale(conditions.habit);
+  const coreHeight = params.primaryThickness * zDepthScale * 1.2;
+
+  const coreGeom = new THREE.CylinderGeometry(coreRadius, coreRadius, coreHeight, 6);
+  coreGeom.rotateX(Math.PI / 2); // Lay flat on the XY plane
+  coreGeom.rotateZ(Math.PI / 6); // Align points with arms
+  const coreMesh = new THREE.Mesh(coreGeom, material);
+
+  coreMesh.userData.dist = 0;
+  coreMesh.userData.depth = 0;
+  group.add(coreMesh);
+
+  return { group, branchCount: symmetric.length + 1 };
+}
+
+function getZDepthScale(habit: Habit): number {
+  return habit === 'column' || habit === 'needle'
+    ? 2.5
+    : habit === 'capped_column'
+      ? 1.8
+      : 1.0;
 }
 
 function rotateZ(v: THREE.Vector3, cos: number, sin: number): THREE.Vector3 {
@@ -180,22 +201,6 @@ function paramsFor(c: GrowthConditions): Params {
   }
 }
 
-function buildCore(segments: Segment[], params: Params) {
-  // Small hexagonal prism core — represented as six short radial segments
-  const r = Math.max(0.25, params.primaryThickness * 2);
-  for (let i = 0; i < 6; i++) {
-    const a0 = (i * Math.PI * 2) / 6;
-    const a1 = ((i + 1) * Math.PI * 2) / 6;
-    segments.push({
-      start: new THREE.Vector3(Math.cos(a0) * r, Math.sin(a0) * r, 0),
-      end: new THREE.Vector3(Math.cos(a1) * r, Math.sin(a1) * r, 0),
-      thickness: params.primaryThickness * 0.9,
-      depth: 0,
-      thicknessVariation: 1.0,
-    });
-  }
-}
-
 function buildArm(
   segments: Segment[],
   start: THREE.Vector3,
@@ -284,30 +289,23 @@ function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
 
 function segmentsToMesh(
   segments: Segment[],
-  conditions: GrowthConditions,
-): THREE.Group {
+): { group: THREE.Group; material: THREE.Material } {
   const group = new THREE.Group();
 
-  // Ice-like physical material: semi-transparent, pale blue, slight roughness
+  // Ice-like physical material: refractive, semi-transparent
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#d8ecff'),
-    metalness: 0.1,
+    color: new THREE.Color('#ffffff'),
+    metalness: 0,
     roughness: 0.15,
-    transmission: 0.6,
+    transmission: 0.85,
     thickness: 0.5,
-    ior: 1.31, // real refractive index of ice
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1,
+    ior: 1.31, // Refractive index of ice
+    reflectivity: 0.5,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.9,
+    emissive: new THREE.Color('#e0f0ff'),
+    emissiveIntensity: 0.25,
   });
-
-  // Columns get extra Z-depth to feel 3D
-  const zDepthScale = conditions.habit === 'column' || conditions.habit === 'needle'
-    ? 2.5
-    : conditions.habit === 'capped_column'
-      ? 1.8
-      : 1.0;
 
   for (const seg of segments) {
     const length = seg.start.distanceTo(seg.end);
@@ -315,19 +313,34 @@ function segmentsToMesh(
 
     const finalThickness = seg.thickness * seg.thicknessVariation;
 
-    const geom = new THREE.BoxGeometry(
+    // Use a 6-sided cylinder for hexagonal prism branches
+    const geom = new THREE.CylinderGeometry(
+      finalThickness / 2,
+      finalThickness / 2,
       length,
-      finalThickness,
-      finalThickness * zDepthScale,
+      6,
     );
+    geom.rotateZ(Math.PI / 2); // Align with X axis
+
     const mesh = new THREE.Mesh(geom, material);
 
     // Position and orient the box so it spans start → end
     const segmentMid = seg.start.clone().add(seg.end).multiplyScalar(0.5);
-    mesh.position.copy(segmentMid);
+
+    // Add subtle jitter for organic feel
+    const jitter = 0.015;
+    mesh.position.set(
+      segmentMid.x + (seg.thicknessVariation - 1) * jitter,
+      segmentMid.y + (seg.thicknessVariation - 1) * jitter,
+      segmentMid.z + (seg.thicknessVariation - 1) * jitter,
+    );
+
     const dir = seg.end.clone().sub(seg.start).normalize();
     const angle = Math.atan2(dir.y, dir.x);
     mesh.rotation.z = angle;
+
+    // Subtle tilt out of plane
+    mesh.rotation.x = (seg.thicknessVariation - 1) * 0.1;
 
     // Attach metadata for growth animation
     mesh.userData.dist = seg.start.length(); // Distance from center
@@ -336,5 +349,5 @@ function segmentsToMesh(
     group.add(mesh);
   }
 
-  return group;
+  return { group, material };
 }
