@@ -4,6 +4,8 @@ import { buildSnowflake } from './snowflake/geometry.ts';
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from './snowflake/nakaya.ts';
 import { mulberry32, resolveSeed, Rand } from './snowflake/random.ts';
 
+type TweakpanePane = import('tweakpane').Pane;
+
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 const scene = createScene(canvas);
 
@@ -11,6 +13,49 @@ let isLabMode = false;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
+
+const labParams = {
+  temperature: -15,
+  supersaturation: 80,
+  habit: '—',
+};
+
+let pane: TweakpanePane | null = null;
+let panePromise: Promise<TweakpanePane> | null = null;
+
+async function ensurePane(): Promise<TweakpanePane> {
+  if (pane) return pane;
+  if (panePromise) return panePromise;
+
+  panePromise = import('tweakpane').then(({ Pane }) => {
+    const paneContainer = document.getElementById('pane-mount');
+    const p = new Pane({
+      container: paneContainer ?? undefined,
+      title: 'Growth parameters',
+    });
+
+    p.addBinding(labParams, 'temperature', {
+      min: -40,
+      max: 0,
+      step: 0.5,
+      label: 'Temp (°C)',
+    }).on('change', () => updateFromPane());
+
+    p.addBinding(labParams, 'supersaturation', {
+      min: 0,
+      max: 100,
+      step: 1,
+      label: 'Humidity (%)',
+    }).on('change', () => updateFromPane());
+
+    p.addBinding(labParams, 'habit', { readonly: true, label: 'Habit' });
+
+    pane = p;
+    return p;
+  });
+
+  return panePromise;
+}
 
 function grow(manualConditions?: GrowthConditions, keepSeed = false) {
   if (!keepSeed || !currentSeed) {
@@ -28,21 +73,17 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false) {
 
   scene.updateFlake(result);
 
-  // Update UI
   setText('seed-display', label);
-  setText(
-    'stat-temp',
-    `${conditions.temperatureC.toFixed(1)} °C`,
-  );
-  setText(
-    'stat-humid',
-    `${(conditions.supersaturation * 100).toFixed(0)}%`,
-  );
+  setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C`);
+  setText('stat-humid', `${(conditions.supersaturation * 100).toFixed(0)}%`);
   setText('stat-habit', habitLabel[conditions.habit]);
   setText('stat-branches', `${result.branchCount}`);
 
   if (isLabMode) {
-    setText('lab-habit', habitLabel[conditions.habit]);
+    labParams.habit = habitLabel[conditions.habit];
+    labParams.temperature = conditions.temperatureC;
+    labParams.supersaturation = conditions.supersaturation * 100;
+    pane?.refresh();
   }
 }
 
@@ -51,19 +92,17 @@ function setText(id: string, value: string) {
   if (el) el.textContent = value;
 }
 
-// Refresh button — rerolls (removes ?seed= from URL so a new one is picked)
 document.getElementById('refresh')?.addEventListener('click', () => {
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
 });
 
-// Lab Mode Toggle
 const labToggle = document.getElementById('lab-toggle');
 const labControls = document.getElementById('lab-controls');
 const statsDisplay = document.getElementById('stats-display');
 const labStatus = document.getElementById('lab-status');
 
-function toggleLabMode() {
+async function toggleLabMode() {
   isLabMode = !isLabMode;
   if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
@@ -74,39 +113,30 @@ function toggleLabMode() {
   }
 
   if (isLabMode) {
-    updateFromSliders();
+    await ensurePane();
+    updateFromPane();
   } else {
-    // Return to auto mode, but keep current seed
     grow(undefined, true);
   }
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
 
-// Sliders
-const sliderTemp = document.getElementById('slider-temp') as HTMLInputElement;
-const sliderSS = document.getElementById('slider-ss') as HTMLInputElement;
-
-function updateFromSliders() {
-  const t = parseFloat(sliderTemp.value);
-  const ss = parseFloat(sliderSS.value) / 100;
-
-  setText('val-temp', t.toFixed(1));
-  setText('val-ss', (ss * 100).toFixed(0));
+function updateFromPane() {
+  const t = labParams.temperature;
+  const ss = labParams.supersaturation / 100;
 
   const conditions: GrowthConditions = {
     temperatureC: t,
     supersaturation: ss,
-    habit: getHabit(t, ss)
+    habit: getHabit(t, ss),
   };
+  labParams.habit = habitLabel[conditions.habit];
+  pane?.refresh();
 
   grow(conditions, true);
 }
 
-sliderTemp?.addEventListener('input', updateFromSliders);
-sliderSS?.addEventListener('input', updateFromSliders);
-
-// Share & Save
 document.getElementById('btn-copy')?.addEventListener('click', () => {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
   navigator.clipboard.writeText(url).then(() => {
@@ -125,13 +155,7 @@ document.getElementById('btn-copy')?.addEventListener('click', () => {
 });
 
 function saveSnowflake() {
-  // To capture the canvas, we need to render the current frame
-  // If bloom is on, we use the composer, otherwise the renderer
-  if (scene.composer && scene.isBloomEnabled) {
-    scene.composer.render();
-  } else {
-    scene.renderer.render(scene.scene, scene.camera);
-  }
+  scene.composer.render();
 
   const dataUrl = canvas.toDataURL('image/png');
   const link = document.createElement('a');
@@ -143,7 +167,6 @@ function saveSnowflake() {
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
 
-// Bloom Toggle
 const btnBloom = document.getElementById('btn-bloom');
 
 function toggleBloom() {
@@ -157,7 +180,6 @@ function toggleBloom() {
 
 btnBloom?.addEventListener('click', toggleBloom);
 
-// Rotation Toggle
 const btnRotate = document.getElementById('btn-rotate');
 btnRotate?.addEventListener('click', () => {
   const enabled = !scene.isAutoRotateEnabled;
@@ -168,7 +190,6 @@ btnRotate?.addEventListener('click', () => {
   scene.setAutoRotate(enabled);
 });
 
-// Keyboard shortcuts
 window.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
   if (key === 'r') {
