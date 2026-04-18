@@ -10,8 +10,9 @@ const scene = createScene(canvas);
 let isLabMode = false;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
+let currentSeed: { seed: number; label: string } | null = null;
 
-function grow(manualConditions?: GrowthConditions) {
+function grow(manualConditions?: GrowthConditions, keepSeed = false) {
   // Clear previous flake
   while (scene.flakeHolder.children.length) {
     const child = scene.flakeHolder.children[0];
@@ -19,7 +20,11 @@ function grow(manualConditions?: GrowthConditions) {
     if ((child as any).geometry) (child as any).geometry.dispose?.();
   }
 
-  const { seed, label } = resolveSeed();
+  if (!keepSeed || !currentSeed) {
+    currentSeed = resolveSeed();
+  }
+
+  const { seed, label } = currentSeed;
   currentSeedLabel = label;
   const rng = mulberry32(seed);
   const rand = new Rand(rng);
@@ -83,6 +88,9 @@ labToggle?.addEventListener('click', () => {
 
   if (isLabMode) {
     updateFromSliders();
+  } else {
+    // Return to auto mode, but keep current seed
+    grow(undefined, true);
   }
 });
 
@@ -103,7 +111,7 @@ function updateFromSliders() {
     habit: getHabit(t, ss)
   };
 
-  grow(conditions);
+  grow(conditions, true);
 }
 
 sliderTemp?.addEventListener('input', updateFromSliders);
@@ -125,13 +133,38 @@ document.getElementById('btn-copy')?.addEventListener('click', () => {
 });
 
 document.getElementById('btn-save')?.addEventListener('click', () => {
-  // To capture the canvas, we need to render one frame immediately
-  scene.renderer.render(scene.scene, scene.camera);
+  // To capture the canvas, we need to render the current frame
+  // If bloom is on, we use the composer, otherwise the renderer
+  if (scene.composer && (scene as any).isBloomEnabled !== false) {
+    scene.composer.render();
+  } else {
+    scene.renderer.render(scene.scene, scene.camera);
+  }
+
   const dataUrl = canvas.toDataURL('image/png');
   const link = document.createElement('a');
   link.download = `frostbomb-${currentSeedLabel}.png`;
   link.href = dataUrl;
   link.click();
+});
+
+// Bloom Toggle
+const btnBloom = document.getElementById('btn-bloom');
+let isBloomEnabled = true;
+btnBloom?.addEventListener('click', () => {
+  isBloomEnabled = !isBloomEnabled;
+  scene.setBloom(isBloomEnabled);
+  btnBloom.classList.toggle('active', isBloomEnabled);
+  (scene as any).isBloomEnabled = isBloomEnabled;
+});
+
+// Rotation Toggle
+const btnRotate = document.getElementById('btn-rotate');
+let isAutoRotateEnabled = true;
+btnRotate?.addEventListener('click', () => {
+  isAutoRotateEnabled = !isAutoRotateEnabled;
+  scene.setAutoRotate(isAutoRotateEnabled);
+  btnRotate.classList.toggle('active', isAutoRotateEnabled);
 });
 
 grow();

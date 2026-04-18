@@ -215,6 +215,20 @@ body {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.actions__group {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.actions__divider {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--rule);
+  margin: 0 0.2rem;
 }
 
 .action-btn {
@@ -239,6 +253,16 @@ body {
 .action-btn:hover {
   border-color: var(--accent);
   color: var(--ink);
+}
+
+.action-btn--toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(158, 201, 255, 0.05);
+}
+
+.action-btn--toggle:not(.active) {
+  opacity: 0.6;
 }
 
 .colophon {
