@@ -1,7 +1,12 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import {
+  EffectComposer,
+  EffectPass,
+  RenderPass,
+  BloomEffect,
+  SMAAEffect,
+  SMAAPreset,
+} from 'postprocessing';
 import { BuildResult } from './geometry';
 
 export interface Scene {
@@ -33,9 +38,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: false,
     alpha: true,
     powerPreference: 'high-performance',
+    stencil: false,
+    depth: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -43,7 +50,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   renderer.toneMappingExposure = 1.15;
   renderer.setClearColor(0x050912, 1);
 
-  // Lights
   const ambient = new THREE.AmbientLight(0x1a2a4a, 0.5);
   scene.add(ambient);
 
@@ -66,7 +72,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
 
-  // Shared material
   const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color('#ffffff'),
     metalness: 0,
@@ -88,18 +93,22 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const coreMesh = new THREE.Mesh(coreGeom, material);
   let currentFlakeData: BuildResult | null = null;
 
-  // Post-processing
+  // Post-processing — pmndrs/postprocessing
   const composer = new EffectComposer(renderer);
-  const renderPass = new RenderPass(scene, camera);
-  composer.addPass(renderPass);
+  composer.addPass(new RenderPass(scene, camera));
 
-  const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.8,
-    0.5,
-    0.9,
-  );
-  composer.addPass(bloomPass);
+  const bloomEffect = new BloomEffect({
+    intensity: 1.1,
+    luminanceThreshold: 0.55,
+    luminanceSmoothing: 0.3,
+    mipmapBlur: true,
+    radius: 0.75,
+  });
+
+  const smaaEffect = new SMAAEffect({ preset: SMAAPreset.HIGH });
+
+  const effectPass = new EffectPass(camera, smaaEffect, bloomEffect);
+  composer.addPass(effectPass);
 
   // Interaction
   let isAutoRotate = true;
@@ -140,7 +149,31 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   let frameId = 0;
   let time = 0;
-  let entryProgress = 0;
+  const entryState = { progress: 0 };
+  const ENTRY_DURATION_MS = 2200;
+  let entryStartTime = 0;
+  let entryActive = false;
+
+  function startEntryTween() {
+    entryState.progress = 0;
+    entryStartTime = performance.now();
+    entryActive = true;
+  }
+
+  function cancelEntryTween() {
+    entryActive = false;
+  }
+
+  function tickEntryTween() {
+    if (!entryActive) return;
+    const t = (performance.now() - entryStartTime) / ENTRY_DURATION_MS;
+    if (t >= 1) {
+      entryState.progress = 1;
+      entryActive = false;
+    } else {
+      entryState.progress = easeOutExpo(t);
+    }
+  }
 
   const dummy = new THREE.Object3D();
 
@@ -153,11 +186,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     isBloomEnabled: true,
     isAutoRotateEnabled: true,
     start: () => {
-      entryProgress = 0;
       animate();
     },
     dispose: () => {
       cancelAnimationFrame(frameId);
+      cancelEntryTween();
       renderer.dispose();
       composer.dispose();
       branchGeom.dispose();
@@ -165,7 +198,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       material.dispose();
     },
     setBloom: (enabled: boolean) => {
-      bloomPass.enabled = enabled;
+      bloomEffect.intensity = enabled ? 1.1 : 0;
       sceneInterface.isBloomEnabled = enabled;
     },
     setAutoRotate: (enabled: boolean) => {
@@ -177,37 +210,36 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       }
     },
     updateFlake: (data: BuildResult) => {
-      // Clear old
       if (branchMesh) {
         flakeHolder.remove(branchMesh);
       }
 
       currentFlakeData = data;
-      entryProgress = 0;
 
-      // Create new branch mesh
       branchMesh = new THREE.InstancedMesh(
         branchGeom,
         material,
-        data.instances.length
+        data.instances.length,
       );
       flakeHolder.add(branchMesh);
 
-      // Reset and add core if not present
       if (!flakeHolder.children.includes(coreMesh)) {
         flakeHolder.add(coreMesh);
       }
-    }
+
+      startEntryTween();
+    },
   };
+
+  const clock = new THREE.Clock();
 
   function animate() {
     frameId = requestAnimationFrame(animate);
+    const delta = clock.getDelta();
     time += 0.005;
+    tickEntryTween();
 
-    if (entryProgress < 1) {
-      entryProgress = Math.min(1, entryProgress + 0.008);
-    }
-    const eased = easeOutExpo(entryProgress);
+    const eased = entryState.progress;
 
     mouse.x += (mouse.targetX - mouse.x) * 0.05;
     mouse.y += (mouse.targetY - mouse.y) * 0.05;
@@ -222,12 +254,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder.rotation.y = rotation.y + mouse.x * 0.4 + autoY;
     flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoX;
 
-    // Update instances
     if (branchMesh && currentFlakeData) {
       for (let i = 0; i < currentFlakeData.instances.length; i++) {
         const data = currentFlakeData.instances[i];
         const delay = data.dist * 0.15 + data.depth * 0.1;
-        const progress = Math.max(0, Math.min(1, (entryProgress * 1.5 - delay) * 2));
+        const progress = Math.max(0, Math.min(1, (eased * 1.5 - delay) * 2));
         const s = easeOutExpo(progress);
 
         dummy.position.set(...data.position);
@@ -249,11 +280,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     flakeHolder.position.y = (1 - eased) * -2;
 
-    if (bloomPass.enabled) {
-      composer.render();
-    } else {
-      renderer.render(scene, camera);
-    }
+    composer.render(delta);
   }
 
   return sceneInterface;
