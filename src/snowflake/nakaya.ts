@@ -84,3 +84,27 @@ export const habitLabel: Record<Habit, string> = {
   column: 'Hollow column',
   capped_column: 'Capped column',
 };
+
+/**
+ * Deterministically maps (T, SS) to a crystal habit based on the Nakaya diagram.
+ */
+export function getHabit(temp: number, ss: number): Habit {
+  // Simplified Nakaya morphology mapping
+  if (temp > -4) {
+    return ss > 0.5 ? 'stellar_dendrite' : 'plate';
+  }
+  if (temp > -9) {
+    if (ss > 0.5) return 'needle';
+    if (ss > 0.25) return 'capped_column';
+    return 'column';
+  }
+  if (temp > -12) {
+    return ss > 0.4 ? 'sector_plate' : 'plate';
+  }
+  if (temp > -22) {
+    if (ss > 0.8) return 'fernlike_dendrite';
+    if (ss > 0.5) return 'stellar_dendrite';
+    return 'sector_plate';
+  }
+  return ss > 0.4 ? 'plate' : 'column';
+}
