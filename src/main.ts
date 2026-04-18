@@ -63,21 +63,13 @@ document.getElementById('refresh')?.addEventListener('click', () => {
   grow(isLabMode ? currentConditions : undefined);
 });
 
-// Keyboard: press `R` to regrow
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'r' || e.key === 'R') {
-    window.history.replaceState(null, '', window.location.pathname);
-    grow(isLabMode ? currentConditions : undefined);
-  }
-});
-
 // Lab Mode Toggle
 const labToggle = document.getElementById('lab-toggle');
 const labControls = document.getElementById('lab-controls');
 const statsDisplay = document.getElementById('stats-display');
 const labStatus = document.getElementById('lab-status');
 
-labToggle?.addEventListener('click', () => {
+function toggleLabMode() {
   isLabMode = !isLabMode;
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = isLabMode ? 'none' : 'flex';
@@ -92,7 +84,9 @@ labToggle?.addEventListener('click', () => {
     // Return to auto mode, but keep current seed
     grow(undefined, true);
   }
-});
+}
+
+labToggle?.addEventListener('click', toggleLabMode);
 
 // Sliders
 const sliderTemp = document.getElementById('slider-temp') as HTMLInputElement;
@@ -132,7 +126,7 @@ document.getElementById('btn-copy')?.addEventListener('click', () => {
   });
 });
 
-document.getElementById('btn-save')?.addEventListener('click', () => {
+function saveSnowflake() {
   // To capture the canvas, we need to render the current frame
   // If bloom is on, we use the composer, otherwise the renderer
   if (scene.composer && (scene as any).isBloomEnabled !== false) {
@@ -143,20 +137,28 @@ document.getElementById('btn-save')?.addEventListener('click', () => {
 
   const dataUrl = canvas.toDataURL('image/png');
   const link = document.createElement('a');
-  link.download = `frostbomb-${currentSeedLabel}.png`;
+  const habit = currentConditions.habit.replace(/_/g, '-');
+  link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
   link.href = dataUrl;
   link.click();
-});
+}
+
+document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
 
 // Bloom Toggle
 const btnBloom = document.getElementById('btn-bloom');
 let isBloomEnabled = true;
-btnBloom?.addEventListener('click', () => {
+
+function toggleBloom() {
   isBloomEnabled = !isBloomEnabled;
   scene.setBloom(isBloomEnabled);
-  btnBloom.classList.toggle('active', isBloomEnabled);
+  if (btnBloom) {
+    btnBloom.classList.toggle('active', isBloomEnabled);
+  }
   (scene as any).isBloomEnabled = isBloomEnabled;
-});
+}
+
+btnBloom?.addEventListener('click', toggleBloom);
 
 // Rotation Toggle
 const btnRotate = document.getElementById('btn-rotate');
@@ -165,6 +167,21 @@ btnRotate?.addEventListener('click', () => {
   isAutoRotateEnabled = !isAutoRotateEnabled;
   scene.setAutoRotate(isAutoRotateEnabled);
   btnRotate.classList.toggle('active', isAutoRotateEnabled);
+});
+
+// Keyboard shortcuts
+window.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+  if (key === 'r') {
+    window.history.replaceState(null, '', window.location.pathname);
+    grow(isLabMode ? currentConditions : undefined);
+  } else if (key === 'l') {
+    toggleLabMode();
+  } else if (key === 'b') {
+    toggleBloom();
+  } else if (key === 's') {
+    saveSnowflake();
+  }
 });
 
 grow();
