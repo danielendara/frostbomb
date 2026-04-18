@@ -94,14 +94,79 @@ body {
   animation: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
 }
 
+.field-notes__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
 .field-notes__label {
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: var(--accent);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.75rem;
-  border-bottom: 1px solid var(--rule);
   font-size: 0.62rem;
+}
+
+.lab-toggle {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: color 0.3s ease;
+}
+
+.lab-toggle:hover {
+  color: var(--accent);
+}
+
+.lab-toggle span {
+  color: var(--ink-dim);
+}
+
+.lab-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.lab-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lab-control label {
+  color: var(--ink-faint);
+  font-size: 0.65rem;
+}
+
+.lab-control label span {
+  color: var(--ink);
+}
+
+.lab-control input[type="range"] {
+  appearance: none;
+  background: var(--rule);
+  height: 2px;
+  border-radius: 1px;
+  outline: none;
+}
+
+.lab-control input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
 }
 
 .field-notes__list {
@@ -137,13 +202,43 @@ body {
   right: var(--pad);
   bottom: var(--pad);
   z-index: 10;
-  max-width: 320px;
+  max-width: 380px;
   text-align: right;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 1rem;
   animation: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.action-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-dim);
+  padding: 0.65rem 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.action-btn:hover {
+  border-color: var(--accent);
+  color: var(--ink);
 }
 
 .colophon {
@@ -156,9 +251,9 @@ body {
 
 .refresh {
   appearance: none;
-  background: transparent;
-  border: 1px solid var(--rule);
-  color: var(--ink);
+  background: var(--paper-lift);
+  border: 1px solid var(--accent);
+  color: var(--accent);
   padding: 0.65rem 1.1rem;
   font-family: var(--mono);
   font-size: 0.7rem;
