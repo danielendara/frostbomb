@@ -21,9 +21,18 @@ interface Segment {
   thicknessVariation: number;
 }
 
+export interface InstanceData {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+  dist: number;
+  depth: number;
+}
+
 export interface BuildResult {
-  group: THREE.Group;
+  instances: InstanceData[];
   branchCount: number;
+  core: InstanceData;
 }
 
 export function buildSnowflake(
@@ -68,23 +77,22 @@ export function buildSnowflake(
     }
   }
 
-  const { group, material } = segmentsToMesh(symmetric);
+  const instances = segmentsToInstanceData(symmetric);
 
   // Add a solid hexagonal core
   const coreRadius = Math.max(0.2, params.primaryThickness * 2.5);
   const zDepthScale = getZDepthScale(conditions.habit);
   const coreHeight = params.primaryThickness * zDepthScale * 1.2;
 
-  const coreGeom = new THREE.CylinderGeometry(coreRadius, coreRadius, coreHeight, 6);
-  coreGeom.rotateX(Math.PI / 2); // Lay flat on the XY plane
-  coreGeom.rotateZ(Math.PI / 6); // Align points with arms
-  const coreMesh = new THREE.Mesh(coreGeom, material);
+  const core: InstanceData = {
+    position: [0, 0, 0],
+    rotation: [Math.PI / 2, 0, Math.PI / 6], // Lay flat and align with arms
+    scale: [coreRadius * 2, coreHeight, coreRadius * 2],
+    dist: 0,
+    depth: 0,
+  };
 
-  coreMesh.userData.dist = 0;
-  coreMesh.userData.depth = 0;
-  group.add(coreMesh);
-
-  return { group, branchCount: symmetric.length + 1 };
+  return { instances, branchCount: symmetric.length + 1, core };
 }
 
 function getZDepthScale(habit: Habit): number {
@@ -287,25 +295,10 @@ function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
   return new THREE.Vector3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
 }
 
-function segmentsToMesh(
+function segmentsToInstanceData(
   segments: Segment[],
-): { group: THREE.Group; material: THREE.Material } {
-  const group = new THREE.Group();
-
-  // Ice-like physical material: refractive, semi-transparent
-  const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#ffffff'),
-    metalness: 0,
-    roughness: 0.15,
-    transmission: 0.85,
-    thickness: 0.5,
-    ior: 1.31, // Refractive index of ice
-    reflectivity: 0.5,
-    transparent: true,
-    opacity: 0.9,
-    emissive: new THREE.Color('#e0f0ff'),
-    emissiveIntensity: 0.25,
-  });
+): InstanceData[] {
+  const data: InstanceData[] = [];
 
   for (const seg of segments) {
     const length = seg.start.distanceTo(seg.end);
@@ -313,41 +306,44 @@ function segmentsToMesh(
 
     const finalThickness = seg.thickness * seg.thicknessVariation;
 
-    // Use a 6-sided cylinder for hexagonal prism branches
-    const geom = new THREE.CylinderGeometry(
-      finalThickness / 2,
-      finalThickness / 2,
-      length,
-      6,
-    );
-    geom.rotateZ(Math.PI / 2); // Align with X axis
-
-    const mesh = new THREE.Mesh(geom, material);
-
-    // Position and orient the box so it spans start → end
     const segmentMid = seg.start.clone().add(seg.end).multiplyScalar(0.5);
 
     // Add subtle jitter for organic feel
     const jitter = 0.015;
-    mesh.position.set(
+    const position: [number, number, number] = [
       segmentMid.x + (seg.thicknessVariation - 1) * jitter,
       segmentMid.y + (seg.thicknessVariation - 1) * jitter,
       segmentMid.z + (seg.thicknessVariation - 1) * jitter,
-    );
+    ];
 
     const dir = seg.end.clone().sub(seg.start).normalize();
     const angle = Math.atan2(dir.y, dir.x);
-    mesh.rotation.z = angle;
 
-    // Subtle tilt out of plane
-    mesh.rotation.x = (seg.thicknessVariation - 1) * 0.1;
+    // Default unit cylinder is along Y. We want it along the branch direction.
+    // We'll rotate it around Z by angle, but first we need it to be horizontal.
+    // Cylinder is along Y, so rotating by -PI/2 around Z makes it along X.
+    // Then we add our angle.
+    const rotation: [number, number, number] = [
+      (seg.thicknessVariation - 1) * 0.1, // Subtle tilt out of plane (around X)
+      0,
+      angle + Math.PI / 2, // Rotate to match direction
+    ];
 
-    // Attach metadata for growth animation
-    mesh.userData.dist = seg.start.length(); // Distance from center
-    mesh.userData.depth = seg.depth; // Branch depth
+    // Scale: X and Z for thickness, Y for length
+    const scale: [number, number, number] = [
+      finalThickness,
+      length,
+      finalThickness,
+    ];
 
-    group.add(mesh);
+    data.push({
+      position,
+      rotation,
+      scale,
+      dist: seg.start.length(),
+      depth: seg.depth,
+    });
   }
 
-  return { group, material };
+  return data;
 }
