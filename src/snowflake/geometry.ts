@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createNoise2D } from 'simplex-noise';
 import { Rand } from './random.ts';
 import type { GrowthConditions, Habit } from './nakaya.ts';
 
@@ -17,6 +18,7 @@ interface Segment {
   end: THREE.Vector3;
   thickness: number;
   depth: number;
+  thicknessVariation: number;
 }
 
 export interface BuildResult {
@@ -37,6 +39,8 @@ export function buildSnowflake(
   // Central hexagonal core
   buildCore(segments, params);
 
+  const noise2D = createNoise2D(() => rand.next());
+
   // Build one primary arm along +X
   buildArm(
     segments,
@@ -47,6 +51,7 @@ export function buildSnowflake(
     0,
     params,
     rand,
+    noise2D,
   );
 
   // 6-fold symmetry: clone the arm at 60° intervals
@@ -61,6 +66,7 @@ export function buildSnowflake(
         end: rotateZ(seg.end, cos, sin),
         thickness: seg.thickness,
         depth: seg.depth,
+        thicknessVariation: seg.thicknessVariation,
       });
     }
   }
@@ -185,6 +191,7 @@ function buildCore(segments: Segment[], params: Params) {
       end: new THREE.Vector3(Math.cos(a1) * r, Math.sin(a1) * r, 0),
       thickness: params.primaryThickness * 0.9,
       depth: 0,
+      thicknessVariation: 1.0,
     });
   }
 }
@@ -198,11 +205,21 @@ function buildArm(
   depth: number,
   params: Params,
   rand: Rand,
+  noise2D: (x: number, y: number) => number,
 ) {
   if (depth > params.maxDepth || length < 0.08) return;
 
   const end = start.clone().addScaledVector(direction, length);
-  segments.push({ start: start.clone(), end, thickness, depth });
+  const mid = start.clone().add(end).multiplyScalar(0.5);
+  const thicknessVariation = 1 + noise2D(mid.x * 3, mid.y * 3) * 0.15;
+
+  segments.push({
+    start: start.clone(),
+    end,
+    thickness,
+    depth,
+    thicknessVariation,
+  });
 
   if (depth >= params.maxDepth) return;
 
@@ -221,10 +238,24 @@ function buildArm(
     const sideThick = thickness * 0.6;
 
     // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-    const angle = params.sideBranchAngle + rand.range(-0.08, 0.08);
+    // Add organic variation using simplex noise based on position and depth
+    const noiseVal = noise2D(point.x * 2, point.y * 2);
+    const angleVariation = noiseVal * 0.1;
+    const angle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
+
     for (const sign of [-1, 1]) {
       const dir = rotateVec(direction, sign * angle);
-      buildArm(segments, point, dir, sideLen, sideThick, depth + 1, params, rand);
+      buildArm(
+        segments,
+        point,
+        dir,
+        sideLen,
+        sideThick,
+        depth + 1,
+        params,
+        rand,
+        noise2D,
+      );
     }
   }
 
@@ -232,11 +263,15 @@ function buildArm(
   if (params.hasTip && depth === 0) {
     const tipDir = direction.clone();
     const tipEnd = end.clone().addScaledVector(tipDir, 0.12);
+    const tipMid = end.clone().add(tipEnd).multiplyScalar(0.5);
+    const tipThicknessVariation = 1 + noise2D(tipMid.x * 3, tipMid.y * 3) * 0.15;
+
     segments.push({
       start: end.clone(),
       end: tipEnd,
       thickness: thickness * 0.4,
       depth: depth + 1,
+      thicknessVariation: tipThicknessVariation,
     });
   }
 }
@@ -247,7 +282,10 @@ function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
   return new THREE.Vector3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
 }
 
-function segmentsToMesh(segments: Segment[], conditions: GrowthConditions): THREE.Group {
+function segmentsToMesh(
+  segments: Segment[],
+  conditions: GrowthConditions,
+): THREE.Group {
   const group = new THREE.Group();
 
   // Ice-like physical material: semi-transparent, pale blue, slight roughness
@@ -275,16 +313,18 @@ function segmentsToMesh(segments: Segment[], conditions: GrowthConditions): THRE
     const length = seg.start.distanceTo(seg.end);
     if (length < 0.001) continue;
 
+    const finalThickness = seg.thickness * seg.thicknessVariation;
+
     const geom = new THREE.BoxGeometry(
       length,
-      seg.thickness,
-      seg.thickness * zDepthScale,
+      finalThickness,
+      finalThickness * zDepthScale,
     );
     const mesh = new THREE.Mesh(geom, material);
 
     // Position and orient the box so it spans start → end
-    const mid = seg.start.clone().add(seg.end).multiplyScalar(0.5);
-    mesh.position.copy(mid);
+    const segmentMid = seg.start.clone().add(seg.end).multiplyScalar(0.5);
+    mesh.position.copy(segmentMid);
     const dir = seg.end.clone().sub(seg.start).normalize();
     const angle = Math.atan2(dir.y, dir.x);
     mesh.rotation.z = angle;

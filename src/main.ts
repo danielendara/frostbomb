@@ -10,8 +10,9 @@ const scene = createScene(canvas);
 let isLabMode = false;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
+let currentSeed: { seed: number; label: string } | null = null;
 
-function grow(manualConditions?: GrowthConditions) {
+function grow(manualConditions?: GrowthConditions, keepSeed = false) {
   // Clear previous flake
   while (scene.flakeHolder.children.length) {
     const child = scene.flakeHolder.children[0];
@@ -19,7 +20,11 @@ function grow(manualConditions?: GrowthConditions) {
     if ((child as any).geometry) (child as any).geometry.dispose?.();
   }
 
-  const { seed, label } = resolveSeed();
+  if (!keepSeed || !currentSeed) {
+    currentSeed = resolveSeed();
+  }
+
+  const { seed, label } = currentSeed;
   currentSeedLabel = label;
   const rng = mulberry32(seed);
   const rand = new Rand(rng);
@@ -83,6 +88,9 @@ labToggle?.addEventListener('click', () => {
 
   if (isLabMode) {
     updateFromSliders();
+  } else {
+    // Return to auto mode, but keep current seed
+    grow(undefined, true);
   }
 });
 
@@ -103,7 +111,7 @@ function updateFromSliders() {
     habit: getHabit(t, ss)
   };
 
-  grow(conditions);
+  grow(conditions, true);
 }
 
 sliderTemp?.addEventListener('input', updateFromSliders);

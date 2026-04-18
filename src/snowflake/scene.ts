@@ -9,6 +9,13 @@ export interface Scene {
   dispose: () => void;
 }
 
+interface SnowflakeSegment extends THREE.Object3D {
+  userData: {
+    dist: number;
+    depth: number;
+  };
+}
+
 export function createScene(canvas: HTMLCanvasElement): Scene {
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x050912, 0.06);
@@ -90,12 +97,13 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder.rotation.x = -mouse.y * 0.3 + Math.cos(time * 0.25) * 0.03;
 
     // Staggered growth animation
-    flakeHolder.children.forEach((mesh: any) => {
+    flakeHolder.children.forEach((child) => {
+      const segment = child as SnowflakeSegment;
       // Each segment starts growing based on its distance from the center and its branch depth
-      const delay = mesh.userData.dist * 0.15 + mesh.userData.depth * 0.1;
+      const delay = segment.userData.dist * 0.15 + segment.userData.depth * 0.1;
       const progress = Math.max(0, Math.min(1, (entryProgress * 1.5 - delay) * 2));
       const s = easeOutExpo(progress);
-      mesh.scale.setScalar(s);
+      segment.scale.setScalar(s);
     });
 
     flakeHolder.position.y = (1 - eased) * -2;
