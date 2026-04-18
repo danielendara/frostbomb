@@ -12,6 +12,8 @@ export interface Scene {
   flakeHolder: THREE.Group;
   start: () => void;
   dispose: () => void;
+  isBloomEnabled: boolean;
+  isAutoRotateEnabled: boolean;
   setBloom: (enabled: boolean) => void;
   setAutoRotate: (enabled: boolean) => void;
   updateFlake: (data: BuildResult) => void;
@@ -142,6 +144,62 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   const dummy = new THREE.Object3D();
 
+  const sceneInterface: Scene = {
+    scene,
+    camera,
+    renderer,
+    composer,
+    flakeHolder,
+    isBloomEnabled: true,
+    isAutoRotateEnabled: true,
+    start: () => {
+      entryProgress = 0;
+      animate();
+    },
+    dispose: () => {
+      cancelAnimationFrame(frameId);
+      renderer.dispose();
+      composer.dispose();
+      branchGeom.dispose();
+      coreGeom.dispose();
+      material.dispose();
+    },
+    setBloom: (enabled: boolean) => {
+      bloomPass.enabled = enabled;
+      sceneInterface.isBloomEnabled = enabled;
+    },
+    setAutoRotate: (enabled: boolean) => {
+      isAutoRotate = enabled;
+      sceneInterface.isAutoRotateEnabled = enabled;
+      if (!enabled) {
+        rotation.x = targetRotation.x;
+        rotation.y = targetRotation.y;
+      }
+    },
+    updateFlake: (data: BuildResult) => {
+      // Clear old
+      if (branchMesh) {
+        flakeHolder.remove(branchMesh);
+      }
+
+      currentFlakeData = data;
+      entryProgress = 0;
+
+      // Create new branch mesh
+      branchMesh = new THREE.InstancedMesh(
+        branchGeom,
+        material,
+        data.instances.length
+      );
+      flakeHolder.add(branchMesh);
+
+      // Reset and add core if not present
+      if (!flakeHolder.children.includes(coreMesh)) {
+        flakeHolder.add(coreMesh);
+      }
+    }
+  };
+
   function animate() {
     frameId = requestAnimationFrame(animate);
     time += 0.005;
@@ -198,58 +256,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
   }
 
-  return {
-    scene,
-    camera,
-    renderer,
-    composer,
-    flakeHolder,
-    start: () => {
-      entryProgress = 0;
-      animate();
-    },
-    dispose: () => {
-      cancelAnimationFrame(frameId);
-      renderer.dispose();
-      composer.dispose();
-      branchGeom.dispose();
-      coreGeom.dispose();
-      material.dispose();
-    },
-    setBloom: (enabled: boolean) => {
-      bloomPass.enabled = enabled;
-    },
-    setAutoRotate: (enabled: boolean) => {
-      isAutoRotate = enabled;
-      if (!enabled) {
-        rotation.x = targetRotation.x;
-        rotation.y = targetRotation.y;
-      }
-    },
-    updateFlake: (data: BuildResult) => {
-      // Clear old
-      if (branchMesh) {
-        flakeHolder.remove(branchMesh);
-        branchMesh.dispose();
-      }
-
-      currentFlakeData = data;
-      entryProgress = 0;
-
-      // Create new branch mesh
-      branchMesh = new THREE.InstancedMesh(
-        branchGeom,
-        material,
-        data.instances.length
-      );
-      flakeHolder.add(branchMesh);
-
-      // Reset and add core if not present
-      if (!flakeHolder.children.includes(coreMesh)) {
-        flakeHolder.add(coreMesh);
-      }
-    }
-  };
+  return sceneInterface;
 }
 
 function easeOutExpo(t: number): number {

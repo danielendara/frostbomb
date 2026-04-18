@@ -124,8 +124,8 @@ function paramsFor(c: GrowthConditions): Params {
   switch (c.habit) {
     case 'fernlike_dendrite':
       return {
-        primaryLength: 3.8,
-        primaryThickness: 0.045,
+        primaryLength: 3.04,
+        primaryThickness: 0.036,
         sideBranchProb: 0.85,
         sideBranchDecay: 0.68,
         sideBranchAngle: Math.PI / 3,
@@ -136,8 +136,8 @@ function paramsFor(c: GrowthConditions): Params {
       };
     case 'stellar_dendrite':
       return {
-        primaryLength: 3.5,
-        primaryThickness: 0.06,
+        primaryLength: 2.8,
+        primaryThickness: 0.048,
         sideBranchProb: 0.55 + ss * 0.25,
         sideBranchDecay: 0.6,
         sideBranchAngle: Math.PI / 3,
@@ -148,8 +148,8 @@ function paramsFor(c: GrowthConditions): Params {
       };
     case 'sector_plate':
       return {
-        primaryLength: 2.6,
-        primaryThickness: 0.22,
+        primaryLength: 2.08,
+        primaryThickness: 0.176,
         sideBranchProb: 0.15,
         sideBranchDecay: 0.4,
         sideBranchAngle: Math.PI / 3,
@@ -160,8 +160,8 @@ function paramsFor(c: GrowthConditions): Params {
       };
     case 'plate':
       return {
-        primaryLength: 2.2,
-        primaryThickness: 0.35,
+        primaryLength: 1.76,
+        primaryThickness: 0.28,
         sideBranchProb: 0.05,
         sideBranchDecay: 0.3,
         sideBranchAngle: Math.PI / 3,
@@ -172,8 +172,8 @@ function paramsFor(c: GrowthConditions): Params {
       };
     case 'needle':
       return {
-        primaryLength: 4.2,
-        primaryThickness: 0.05,
+        primaryLength: 3.36,
+        primaryThickness: 0.04,
         sideBranchProb: 0.05,
         sideBranchDecay: 0.3,
         sideBranchAngle: Math.PI / 4,
@@ -184,8 +184,8 @@ function paramsFor(c: GrowthConditions): Params {
       };
     case 'column':
       return {
-        primaryLength: 2.4,
-        primaryThickness: 0.5,
+        primaryLength: 1.92,
+        primaryThickness: 0.4,
         sideBranchProb: 0,
         sideBranchDecay: 0,
         sideBranchAngle: 0,
@@ -196,8 +196,8 @@ function paramsFor(c: GrowthConditions): Params {
       };
     case 'capped_column':
       return {
-        primaryLength: 2.8,
-        primaryThickness: 0.18,
+        primaryLength: 2.24,
+        primaryThickness: 0.144,
         sideBranchProb: 0.3,
         sideBranchDecay: 0.5,
         sideBranchAngle: Math.PI / 3,
