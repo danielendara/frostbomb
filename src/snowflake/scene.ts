@@ -1,12 +1,18 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 export interface Scene {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
+  composer: EffectComposer;
   flakeHolder: THREE.Group;
   start: () => void;
   dispose: () => void;
+  setBloom: (enabled: boolean) => void;
+  setAutoRotate: (enabled: boolean) => void;
 }
 
 interface SnowflakeSegment extends THREE.Object3D {
@@ -59,18 +65,58 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
 
-  // Subtle parallax on mouse move
+  // Post-processing
+  const composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.6, // strength
+    0.4, // radius
+    0.85, // threshold
+  );
+  composer.addPass(bloomPass);
+
+  // Interaction state
+  let isAutoRotate = true;
+  let isDragging = false;
+  const rotation = { x: 0, y: 0 };
+  const targetRotation = { x: 0, y: 0 };
   const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+
+  canvas.style.cursor = 'grab';
+
   window.addEventListener('pointermove', (e) => {
     mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 0.3;
     mouse.targetY = (e.clientY / window.innerHeight - 0.5) * 0.3;
+
+    if (isDragging) {
+      const deltaX = e.movementX || 0;
+      const deltaY = e.movementY || 0;
+      targetRotation.y += deltaX * 0.01;
+      targetRotation.x += deltaY * 0.01;
+    }
+  });
+
+  canvas.addEventListener('pointerdown', () => {
+    isDragging = true;
+    canvas.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('pointerup', () => {
+    isDragging = false;
+    canvas.style.cursor = 'grab';
   });
 
   // Resize
   window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(w, h);
+    composer.setSize(w, h);
   });
 
   let frameId = 0;
@@ -91,30 +137,43 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     mouse.x += (mouse.targetX - mouse.x) * 0.05;
     mouse.y += (mouse.targetY - mouse.y) * 0.05;
 
-    // Slow continuous drift + parallax + entry
-    flakeHolder.rotation.z = time * 0.08 + Math.sin(time * 0.3) * 0.04;
-    flakeHolder.rotation.y = mouse.x * 0.4 + Math.sin(time * 0.2) * 0.05;
-    flakeHolder.rotation.x = -mouse.y * 0.3 + Math.cos(time * 0.25) * 0.03;
+    // Ease rotation
+    rotation.x += (targetRotation.x - rotation.x) * 0.1;
+    rotation.y += (targetRotation.y - rotation.y) * 0.1;
+
+    // Slow continuous drift + parallax + entry + manual rotation
+    const autoZ = isAutoRotate ? time * 0.08 + Math.sin(time * 0.3) * 0.04 : 0;
+    const autoY = isAutoRotate ? Math.sin(time * 0.2) * 0.05 : 0;
+    const autoX = isAutoRotate ? Math.cos(time * 0.25) * 0.03 : 0;
+
+    flakeHolder.rotation.z = autoZ;
+    flakeHolder.rotation.y = rotation.y + mouse.x * 0.4 + autoY;
+    flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoX;
 
     // Staggered growth animation
-    flakeHolder.traverse((child: any) => {
-      if (!child.isMesh) return;
+    flakeHolder.children.forEach((child) => {
+      const segment = child as SnowflakeSegment;
       // Each segment starts growing based on its distance from the center and its branch depth
-      const delay = child.userData.dist * 0.15 + child.userData.depth * 0.1;
+      const delay = segment.userData.dist * 0.15 + segment.userData.depth * 0.1;
       const progress = Math.max(0, Math.min(1, (entryProgress * 1.5 - delay) * 2));
       const s = easeOutExpo(progress);
-      child.scale.setScalar(s);
+      segment.scale.setScalar(s);
     });
 
     flakeHolder.position.y = (1 - eased) * -2;
 
-    renderer.render(scene, camera);
+    if (bloomPass.enabled) {
+      composer.render();
+    } else {
+      renderer.render(scene, camera);
+    }
   }
 
   return {
     scene,
     camera,
     renderer,
+    composer,
     flakeHolder,
     start: () => {
       entryProgress = 0;
@@ -123,6 +182,18 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     dispose: () => {
       cancelAnimationFrame(frameId);
       renderer.dispose();
+      composer.dispose();
+    },
+    setBloom: (enabled: boolean) => {
+      bloomPass.enabled = enabled;
+    },
+    setAutoRotate: (enabled: boolean) => {
+      isAutoRotate = enabled;
+      if (!enabled) {
+        // Snap current rotation to target so it doesn't jump when re-enabled
+        rotation.x = targetRotation.x;
+        rotation.y = targetRotation.y;
+      }
     },
   };
 }
