@@ -69,5 +69,8 @@ Anyone visiting that URL sees the identical crystal.
 ## Keys & buttons
 
 - **R** — grow a new flake
+- **L** — toggle Lab Mode
+- **B** — toggle frosty bloom
+- **S** — save snowflake as PNG
 - **Grow another** button — same thing
 - Mouse movement — parallax (subtle)
