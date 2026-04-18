@@ -20,20 +20,48 @@
     </header>
 
     <aside class="field-notes" id="field-notes">
-      <div class="field-notes__label">Growth conditions</div>
-      <dl class="field-notes__list">
+      <div class="field-notes__header">
+        <div class="field-notes__label">Growth conditions</div>
+        <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode">
+          Lab Mode: <span id="lab-status">OFF</span>
+        </button>
+      </div>
+
+      <dl class="field-notes__list" id="stats-display">
         <div class="field-notes__row"><dt>Temperature</dt><dd id="stat-temp">—</dd></div>
         <div class="field-notes__row"><dt>Supersaturation</dt><dd id="stat-humid">—</dd></div>
         <div class="field-notes__row"><dt>Habit</dt><dd id="stat-habit">—</dd></div>
         <div class="field-notes__row"><dt>Branches</dt><dd id="stat-branches">—</dd></div>
       </dl>
+
+      <div class="lab-controls" id="lab-controls" style="display: none;">
+        <div class="lab-control">
+          <label for="slider-temp">Temp: <span id="val-temp">-15</span>°C</label>
+          <input type="range" id="slider-temp" min="-40" max="0" step="0.5" value="-15">
+        </div>
+        <div class="lab-control">
+          <label for="slider-ss">Humidity: <span id="val-ss">80</span>%</label>
+          <input type="range" id="slider-ss" min="0" max="100" step="1" value="80">
+        </div>
+        <div class="field-notes__row" style="margin-top: 0.5rem;"><dt>Resulting Habit</dt><dd id="lab-habit">—</dd></div>
+      </div>
     </aside>
 
     <footer class="footer">
-      <button class="refresh" id="refresh" title="Grow another snowflake">
-        <span class="refresh__icon">↻</span>
-        <span class="refresh__label">grow another</span>
-      </button>
+      <div class="actions">
+        <button class="action-btn" id="btn-copy" title="Copy share link">
+          <span class="action-btn__icon">⎘</span>
+          <span class="action-btn__label">Copy Link</span>
+        </button>
+        <button class="action-btn" id="btn-save" title="Save as PNG">
+          <span class="action-btn__icon">↓</span>
+          <span class="action-btn__label">Save PNG</span>
+        </button>
+        <button class="refresh" id="refresh" title="Grow another snowflake">
+          <span class="refresh__icon">↻</span>
+          <span class="refresh__label">grow another</span>
+        </button>
+      </div>
       <p class="colophon">
         No two are alike. Each crystal follows the Nakaya diagram — the branching habit emerges from temperature and supersaturation at the moment of growth.
       </p>

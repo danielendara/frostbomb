@@ -289,6 +289,10 @@ function segmentsToMesh(segments: Segment[], conditions: GrowthConditions): THRE
     const angle = Math.atan2(dir.y, dir.x);
     mesh.rotation.z = angle;
 
+    // Attach metadata for growth animation
+    mesh.userData.dist = seg.start.length(); // Distance from center
+    mesh.userData.depth = seg.depth; // Branch depth
+
     group.add(mesh);
   }
 
