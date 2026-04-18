@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { BuildResult } from './geometry';
 
 export interface Scene {
   scene: THREE.Scene;
@@ -13,13 +14,7 @@ export interface Scene {
   dispose: () => void;
   setBloom: (enabled: boolean) => void;
   setAutoRotate: (enabled: boolean) => void;
-}
-
-interface SnowflakeSegment extends THREE.Object3D {
-  userData: {
-    dist: number;
-    depth: number;
-  };
+  updateFlake: (data: BuildResult) => void;
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
@@ -46,21 +41,18 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   renderer.toneMappingExposure = 1.15;
   renderer.setClearColor(0x050912, 1);
 
-  // Lights — cool rim, warm key for refraction glints
+  // Lights
   const ambient = new THREE.AmbientLight(0x1a2a4a, 0.5);
   scene.add(ambient);
 
-  // Strong key light for sharp highlights
   const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
   keyLight.position.set(5, 8, 10);
   scene.add(keyLight);
 
-  // Cool rim light to catch edges
   const rimLight = new THREE.DirectionalLight(0xb0d5ff, 2.5);
   rimLight.position.set(-8, -5, 2);
   scene.add(rimLight);
 
-  // Tiny glint lights (PointLights) to simulate sparkles
   const glint1 = new THREE.PointLight(0xffffff, 1.5, 15);
   glint1.position.set(-2, 3, 4);
   scene.add(glint1);
@@ -72,6 +64,28 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
 
+  // Shared material
+  const material = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color('#ffffff'),
+    metalness: 0,
+    roughness: 0.15,
+    transmission: 0.85,
+    thickness: 0.5,
+    ior: 1.31,
+    reflectivity: 0.5,
+    transparent: true,
+    opacity: 0.9,
+    emissive: new THREE.Color('#e0f0ff'),
+    emissiveIntensity: 0.25,
+  });
+
+  const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
+  const coreGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
+
+  let branchMesh: THREE.InstancedMesh | null = null;
+  const coreMesh = new THREE.Mesh(coreGeom, material);
+  let currentFlakeData: BuildResult | null = null;
+
   // Post-processing
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(scene, camera);
@@ -79,13 +93,13 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.8, // strength
-    0.5, // radius
-    0.9, // threshold
+    0.8,
+    0.5,
+    0.9,
   );
   composer.addPass(bloomPass);
 
-  // Interaction state
+  // Interaction
   let isAutoRotate = true;
   let isDragging = false;
   const rotation = { x: 0, y: 0 };
@@ -97,12 +111,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   window.addEventListener('pointermove', (e) => {
     mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 0.3;
     mouse.targetY = (e.clientY / window.innerHeight - 0.5) * 0.3;
-
     if (isDragging) {
-      const deltaX = e.movementX || 0;
-      const deltaY = e.movementY || 0;
-      targetRotation.y += deltaX * 0.01;
-      targetRotation.x += deltaY * 0.01;
+      targetRotation.y += (e.movementX || 0) * 0.01;
+      targetRotation.x += (e.movementY || 0) * 0.01;
     }
   });
 
@@ -116,7 +127,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     canvas.style.cursor = 'grab';
   });
 
-  // Resize
   window.addEventListener('resize', () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -130,25 +140,22 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let time = 0;
   let entryProgress = 0;
 
+  const dummy = new THREE.Object3D();
+
   function animate() {
     frameId = requestAnimationFrame(animate);
     time += 0.005;
 
-    // Entry animation — flake rises and settles over ~1.5s
     if (entryProgress < 1) {
       entryProgress = Math.min(1, entryProgress + 0.008);
     }
     const eased = easeOutExpo(entryProgress);
 
-    // Ease mouse
     mouse.x += (mouse.targetX - mouse.x) * 0.05;
     mouse.y += (mouse.targetY - mouse.y) * 0.05;
-
-    // Ease rotation
     rotation.x += (targetRotation.x - rotation.x) * 0.1;
     rotation.y += (targetRotation.y - rotation.y) * 0.1;
 
-    // Slow continuous drift + parallax + entry + manual rotation
     const autoZ = isAutoRotate ? time * 0.08 + Math.sin(time * 0.3) * 0.04 : 0;
     const autoY = isAutoRotate ? Math.sin(time * 0.2) * 0.05 : 0;
     const autoX = isAutoRotate ? Math.cos(time * 0.25) * 0.03 : 0;
@@ -157,20 +164,30 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder.rotation.y = rotation.y + mouse.x * 0.4 + autoY;
     flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoX;
 
-    // Staggered growth animation
-    flakeHolder.traverse((child) => {
-      if ((child as any).isMesh) {
-        const segment = child as unknown as SnowflakeSegment;
-        const dist = segment.userData.dist ?? 0;
-        const depth = segment.userData.depth ?? 0;
-
-        // Each segment starts growing based on its distance from the center and its branch depth
-        const delay = dist * 0.15 + depth * 0.1;
+    // Update instances
+    if (branchMesh && currentFlakeData) {
+      for (let i = 0; i < currentFlakeData.instances.length; i++) {
+        const data = currentFlakeData.instances[i];
+        const delay = data.dist * 0.15 + data.depth * 0.1;
         const progress = Math.max(0, Math.min(1, (entryProgress * 1.5 - delay) * 2));
         const s = easeOutExpo(progress);
-        segment.scale.setScalar(s);
+
+        dummy.position.set(...data.position);
+        dummy.rotation.set(...data.rotation);
+        dummy.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
+        dummy.updateMatrix();
+        branchMesh.setMatrixAt(i, dummy.matrix);
       }
-    });
+      branchMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    if (coreMesh && currentFlakeData) {
+      const data = currentFlakeData.core;
+      const s = eased;
+      coreMesh.position.set(...data.position);
+      coreMesh.rotation.set(...data.rotation);
+      coreMesh.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
+    }
 
     flakeHolder.position.y = (1 - eased) * -2;
 
@@ -195,6 +212,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       cancelAnimationFrame(frameId);
       renderer.dispose();
       composer.dispose();
+      branchGeom.dispose();
+      coreGeom.dispose();
+      material.dispose();
     },
     setBloom: (enabled: boolean) => {
       bloomPass.enabled = enabled;
@@ -202,11 +222,33 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     setAutoRotate: (enabled: boolean) => {
       isAutoRotate = enabled;
       if (!enabled) {
-        // Snap current rotation to target so it doesn't jump when re-enabled
         rotation.x = targetRotation.x;
         rotation.y = targetRotation.y;
       }
     },
+    updateFlake: (data: BuildResult) => {
+      // Clear old
+      if (branchMesh) {
+        flakeHolder.remove(branchMesh);
+        branchMesh.dispose();
+      }
+
+      currentFlakeData = data;
+      entryProgress = 0;
+
+      // Create new branch mesh
+      branchMesh = new THREE.InstancedMesh(
+        branchGeom,
+        material,
+        data.instances.length
+      );
+      flakeHolder.add(branchMesh);
+
+      // Reset and add core if not present
+      if (!flakeHolder.children.includes(coreMesh)) {
+        flakeHolder.add(coreMesh);
+      }
+    }
   };
 }
 

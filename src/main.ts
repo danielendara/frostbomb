@@ -13,13 +13,6 @@ let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
 
 function grow(manualConditions?: GrowthConditions, keepSeed = false) {
-  // Clear previous flake
-  while (scene.flakeHolder.children.length) {
-    const child = scene.flakeHolder.children[0];
-    scene.flakeHolder.remove(child);
-    if ((child as any).geometry) (child as any).geometry.dispose?.();
-  }
-
   if (!keepSeed || !currentSeed) {
     currentSeed = resolveSeed();
   }
@@ -31,8 +24,9 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false) {
 
   const conditions = manualConditions || sampleConditions(rand);
   currentConditions = conditions;
-  const { group, branchCount } = buildSnowflake(conditions, rand);
-  scene.flakeHolder.add(group);
+  const result = buildSnowflake(conditions, rand);
+
+  scene.updateFlake(result);
 
   // Update UI
   setText('seed-display', label);
@@ -45,7 +39,7 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false) {
     `${(conditions.supersaturation * 100).toFixed(0)}%`,
   );
   setText('stat-habit', habitLabel[conditions.habit]);
-  setText('stat-branches', `${branchCount}`);
+  setText('stat-branches', `${result.branchCount}`);
 
   if (isLabMode) {
     setText('lab-habit', habitLabel[conditions.habit]);
@@ -71,6 +65,7 @@ const labStatus = document.getElementById('lab-status');
 
 function toggleLabMode() {
   isLabMode = !isLabMode;
+  if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = isLabMode ? 'none' : 'flex';
   if (labStatus) {
@@ -117,11 +112,14 @@ document.getElementById('btn-copy')?.addEventListener('click', () => {
   navigator.clipboard.writeText(url).then(() => {
     const btn = document.getElementById('btn-copy');
     if (btn) {
-      const originalLabel = btn.querySelector('.action-btn__label')!.textContent;
-      btn.querySelector('.action-btn__label')!.textContent = 'Copied!';
-      setTimeout(() => {
-        btn.querySelector('.action-btn__label')!.textContent = originalLabel;
-      }, 2000);
+      const labelEl = btn.querySelector('.action-btn__label');
+      if (labelEl) {
+        const originalLabel = labelEl.textContent;
+        labelEl.textContent = 'Copied!';
+        setTimeout(() => {
+          labelEl.textContent = originalLabel;
+        }, 2000);
+      }
     }
   });
 });
@@ -151,10 +149,11 @@ let isBloomEnabled = true;
 
 function toggleBloom() {
   isBloomEnabled = !isBloomEnabled;
-  scene.setBloom(isBloomEnabled);
   if (btnBloom) {
+    btnBloom.setAttribute('aria-pressed', isBloomEnabled.toString());
     btnBloom.classList.toggle('active', isBloomEnabled);
   }
+  scene.setBloom(isBloomEnabled);
   (scene as any).isBloomEnabled = isBloomEnabled;
 }
 
@@ -165,8 +164,11 @@ const btnRotate = document.getElementById('btn-rotate');
 let isAutoRotateEnabled = true;
 btnRotate?.addEventListener('click', () => {
   isAutoRotateEnabled = !isAutoRotateEnabled;
+  if (btnRotate) {
+    btnRotate.setAttribute('aria-pressed', isAutoRotateEnabled.toString());
+    btnRotate.classList.toggle('active', isAutoRotateEnabled);
+  }
   scene.setAutoRotate(isAutoRotateEnabled);
-  btnRotate.classList.toggle('active', isAutoRotateEnabled);
 });
 
 // Keyboard shortcuts
