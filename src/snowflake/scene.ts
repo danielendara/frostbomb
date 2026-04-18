@@ -44,23 +44,30 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
-  renderer.setClearColor(0x000000, 0);
+  renderer.setClearColor(0x050912, 1);
 
   // Lights — cool rim, warm key for refraction glints
-  const ambient = new THREE.AmbientLight(0x4a6a9a, 0.4);
+  const ambient = new THREE.AmbientLight(0x1a2a4a, 0.5);
   scene.add(ambient);
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
-  keyLight.position.set(5, 6, 8);
+  // Strong key light for sharp highlights
+  const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+  keyLight.position.set(5, 8, 10);
   scene.add(keyLight);
 
-  const rimLight = new THREE.DirectionalLight(0x9ec9ff, 1.5);
-  rimLight.position.set(-6, -3, 4);
+  // Cool rim light to catch edges
+  const rimLight = new THREE.DirectionalLight(0xb0d5ff, 2.5);
+  rimLight.position.set(-8, -5, 2);
   scene.add(rimLight);
 
-  const fillLight = new THREE.PointLight(0xffc78a, 0.6, 20);
-  fillLight.position.set(3, -4, 5);
-  scene.add(fillLight);
+  // Tiny glint lights (PointLights) to simulate sparkles
+  const glint1 = new THREE.PointLight(0xffffff, 1.5, 15);
+  glint1.position.set(-2, 3, 4);
+  scene.add(glint1);
+
+  const glint2 = new THREE.PointLight(0x9ec9ff, 1.2, 15);
+  glint2.position.set(4, -2, 3);
+  scene.add(glint2);
 
   const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
@@ -72,9 +79,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.6, // strength
-    0.4, // radius
-    0.85, // threshold
+    0.8, // strength
+    0.5, // radius
+    0.9, // threshold
   );
   composer.addPass(bloomPass);
 
@@ -151,13 +158,18 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoX;
 
     // Staggered growth animation
-    flakeHolder.children.forEach((child) => {
-      const segment = child as SnowflakeSegment;
-      // Each segment starts growing based on its distance from the center and its branch depth
-      const delay = segment.userData.dist * 0.15 + segment.userData.depth * 0.1;
-      const progress = Math.max(0, Math.min(1, (entryProgress * 1.5 - delay) * 2));
-      const s = easeOutExpo(progress);
-      segment.scale.setScalar(s);
+    flakeHolder.traverse((child) => {
+      if ((child as any).isMesh) {
+        const segment = child as unknown as SnowflakeSegment;
+        const dist = segment.userData.dist ?? 0;
+        const depth = segment.userData.depth ?? 0;
+
+        // Each segment starts growing based on its distance from the center and its branch depth
+        const delay = dist * 0.15 + depth * 0.1;
+        const progress = Math.max(0, Math.min(1, (entryProgress * 1.5 - delay) * 2));
+        const s = easeOutExpo(progress);
+        segment.scale.setScalar(s);
+      }
     });
 
     flakeHolder.position.y = (1 - eased) * -2;
