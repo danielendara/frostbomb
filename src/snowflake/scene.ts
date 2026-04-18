@@ -90,12 +90,13 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder.rotation.x = -mouse.y * 0.3 + Math.cos(time * 0.25) * 0.03;
 
     // Staggered growth animation
-    flakeHolder.children.forEach((mesh: any) => {
+    flakeHolder.traverse((child: any) => {
+      if (!child.isMesh) return;
       // Each segment starts growing based on its distance from the center and its branch depth
-      const delay = mesh.userData.dist * 0.15 + mesh.userData.depth * 0.1;
+      const delay = child.userData.dist * 0.15 + child.userData.depth * 0.1;
       const progress = Math.max(0, Math.min(1, (entryProgress * 1.5 - delay) * 2));
       const s = easeOutExpo(progress);
-      mesh.scale.setScalar(s);
+      child.scale.setScalar(s);
     });
 
     flakeHolder.position.y = (1 - eased) * -2;
