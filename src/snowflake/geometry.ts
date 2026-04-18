@@ -68,7 +68,7 @@ export function buildSnowflake(
     }
   }
 
-  const { group, material } = segmentsToMesh(symmetric, conditions);
+  const { group, material } = segmentsToMesh(symmetric);
 
   // Add a solid hexagonal core
   const coreRadius = Math.max(0.2, params.primaryThickness * 2.5);
@@ -289,7 +289,6 @@ function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
 
 function segmentsToMesh(
   segments: Segment[],
-  conditions: GrowthConditions,
 ): { group: THREE.Group; material: THREE.Material } {
   const group = new THREE.Group();
 
