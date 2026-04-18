@@ -127,7 +127,7 @@ document.getElementById('btn-copy')?.addEventListener('click', () => {
 function saveSnowflake() {
   // To capture the canvas, we need to render the current frame
   // If bloom is on, we use the composer, otherwise the renderer
-  if (scene.composer && (scene as any).isBloomEnabled !== false) {
+  if (scene.composer && scene.isBloomEnabled) {
     scene.composer.render();
   } else {
     scene.renderer.render(scene.scene, scene.camera);
@@ -145,30 +145,27 @@ document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
 
 // Bloom Toggle
 const btnBloom = document.getElementById('btn-bloom');
-let isBloomEnabled = true;
 
 function toggleBloom() {
-  isBloomEnabled = !isBloomEnabled;
+  const enabled = !scene.isBloomEnabled;
   if (btnBloom) {
-    btnBloom.setAttribute('aria-pressed', isBloomEnabled.toString());
-    btnBloom.classList.toggle('active', isBloomEnabled);
+    btnBloom.setAttribute('aria-pressed', enabled.toString());
+    btnBloom.classList.toggle('active', enabled);
   }
-  scene.setBloom(isBloomEnabled);
-  (scene as any).isBloomEnabled = isBloomEnabled;
+  scene.setBloom(enabled);
 }
 
 btnBloom?.addEventListener('click', toggleBloom);
 
 // Rotation Toggle
 const btnRotate = document.getElementById('btn-rotate');
-let isAutoRotateEnabled = true;
 btnRotate?.addEventListener('click', () => {
-  isAutoRotateEnabled = !isAutoRotateEnabled;
+  const enabled = !scene.isAutoRotateEnabled;
   if (btnRotate) {
-    btnRotate.setAttribute('aria-pressed', isAutoRotateEnabled.toString());
-    btnRotate.classList.toggle('active', isAutoRotateEnabled);
+    btnRotate.setAttribute('aria-pressed', enabled.toString());
+    btnRotate.classList.toggle('active', enabled);
   }
-  scene.setAutoRotate(isAutoRotateEnabled);
+  scene.setAutoRotate(enabled);
 });
 
 // Keyboard shortcuts

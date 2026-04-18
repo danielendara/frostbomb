@@ -108,6 +108,7 @@ body {
   letter-spacing: 0.18em;
   color: var(--accent);
   font-size: 0.62rem;
+  margin: 0;
 }
 
 .lab-toggle {
