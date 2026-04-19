@@ -198,7 +198,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       material.dispose();
     },
     setBloom: (enabled: boolean) => {
-      bloomEffect.intensity = enabled ? 1.1 : 0;
+      effectPass.enabled = enabled;
       sceneInterface.isBloomEnabled = enabled;
     },
     setAutoRotate: (enabled: boolean) => {
