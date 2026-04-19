@@ -107,8 +107,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   const smaaEffect = new SMAAEffect({ preset: SMAAPreset.HIGH });
 
-  const effectPass = new EffectPass(camera, smaaEffect, bloomEffect);
-  composer.addPass(effectPass);
+  const bloomPass = new EffectPass(camera, bloomEffect);
+  const smaaPass = new EffectPass(camera, smaaEffect);
+
+  composer.addPass(bloomPass);
+  composer.addPass(smaaPass);
 
   // Interaction
   let isAutoRotate = true;
@@ -198,7 +201,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       material.dispose();
     },
     setBloom: (enabled: boolean) => {
-      effectPass.enabled = enabled;
+      bloomPass.enabled = enabled;
       sceneInterface.isBloomEnabled = enabled;
     },
     setAutoRotate: (enabled: boolean) => {
