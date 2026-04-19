@@ -210,6 +210,20 @@ function toggleBloom() {
 
 btnBloom?.addEventListener('click', toggleBloom);
 
+const btnPink = document.getElementById('btn-pink');
+
+function togglePinkMode() {
+  const enabled = !scene.isPinkModeEnabled;
+  if (btnPink) {
+    btnPink.setAttribute('aria-pressed', enabled.toString());
+    btnPink.classList.toggle('active', enabled);
+  }
+  scene.setPinkMode(enabled);
+  document.body.classList.toggle('pink-mode', enabled);
+}
+
+btnPink?.addEventListener('click', togglePinkMode);
+
 const btnRotate = document.getElementById('btn-rotate');
 btnRotate?.addEventListener('click', () => {
   const enabled = !scene.isAutoRotateEnabled;
@@ -229,6 +243,8 @@ window.addEventListener('keydown', (e) => {
     toggleLabMode();
   } else if (key === 'b') {
     toggleBloom();
+  } else if (key === 'p') {
+    togglePinkMode();
   } else if (key === 's') {
     saveSnowflake();
   }
