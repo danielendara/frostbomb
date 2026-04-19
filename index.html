@@ -25,9 +25,14 @@
     <aside class="field-notes" id="field-notes">
       <div class="field-notes__header">
         <h2 class="field-notes__label">Growth conditions</h2>
-        <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode" aria-pressed="false">
-          Lab Mode: <span id="lab-status">OFF</span>
-        </button>
+        <div class="field-notes__toggles">
+          <button id="guide-toggle" class="lab-toggle" title="Explain terminology" aria-pressed="false">
+            Guide
+          </button>
+          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode" aria-pressed="false">
+            Lab Mode: <span id="lab-status">OFF</span>
+          </button>
+        </div>
       </div>
 
       <dl class="field-notes__list" id="stats-display">
@@ -39,6 +44,27 @@
 
       <div class="lab-controls" id="lab-controls" style="display: none;">
         <div id="pane-mount" class="pane-mount" aria-label="Manual growth adjustments"></div>
+      </div>
+
+      <div class="field-guide" id="field-guide" style="display: none;">
+        <div class="field-guide__content">
+          <section>
+            <h3>Temperature</h3>
+            <p>Determines if ice grows into flat plates or long columns. Subtle changes at the molecular level flip the growth between "basal" and "prism" faces.</p>
+          </section>
+          <section>
+            <h3>Supersaturation</h3>
+            <p>The "fuel" for growth. Low humidity creates simple, solid shapes. High humidity forces unstable, rapid growth that branches into complex dendrites.</p>
+          </section>
+          <section>
+            <h3>Habit</h3>
+            <p>The resulting morphological category. From simple "plates" to "fern-like dendrites," the habit is a record of the path taken through the atmosphere.</p>
+          </section>
+          <section>
+            <h3>Nakaya Diagram</h3>
+            <p>The physical map of snowflake shapes. Created by Ukichiro Nakaya in the 1930s, it proves that no two snowflakes are alike because no two follow the same path.</p>
+          </section>
+        </div>
       </div>
     </aside>
 
