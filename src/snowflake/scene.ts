@@ -222,9 +222,15 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       if (enabled) {
         material.color.set('#ffb2d1');
         material.emissive.set('#ff80bf');
+        if (scene.fog instanceof THREE.FogExp2) {
+          scene.fog.color.set(0x0c0512);
+        }
       } else {
         material.color.set('#ffffff');
         material.emissive.set('#e0f0ff');
+        if (scene.fog instanceof THREE.FogExp2) {
+          scene.fog.color.set(0x050912);
+        }
       }
     },
     updateFlake: (data: BuildResult) => {
