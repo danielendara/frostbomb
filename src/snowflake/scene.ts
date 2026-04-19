@@ -48,7 +48,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
-  renderer.setClearColor(0x050912, 1);
+  renderer.setClearColor(0x000000, 0);
 
   const ambient = new THREE.AmbientLight(0x1a2a4a, 0.5);
   scene.add(ambient);
