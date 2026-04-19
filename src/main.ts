@@ -17,6 +17,7 @@ let currentSeed: { seed: number; label: string } | null = null;
 
 const labParams = {
   temperature: -15,
+  temperatureF: 5,
   supersaturation: 80,
   habit: '—',
 };
@@ -41,6 +42,11 @@ async function ensurePane(): Promise<TweakpanePane> {
       step: 0.5,
       label: 'Temp (°C)',
     }).on('change', () => updateFromPane());
+
+    p.addBinding(labParams, 'temperatureF', {
+      readonly: true,
+      label: 'Temp (°F)',
+    });
 
     p.addBinding(labParams, 'supersaturation', {
       min: 0,
@@ -74,8 +80,9 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false) {
 
   scene.updateFlake(result);
 
+  const tempF = (conditions.temperatureC * 9 / 5) + 32;
   setText('seed-display', label);
-  setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C`);
+  setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
   setText('stat-humid', `${(conditions.supersaturation * 100).toFixed(0)}%`);
   setText('stat-habit', habitLabel[conditions.habit]);
   setText('stat-branches', `${result.branchCount}`);
@@ -83,6 +90,7 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false) {
   if (isLabMode) {
     labParams.habit = habitLabel[conditions.habit];
     labParams.temperature = conditions.temperatureC;
+    labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
     labParams.supersaturation = conditions.supersaturation * 100;
     pane?.refresh();
   }
