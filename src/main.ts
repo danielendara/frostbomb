@@ -10,6 +10,7 @@ const canvas = document.getElementById('scene') as HTMLCanvasElement;
 const scene = createScene(canvas);
 
 let isLabMode = false;
+let isGuideOpen = false;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
@@ -98,15 +99,22 @@ document.getElementById('refresh')?.addEventListener('click', () => {
 });
 
 const labToggle = document.getElementById('lab-toggle');
+const guideToggle = document.getElementById('guide-toggle');
 const labControls = document.getElementById('lab-controls');
+const fieldGuide = document.getElementById('field-guide');
 const statsDisplay = document.getElementById('stats-display');
 const labStatus = document.getElementById('lab-status');
 
 async function toggleLabMode() {
   isLabMode = !isLabMode;
+
+  if (isLabMode && isGuideOpen) {
+    toggleFieldGuide();
+  }
+
   if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
-  if (statsDisplay) statsDisplay.style.display = isLabMode ? 'none' : 'flex';
+  if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
     labStatus.style.color = isLabMode ? 'var(--accent)' : 'var(--ink-dim)';
@@ -120,7 +128,20 @@ async function toggleLabMode() {
   }
 }
 
+function toggleFieldGuide() {
+  isGuideOpen = !isGuideOpen;
+
+  if (isGuideOpen && isLabMode) {
+    toggleLabMode();
+  }
+
+  if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
+  if (fieldGuide) fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
+  if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
+}
+
 labToggle?.addEventListener('click', toggleLabMode);
+guideToggle?.addEventListener('click', toggleFieldGuide);
 
 function updateFromPane() {
   const t = labParams.temperature;

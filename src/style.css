@@ -111,6 +111,11 @@ body {
   margin: 0;
 }
 
+.field-notes__toggles {
+  display: flex;
+  gap: 0.75rem;
+}
+
 .lab-toggle {
   background: transparent;
   border: none;
@@ -129,6 +134,10 @@ body {
 
 .lab-toggle span {
   color: var(--ink-dim);
+}
+
+.lab-toggle[aria-pressed="true"] {
+  color: var(--accent);
 }
 
 .lab-controls {
@@ -168,6 +177,48 @@ body {
   background: var(--accent);
   border-radius: 50%;
   cursor: pointer;
+}
+
+/* --- field guide --- */
+.field-guide {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.field-guide::-webkit-scrollbar {
+  width: 4px;
+}
+
+.field-guide::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border-radius: 2px;
+}
+
+.field-guide__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field-guide section h3 {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  margin-bottom: 0.25rem;
+}
+
+.field-guide section p {
+  font-family: var(--display);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink);
+  font-style: italic;
 }
 
 .field-notes__list {
