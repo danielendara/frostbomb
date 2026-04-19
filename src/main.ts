@@ -205,6 +205,7 @@ function toggleBloom() {
     btnBloom.classList.toggle('active', enabled);
   }
   scene.setBloom(enabled);
+  document.body.classList.toggle('bloom-off', !enabled);
 }
 
 btnBloom?.addEventListener('click', toggleBloom);

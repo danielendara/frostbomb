@@ -204,6 +204,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       bloomPass.enabled = enabled;
       bloomEffect.blendMode.opacity.value = enabled ? 1 : 0;
       sceneInterface.isBloomEnabled = enabled;
+      material.emissiveIntensity = enabled ? 0.25 : 0;
     },
     setAutoRotate: (enabled: boolean) => {
       isAutoRotate = enabled;
