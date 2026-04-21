@@ -17,10 +17,8 @@ export interface Scene {
   flakeHolder: THREE.Group;
   start: () => void;
   dispose: () => void;
-  isBloomEnabled: boolean;
   isAutoRotateEnabled: boolean;
   isPinkModeEnabled: boolean;
-  setBloom: (enabled: boolean) => void;
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
   updateFlake: (data: BuildResult) => void;
@@ -188,7 +186,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     renderer,
     composer,
     flakeHolder,
-    isBloomEnabled: true,
     isAutoRotateEnabled: true,
     isPinkModeEnabled: false,
     start: () => {
@@ -202,12 +199,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       branchGeom.dispose();
       coreGeom.dispose();
       material.dispose();
-    },
-    setBloom: (enabled: boolean) => {
-      bloomPass.enabled = enabled;
-      bloomEffect.blendMode.opacity.value = enabled ? 1 : 0;
-      sceneInterface.isBloomEnabled = enabled;
-      material.emissiveIntensity = enabled ? 0.25 : 0;
     },
     setAutoRotate: (enabled: boolean) => {
       isAutoRotate = enabled;
