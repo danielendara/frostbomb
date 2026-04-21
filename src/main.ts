@@ -196,20 +196,6 @@ function saveSnowflake() {
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
 
-const btnBloom = document.getElementById('btn-bloom');
-
-function toggleBloom() {
-  const enabled = !scene.isBloomEnabled;
-  if (btnBloom) {
-    btnBloom.setAttribute('aria-pressed', enabled.toString());
-    btnBloom.classList.toggle('active', enabled);
-  }
-  scene.setBloom(enabled);
-  document.body.classList.toggle('bloom-off', !enabled);
-}
-
-btnBloom?.addEventListener('click', toggleBloom);
-
 const btnPink = document.getElementById('btn-pink');
 
 function togglePinkMode() {
@@ -241,8 +227,6 @@ window.addEventListener('keydown', (e) => {
     grow(isLabMode ? currentConditions : undefined);
   } else if (key === 'l') {
     toggleLabMode();
-  } else if (key === 'b') {
-    toggleBloom();
   } else if (key === 'p') {
     togglePinkMode();
   } else if (key === 's') {

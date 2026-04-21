@@ -25,17 +25,6 @@ test('L key toggles lab mode', async ({ page }) => {
   await expect(labControls).not.toBeVisible();
 });
 
-test('B key toggles bloom', async ({ page }) => {
-  const bloomBtn = page.locator('#btn-bloom');
-  await expect(bloomBtn).toHaveClass(/active/);
-
-  await page.keyboard.press('b');
-  await expect(bloomBtn).not.toHaveClass(/active/);
-
-  await page.keyboard.press('b');
-  await expect(bloomBtn).toHaveClass(/active/);
-});
-
 test('S key triggers save (downloads file)', async ({ page }) => {
   const downloadPromise = page.waitForEvent('download');
   await page.keyboard.press('s');
