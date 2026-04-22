@@ -141,14 +141,28 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     canvas.style.cursor = 'grab';
   });
 
-  window.addEventListener('resize', () => {
+  function updateCamera() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    camera.aspect = w / h;
+    const aspect = w / h;
+    camera.aspect = aspect;
+
+    // Adjust distance based on aspect ratio to ensure snowflake fits horizontally
+    // 10 is the base distance for landscape/square. For portrait, we push the camera
+    // back proportionally to the aspect ratio to maintain visible width.
+    if (aspect < 1) {
+      camera.position.z = 10 / aspect;
+    } else {
+      camera.position.z = 10;
+    }
+
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
     composer.setSize(w, h);
-  });
+  }
+
+  window.addEventListener('resize', updateCamera);
+  updateCamera();
 
   let frameId = 0;
   let time = 0;
