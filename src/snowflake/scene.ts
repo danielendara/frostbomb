@@ -19,8 +19,10 @@ export interface Scene {
   dispose: () => void;
   isAutoRotateEnabled: boolean;
   isPinkModeEnabled: boolean;
+  isPrismModeEnabled: boolean;
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
+  setPrismMode: (enabled: boolean) => void;
   updateFlake: (data: BuildResult) => void;
 }
 
@@ -88,6 +90,30 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
   const coreGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
+
+  // Snowfall particles
+  const particleCount = 200;
+  const particleGeom = new THREE.BufferGeometry();
+  const particlePos = new Float32Array(particleCount * 3);
+  const particleVel = new Float32Array(particleCount);
+
+  for (let i = 0; i < particleCount; i++) {
+    particlePos[i * 3] = (Math.random() - 0.5) * 20;
+    particlePos[i * 3 + 1] = (Math.random() - 0.5) * 20;
+    particlePos[i * 3 + 2] = (Math.random() - 0.5) * 10;
+    particleVel[i] = 0.02 + Math.random() * 0.03;
+  }
+
+  particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+  const particleMat = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 0.05,
+    transparent: true,
+    opacity: 0.5,
+    blending: THREE.AdditiveBlending,
+  });
+  const particles = new THREE.Points(particleGeom, particleMat);
+  scene.add(particles);
 
   let branchMesh: THREE.InstancedMesh | null = null;
   const coreMesh = new THREE.Mesh(coreGeom, material);
@@ -193,6 +219,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   }
 
   const dummy = new THREE.Object3D();
+  const tempColor = new THREE.Color();
 
   const sceneInterface: Scene = {
     scene,
@@ -202,6 +229,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder,
     isAutoRotateEnabled: true,
     isPinkModeEnabled: false,
+    isPrismModeEnabled: false,
     start: () => {
       animate();
     },
@@ -213,6 +241,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       branchGeom.dispose();
       coreGeom.dispose();
       material.dispose();
+      particleGeom.dispose();
+      particleMat.dispose();
     },
     setAutoRotate: (enabled: boolean) => {
       isAutoRotate = enabled;
@@ -224,18 +254,27 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     },
     setPinkMode: (enabled: boolean) => {
       sceneInterface.isPinkModeEnabled = enabled;
-      if (enabled) {
-        material.color.set('#ffb2d1');
-        material.emissive.set('#ff80bf');
-        if (scene.fog instanceof THREE.FogExp2) {
-          scene.fog.color.set(0x0c0512);
+      if (!sceneInterface.isPrismModeEnabled) {
+        if (enabled) {
+          material.color.set('#ffb2d1');
+          material.emissive.set('#ff80bf');
+          if (scene.fog instanceof THREE.FogExp2) {
+            scene.fog.color.set(0x0c0512);
+          }
+        } else {
+          material.color.set('#ffffff');
+          material.emissive.set('#e0f0ff');
+          if (scene.fog instanceof THREE.FogExp2) {
+            scene.fog.color.set(0x050912);
+          }
         }
-      } else {
-        material.color.set('#ffffff');
-        material.emissive.set('#e0f0ff');
-        if (scene.fog instanceof THREE.FogExp2) {
-          scene.fog.color.set(0x050912);
-        }
+      }
+    },
+    setPrismMode: (enabled: boolean) => {
+      sceneInterface.isPrismModeEnabled = enabled;
+      if (!enabled) {
+        // Restore Pink or Default mode colors
+        sceneInterface.setPinkMode(sceneInterface.isPinkModeEnabled);
       }
     },
     updateFlake: (data: BuildResult) => {
@@ -266,6 +305,45 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     frameId = requestAnimationFrame(animate);
     const delta = clock.getDelta();
     time += 0.005;
+
+    // Update snowflake material colors for Prism Mode
+    if (sceneInterface.isPrismModeEnabled) {
+      const hue = (performance.now() * 0.0001) % 1;
+      material.color.setHSL(hue, 0.6, 0.8);
+      material.emissive.setHSL(hue, 0.8, 0.6);
+      if (scene.fog instanceof THREE.FogExp2) {
+        // Fog color follows a darkened version of the hue
+        tempColor.setHSL(hue, 0.4, 0.05);
+        scene.fog.color.copy(tempColor);
+      }
+    }
+
+    // Animate snowfall particles
+    const positions = particles.geometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3 + 1] -= particleVel[i];
+      // Horizontal drift
+      positions[i * 3] += Math.sin(time + i) * 0.002;
+
+      if (positions[i * 3 + 1] < -10) {
+        positions[i * 3 + 1] = 10;
+        positions[i * 3] = (Math.random() - 0.5) * 20;
+      }
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+
+    // Match particle colors to modes
+    if (sceneInterface.isPrismModeEnabled) {
+      const hue = (performance.now() * 0.00015 + 0.5) % 1; // Offset hue slightly
+      particleMat.color.setHSL(hue, 0.8, 0.8);
+      particleMat.opacity = 0.8;
+    } else if (sceneInterface.isPinkModeEnabled) {
+      particleMat.color.set('#ffb2d1');
+      particleMat.opacity = 0.6;
+    } else {
+      particleMat.color.set(0xffffff);
+      particleMat.opacity = 0.5;
+    }
     tickEntryTween();
 
     const eased = entryState.progress;

@@ -79,6 +79,16 @@ body.pink-mode {
   margin: 0 0.05em;
 }
 
+.wordmark__subtitle {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: -0.2rem;
+  opacity: 0.8;
+}
+
 .edition {
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -470,6 +480,7 @@ body.pink-mode {
 
   .colophon { display: none; }
   .wordmark { font-size: 1.5rem; }
+  .wordmark__subtitle { font-size: 0.5rem; }
   .edition { font-size: 0.6rem; }
 }
 
