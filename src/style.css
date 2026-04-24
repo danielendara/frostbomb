@@ -8,7 +8,7 @@
   --accent-hot: #ffc78a;
   --rule: rgba(230, 237, 245, 0.12);
 
-  --display: "Fraunces", "Times New Roman", serif;
+  --display: "Cormorant Garamond", "Times New Roman", serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
 
   --pad: clamp(1.25rem, 3vw, 2.5rem);
@@ -67,9 +67,10 @@ body.pink-mode {
 .wordmark {
   font-family: var(--display);
   font-weight: 300;
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
-  letter-spacing: -0.02em;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  letter-spacing: -0.01em;
   font-style: italic;
+  line-height: 1;
 }
 
 .wordmark__accent {
@@ -81,12 +82,12 @@ body.pink-mode {
 
 .wordmark__subtitle {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: var(--ink-dim);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: -0.2rem;
-  opacity: 0.8;
+  letter-spacing: 0.15em;
+  margin-top: 0.2rem;
+  opacity: 0.7;
 }
 
 .edition {
@@ -479,8 +480,8 @@ body.pink-mode {
   }
 
   .colophon { display: none; }
-  .wordmark { font-size: 1.5rem; }
-  .wordmark__subtitle { font-size: 0.5rem; }
+  .wordmark { font-size: 2.25rem; }
+  .wordmark__subtitle { font-size: 0.55rem; }
   .edition { font-size: 0.6rem; }
 }
 
