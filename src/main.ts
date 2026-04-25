@@ -3,11 +3,15 @@ import { createScene } from './snowflake/scene.ts';
 import { buildSnowflake } from './snowflake/geometry.ts';
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from './snowflake/nakaya.ts';
 import { mulberry32, resolveSeed, Rand } from './snowflake/random.ts';
+import { initNakayaDiagram } from './snowflake/diagram.ts';
 
 type TweakpanePane = import('tweakpane').Pane;
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 const scene = createScene(canvas);
+
+const nakayaCanvas = document.getElementById('nakaya-diagram') as HTMLCanvasElement;
+const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
 let isLabMode = false;
 let isGuideOpen = false;
@@ -79,6 +83,7 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false) {
   const result = buildSnowflake(conditions, rand);
 
   scene.updateFlake(result);
+  nakayaDiagram?.update(conditions.path);
 
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
   setText('seed-display', label);
@@ -159,6 +164,7 @@ function updateFromPane() {
     temperatureC: t,
     supersaturation: ss,
     habit: getHabit(t, ss),
+    path: [{ temp: t, ss: ss }], // Manual path is just the point
   };
   labParams.habit = habitLabel[conditions.habit];
   pane?.refresh();

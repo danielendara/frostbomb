@@ -81,6 +81,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     transmission: 0.85,
     thickness: 0.5,
     ior: 1.31,
+    dispersion: 0.02,
     reflectivity: 0.5,
     transparent: true,
     opacity: 0.9,
