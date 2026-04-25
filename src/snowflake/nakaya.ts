@@ -28,6 +28,7 @@ export interface GrowthConditions {
   temperatureC: number; // -40 .. 0
   supersaturation: number; // 0..1 (normalized)
   habit: Habit;
+  path: { temp: number; ss: number }[];
 }
 
 export function sampleConditions(rand: Rand): GrowthConditions {
@@ -72,7 +73,36 @@ export function sampleConditions(rand: Rand): GrowthConditions {
     habit = 'capped_column';
   }
 
-  return { temperatureC, supersaturation, habit };
+  // Create an atmospheric path — how conditions vary from the core out to the tips
+  const path = generatePath(temperatureC, supersaturation, rand);
+
+  return { temperatureC, supersaturation, habit, path };
+}
+
+function generatePath(
+  startTemp: number,
+  startSS: number,
+  rand: Rand,
+): { temp: number; ss: number }[] {
+  const points = [{ temp: startTemp, ss: startSS }];
+  const numSteps = 5;
+
+  let currentTemp = startTemp;
+  let currentSS = startSS;
+
+  for (let i = 0; i < numSteps; i++) {
+    // Atmospheric drift: conditions change slightly as the flake falls
+    currentTemp += rand.range(-2, 2);
+    currentSS += rand.range(-0.1, 0.1);
+
+    // Clamp to valid ranges
+    currentTemp = Math.max(-40, Math.min(0, currentTemp));
+    currentSS = Math.max(0.05, Math.min(0.95, currentSS));
+
+    points.push({ temp: currentTemp, ss: currentSS });
+  }
+
+  return points;
 }
 
 export const habitLabel: Record<Habit, string> = {

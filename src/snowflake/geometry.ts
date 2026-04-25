@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { Rand } from './random.ts';
-import type { GrowthConditions, Habit } from './nakaya.ts';
+import { getHabit, GrowthConditions, Habit } from './nakaya.ts';
 
 /**
  * Generates a single arm of the snowflake (a 2D branching pattern in the
@@ -43,8 +43,6 @@ export function buildSnowflake(
   const mainAxis = new THREE.Vector3(1, 0, 0);
   const origin = new THREE.Vector3(0, 0, 0);
 
-  const params = paramsFor(conditions);
-
   const noise2D = createNoise2D(() => rand.next());
 
   // Build one primary arm along +X
@@ -52,10 +50,9 @@ export function buildSnowflake(
     segments,
     origin,
     mainAxis,
-    params.primaryLength,
-    params.primaryThickness,
+    3.5, // Total target length
     0,
-    params,
+    conditions,
     rand,
     noise2D,
   );
@@ -79,10 +76,13 @@ export function buildSnowflake(
 
   const instances = segmentsToInstanceData(symmetric);
 
+  // Core parameters from start of path
+  const startParams = paramsFor(conditions.path[0].temp, conditions.path[0].ss);
+
   // Add a solid hexagonal core
-  const coreRadius = Math.max(0.2, params.primaryThickness * 2.5);
-  const zDepthScale = getZDepthScale(conditions.habit);
-  const coreHeight = params.primaryThickness * zDepthScale * 1.2;
+  const coreRadius = Math.max(0.2, startParams.primaryThickness * 2.5);
+  const zDepthScale = getZDepthScale(startParams.habit);
+  const coreHeight = startParams.primaryThickness * zDepthScale * 1.2;
 
   const core: InstanceData = {
     position: [0, 0, 0],
@@ -119,9 +119,9 @@ interface Params {
   hasTip: boolean;
 }
 
-function paramsFor(c: GrowthConditions): Params {
-  const ss = c.supersaturation;
-  switch (c.habit) {
+function paramsFor(temp: number, ss: number): Params {
+  const habit = getHabit(temp, ss);
+  switch (habit) {
     case 'fernlike_dendrite':
       return {
         primaryLength: 3.04,
@@ -130,7 +130,7 @@ function paramsFor(c: GrowthConditions): Params {
         sideBranchDecay: 0.68,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 4,
-        habit: c.habit,
+        habit,
         hasRidges: true,
         hasTip: true,
       };
@@ -142,7 +142,7 @@ function paramsFor(c: GrowthConditions): Params {
         sideBranchDecay: 0.6,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 3,
-        habit: c.habit,
+        habit,
         hasRidges: true,
         hasTip: true,
       };
@@ -154,7 +154,7 @@ function paramsFor(c: GrowthConditions): Params {
         sideBranchDecay: 0.4,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 2,
-        habit: c.habit,
+        habit,
         hasRidges: true,
         hasTip: false,
       };
@@ -166,7 +166,7 @@ function paramsFor(c: GrowthConditions): Params {
         sideBranchDecay: 0.3,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 1,
-        habit: c.habit,
+        habit,
         hasRidges: false,
         hasTip: false,
       };
@@ -178,7 +178,7 @@ function paramsFor(c: GrowthConditions): Params {
         sideBranchDecay: 0.3,
         sideBranchAngle: Math.PI / 4,
         maxDepth: 1,
-        habit: c.habit,
+        habit,
         hasRidges: false,
         hasTip: true,
       };
@@ -190,7 +190,7 @@ function paramsFor(c: GrowthConditions): Params {
         sideBranchDecay: 0,
         sideBranchAngle: 0,
         maxDepth: 0,
-        habit: c.habit,
+        habit,
         hasRidges: false,
         hasTip: false,
       };
@@ -202,9 +202,21 @@ function paramsFor(c: GrowthConditions): Params {
         sideBranchDecay: 0.5,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 2,
-        habit: c.habit,
+        habit,
         hasRidges: true,
         hasTip: true,
+      };
+    default:
+      return {
+        primaryLength: 1.76,
+        primaryThickness: 0.28,
+        sideBranchProb: 0.05,
+        sideBranchDecay: 0.3,
+        sideBranchAngle: Math.PI / 3,
+        maxDepth: 1,
+        habit: 'plate',
+        hasRidges: false,
+        hasTip: false,
       };
   }
 }
@@ -214,12 +226,21 @@ function buildArm(
   start: THREE.Vector3,
   direction: THREE.Vector3,
   length: number,
-  thickness: number,
   depth: number,
-  params: Params,
+  conditions: GrowthConditions,
   rand: Rand,
   noise2D: (x: number, y: number) => number,
 ) {
+  // Sample parameters from the atmospheric path based on distance from core
+  const dist = start.length();
+  const maxDist = 3.5;
+  const pathIdx = Math.min(
+    conditions.path.length - 1,
+    Math.floor((dist / maxDist) * conditions.path.length),
+  );
+  const p = conditions.path[pathIdx];
+  const params = paramsFor(p.temp, p.ss);
+
   if (depth > params.maxDepth || length < 0.08) return;
 
   const end = start.clone().addScaledVector(direction, length);
@@ -229,7 +250,7 @@ function buildArm(
   segments.push({
     start: start.clone(),
     end,
-    thickness,
+    thickness: params.primaryThickness,
     depth,
     thicknessVariation,
   });
@@ -248,7 +269,6 @@ function buildArm(
 
     const point = start.clone().addScaledVector(direction, t * length);
     const sideLen = length * params.sideBranchDecay * rand.range(0.4, 1.0) * (1 - t * 0.5);
-    const sideThick = thickness * 0.6;
 
     // Real snowflakes: side branches grow at 60° (hexagonal lattice)
     // Add organic variation using simplex noise based on position and depth
@@ -263,9 +283,8 @@ function buildArm(
         point,
         dir,
         sideLen,
-        sideThick,
         depth + 1,
-        params,
+        conditions,
         rand,
         noise2D,
       );
@@ -282,7 +301,7 @@ function buildArm(
     segments.push({
       start: end.clone(),
       end: tipEnd,
-      thickness: thickness * 0.4,
+      thickness: params.primaryThickness * 0.4,
       depth: depth + 1,
       thicknessVariation: tipThicknessVariation,
     });
