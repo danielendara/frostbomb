@@ -23,7 +23,7 @@ export interface Scene {
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
   setPrismMode: (enabled: boolean) => void;
-  updateFlake: (data: BuildResult) => void;
+  updateFlake: (data: BuildResult, animate?: boolean) => void;
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
@@ -278,7 +278,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         sceneInterface.setPinkMode(sceneInterface.isPinkModeEnabled);
       }
     },
-    updateFlake: (data: BuildResult) => {
+    updateFlake: (data: BuildResult, animate = true) => {
       if (branchMesh) {
         flakeHolder.remove(branchMesh);
       }
@@ -296,7 +296,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         flakeHolder.add(coreMesh);
       }
 
-      startEntryTween();
+      if (animate) {
+        startEntryTween();
+      } else {
+        entryState.progress = 1;
+        entryActive = false;
+      }
     },
   };
 

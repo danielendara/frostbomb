@@ -68,7 +68,7 @@ async function ensurePane(): Promise<TweakpanePane> {
   return panePromise;
 }
 
-function grow(manualConditions?: GrowthConditions, keepSeed = false) {
+function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = true) {
   if (!keepSeed || !currentSeed) {
     currentSeed = resolveSeed();
   }
@@ -82,7 +82,7 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false) {
   currentConditions = conditions;
   const result = buildSnowflake(conditions, rand);
 
-  scene.updateFlake(result);
+  scene.updateFlake(result, animate);
   nakayaDiagram?.update(conditions.path);
 
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
@@ -169,7 +169,7 @@ function updateFromPane() {
   labParams.habit = habitLabel[conditions.habit];
   pane?.refresh();
 
-  grow(conditions, true);
+  grow(conditions, true, false);
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', () => {
