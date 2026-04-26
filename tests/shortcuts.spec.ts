@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('http://localhost:5173');
+  await page.goto('/');
 });
 
 test('R key regrows the snowflake', async ({ page }) => {
@@ -23,6 +23,19 @@ test('L key toggles lab mode', async ({ page }) => {
 
   await page.keyboard.press('l');
   await expect(labControls).not.toBeVisible();
+});
+
+test('shortcuts are ignored while editing lab controls', async ({ page }) => {
+  await page.keyboard.press('l');
+  await expect(page.locator('#lab-controls')).toBeVisible();
+
+  const tempInput = page.getByRole('textbox').first();
+  await tempInput.focus();
+  await page.keyboard.press('p');
+  await page.keyboard.press('l');
+
+  await expect(page.locator('#btn-pink')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#lab-controls')).toBeVisible();
 });
 
 test('S key triggers save (downloads file)', async ({ page }) => {

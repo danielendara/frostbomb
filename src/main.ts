@@ -28,6 +28,7 @@ const labParams = {
 
 let pane: TweakpanePane | null = null;
 let panePromise: Promise<TweakpanePane> | null = null;
+let labToggleGeneration = 0;
 
 async function ensurePane(): Promise<TweakpanePane> {
   if (pane) return pane;
@@ -120,6 +121,7 @@ const labStatus = document.getElementById('lab-status');
 
 async function toggleLabMode() {
   isLabMode = !isLabMode;
+  const toggleGeneration = ++labToggleGeneration;
 
   if (isLabMode && isGuideOpen) {
     toggleFieldGuide();
@@ -135,6 +137,7 @@ async function toggleLabMode() {
 
   if (isLabMode) {
     await ensurePane();
+    if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
     updateFromPane();
   } else {
     grow(undefined, true);
@@ -230,6 +233,11 @@ function togglePrismMode() {
 btnPrism?.addEventListener('click', togglePrismMode);
 
 const btnRotate = document.getElementById('btn-rotate');
+if (btnRotate) {
+  btnRotate.setAttribute('aria-pressed', scene.isAutoRotateEnabled.toString());
+  btnRotate.classList.toggle('active', scene.isAutoRotateEnabled);
+}
+
 btnRotate?.addEventListener('click', () => {
   const enabled = !scene.isAutoRotateEnabled;
   if (btnRotate) {
@@ -239,7 +247,14 @@ btnRotate?.addEventListener('click', () => {
   scene.setAutoRotate(enabled);
 });
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
 window.addEventListener('keydown', (e) => {
+  if (isEditableTarget(e.target)) return;
+
   const key = e.key.toLowerCase();
   if (key === 'r') {
     window.history.replaceState(null, '', window.location.pathname);

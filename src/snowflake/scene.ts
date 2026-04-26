@@ -1,19 +1,17 @@
 import * as THREE from 'three';
-import {
-  EffectComposer,
-  EffectPass,
-  RenderPass,
-  BloomEffect,
-  SMAAEffect,
-  SMAAPreset,
-} from 'postprocessing';
 import { BuildResult } from './geometry';
+
+interface RenderPipeline {
+  render: (delta?: number) => void;
+  setSize: (width: number, height: number) => void;
+  dispose: () => void;
+}
 
 export interface Scene {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
-  composer: EffectComposer;
+  composer: RenderPipeline;
   flakeHolder: THREE.Group;
   start: () => void;
   dispose: () => void;
@@ -27,6 +25,11 @@ export interface Scene {
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let prefersReducedMotion = reducedMotionQuery.matches;
+  const maxPixelRatio = Math.min(window.devicePixelRatio, prefersReducedMotion ? 1 : 2);
+  let qualityScale = prefersReducedMotion ? 0.7 : 1;
+
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x050912, 0.06);
 
@@ -46,7 +49,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     stencil: false,
     depth: true,
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  function applyPixelRatio() {
+    renderer.setPixelRatio(Math.max(0.75, maxPixelRatio * qualityScale));
+  }
+
+  applyPixelRatio();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -93,7 +100,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const coreGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
 
   // Snowfall particles
-  const particleCount = 200;
+  const particleCount = prefersReducedMotion ? 80 : 200;
   const particleGeom = new THREE.BufferGeometry();
   const particlePos = new Float32Array(particleCount * 3);
   const particleVel = new Float32Array(particleCount);
@@ -120,28 +127,59 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const coreMesh = new THREE.Mesh(coreGeom, material);
   let currentFlakeData: BuildResult | null = null;
 
-  // Post-processing — pmndrs/postprocessing
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
+  let composer: RenderPipeline = {
+    render: () => renderer.render(scene, camera),
+    setSize: () => {},
+    dispose: () => {},
+  };
+  let postprocessingLoaded = false;
+  let postprocessingLoading = false;
+  let postprocessingRequested = false;
 
-  const bloomEffect = new BloomEffect({
-    intensity: 1.1,
-    luminanceThreshold: 0.55,
-    luminanceSmoothing: 0.3,
-    mipmapBlur: true,
-    radius: 0.75,
-  });
+  async function loadPostprocessing() {
+    if (postprocessingLoaded || postprocessingLoading || prefersReducedMotion) return;
+    postprocessingLoading = true;
 
-  const smaaEffect = new SMAAEffect({ preset: SMAAPreset.HIGH });
+    try {
+      const {
+        EffectComposer,
+        EffectPass,
+        RenderPass,
+        BloomEffect,
+        SMAAEffect,
+        SMAAPreset,
+      } = await import('postprocessing');
 
-  const bloomPass = new EffectPass(camera, bloomEffect);
-  const smaaPass = new EffectPass(camera, smaaEffect);
+      if (prefersReducedMotion) return;
 
-  composer.addPass(bloomPass);
-  composer.addPass(smaaPass);
+      const nextComposer = new EffectComposer(renderer);
+      nextComposer.addPass(new RenderPass(scene, camera));
+
+      const bloomEffect = new BloomEffect({
+        intensity: 1.1,
+        luminanceThreshold: 0.55,
+        luminanceSmoothing: 0.3,
+        mipmapBlur: true,
+        radius: 0.75,
+      });
+
+      const smaaEffect = new SMAAEffect({ preset: SMAAPreset.HIGH });
+
+      nextComposer.addPass(new EffectPass(camera, bloomEffect));
+      nextComposer.addPass(new EffectPass(camera, smaaEffect));
+      nextComposer.setSize(window.innerWidth, window.innerHeight);
+
+      composer.dispose();
+      composer = nextComposer;
+      sceneInterface.composer = composer;
+      postprocessingLoaded = true;
+    } finally {
+      postprocessingLoading = false;
+    }
+  }
 
   // Interaction
-  let isAutoRotate = true;
+  let isAutoRotate = !prefersReducedMotion;
   let isDragging = false;
   const rotation = { x: 0, y: 0 };
   const targetRotation = { x: 0, y: 0 };
@@ -149,24 +187,28 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   canvas.style.cursor = 'grab';
 
-  window.addEventListener('pointermove', (e) => {
+  function handlePointerMove(e: PointerEvent) {
     mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 0.3;
     mouse.targetY = (e.clientY / window.innerHeight - 0.5) * 0.3;
     if (isDragging) {
       targetRotation.y += (e.movementX || 0) * 0.01;
       targetRotation.x += (e.movementY || 0) * 0.01;
     }
-  });
+  }
 
-  canvas.addEventListener('pointerdown', () => {
+  function handlePointerDown() {
     isDragging = true;
     canvas.style.cursor = 'grabbing';
-  });
+  }
 
-  window.addEventListener('pointerup', () => {
+  function handlePointerUp() {
     isDragging = false;
     canvas.style.cursor = 'grab';
-  });
+  }
+
+  window.addEventListener('pointermove', handlePointerMove);
+  canvas.addEventListener('pointerdown', handlePointerDown);
+  window.addEventListener('pointerup', handlePointerUp);
 
   function updateCamera() {
     const w = window.innerWidth;
@@ -184,6 +226,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
 
     camera.updateProjectionMatrix();
+    applyPixelRatio();
     renderer.setSize(w, h);
     composer.setSize(w, h);
   }
@@ -193,23 +236,36 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   let frameId = 0;
   let time = 0;
+  let isRunning = false;
+  let averageDelta = 1 / 60;
+  let slowFrameCount = 0;
   const entryState = { progress: 0 };
   const ENTRY_DURATION_MS = 2200;
   let entryStartTime = 0;
   let entryActive = false;
 
+  function syncEntryState() {
+    canvas.dataset.entryActive = entryActive.toString();
+    canvas.dataset.entryProgress = entryState.progress.toFixed(3);
+  }
+
   function startEntryTween() {
     entryState.progress = 0;
     entryStartTime = performance.now();
     entryActive = true;
+    syncEntryState();
   }
 
   function cancelEntryTween() {
     entryActive = false;
+    syncEntryState();
   }
 
   function tickEntryTween() {
-    if (!entryActive) return;
+    if (!entryActive) {
+      syncEntryState();
+      return;
+    }
     const t = (performance.now() - entryStartTime) / ENTRY_DURATION_MS;
     if (t >= 1) {
       entryState.progress = 1;
@@ -217,6 +273,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     } else {
       entryState.progress = easeOutExpo(t);
     }
+    syncEntryState();
   }
 
   const dummy = new THREE.Object3D();
@@ -228,17 +285,29 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     renderer,
     composer,
     flakeHolder,
-    isAutoRotateEnabled: true,
+    isAutoRotateEnabled: !prefersReducedMotion,
     isPinkModeEnabled: false,
     isPrismModeEnabled: false,
     start: () => {
-      animate();
+      if (!isRunning && !document.hidden) {
+        isRunning = true;
+        frameId = requestAnimationFrame(animate);
+      }
     },
     dispose: () => {
+      isRunning = false;
       cancelAnimationFrame(frameId);
       cancelEntryTween();
+      timer.dispose();
+      window.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('resize', updateCamera);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      reducedMotionQuery.removeEventListener('change', handleReducedMotionChange);
       renderer.dispose();
       composer.dispose();
+      branchMesh?.dispose();
       branchGeom.dispose();
       coreGeom.dispose();
       material.dispose();
@@ -246,8 +315,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       particleMat.dispose();
     },
     setAutoRotate: (enabled: boolean) => {
-      isAutoRotate = enabled;
-      sceneInterface.isAutoRotateEnabled = enabled;
+      isAutoRotate = enabled && !prefersReducedMotion;
+      sceneInterface.isAutoRotateEnabled = isAutoRotate;
       if (!enabled) {
         rotation.x = targetRotation.x;
         rotation.y = targetRotation.y;
@@ -281,6 +350,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     updateFlake: (data: BuildResult, animate = true) => {
       if (branchMesh) {
         flakeHolder.remove(branchMesh);
+        branchMesh.dispose();
       }
 
       currentFlakeData = data;
@@ -296,21 +366,71 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         flakeHolder.add(coreMesh);
       }
 
-      if (animate) {
+      if (animate && !prefersReducedMotion) {
         startEntryTween();
       } else {
         entryState.progress = 1;
         entryActive = false;
+        syncEntryState();
       }
     },
   };
 
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
+  timer.connect(document);
 
-  function animate() {
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      isRunning = false;
+      cancelAnimationFrame(frameId);
+      return;
+    }
+
+    timer.reset();
+    if (!isRunning) {
+      isRunning = true;
+      frameId = requestAnimationFrame(animate);
+    }
+  }
+
+  function handleReducedMotionChange(e: MediaQueryListEvent) {
+    prefersReducedMotion = e.matches;
+    if (prefersReducedMotion) {
+      qualityScale = Math.min(qualityScale, 0.7);
+      sceneInterface.setAutoRotate(false);
+      cancelEntryTween();
+      entryState.progress = 1;
+      syncEntryState();
+    } else {
+      loadPostprocessing();
+    }
+    updateCamera();
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  reducedMotionQuery.addEventListener('change', handleReducedMotionChange);
+
+  function adaptQuality(delta: number) {
+    if (prefersReducedMotion || qualityScale <= 0.75) return;
+
+    averageDelta = averageDelta * 0.95 + delta * 0.05;
+    slowFrameCount = averageDelta > 1 / 32 ? slowFrameCount + 1 : 0;
+
+    if (slowFrameCount > 90) {
+      qualityScale = 0.75;
+      slowFrameCount = 0;
+      updateCamera();
+    }
+  }
+
+  function animate(timestamp?: number) {
+    if (!isRunning) return;
     frameId = requestAnimationFrame(animate);
-    const delta = clock.getDelta();
-    time += 0.005;
+    timer.update(timestamp);
+    const delta = timer.getDelta();
+    const motionScale = prefersReducedMotion ? 0.25 : 1;
+    time += delta * 0.3 * motionScale;
+    adaptQuality(delta);
 
     // Update snowflake material colors for Prism Mode
     if (sceneInterface.isPrismModeEnabled) {
@@ -327,9 +447,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     // Animate snowfall particles
     const positions = particles.geometry.attributes.position.array as Float32Array;
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3 + 1] -= particleVel[i];
+      positions[i * 3 + 1] -= particleVel[i] * motionScale;
       // Horizontal drift
-      positions[i * 3] += Math.sin(time + i) * 0.002;
+      positions[i * 3] += Math.sin(time + i) * 0.002 * motionScale;
 
       if (positions[i * 3 + 1] < -10) {
         positions[i * 3 + 1] = 10;
@@ -394,6 +514,13 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder.position.y = (1 - eased) * -2;
 
     composer.render(delta);
+
+    if (!postprocessingRequested && !prefersReducedMotion) {
+      postprocessingRequested = true;
+      window.setTimeout(() => {
+        loadPostprocessing();
+      }, 0);
+    }
   }
 
   return sceneInterface;

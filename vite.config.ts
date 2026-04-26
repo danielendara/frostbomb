@@ -9,6 +9,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     target: 'es2022',
+    chunkSizeWarningLimit: 700,
     rolldownOptions: {
       output: {
         manualChunks: (id: string) => {
