@@ -73,6 +73,18 @@ body.pink-mode {
   line-height: 1;
 }
 
+.wordmark-link {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.wordmark-link:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 0.35rem;
+}
+
 .wordmark__accent {
   color: var(--accent);
   font-style: normal;

@@ -14,6 +14,12 @@ test('R key regrows the snowflake', async ({ page }) => {
   }).toPass();
 });
 
+test('wordmark links back to the root path', async ({ page }) => {
+  const wordmark = page.getByRole('link', { name: 'Grow a new frostbomb snowflake' });
+
+  await expect(wordmark).toHaveAttribute('href', '/');
+});
+
 test('L key toggles lab mode', async ({ page }) => {
   const labControls = page.locator('#lab-controls');
   await expect(labControls).not.toBeVisible();
