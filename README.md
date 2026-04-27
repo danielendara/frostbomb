@@ -10,7 +10,7 @@ Refresh the page (or press `R`) to grow another one.
 - **Three.js** — WebGL rendering with a physical ice material (real refractive index 1.31)
 - **simplex-noise** — organic variation in branch thickness
 - Zero runtime dependencies beyond the above
-- Deploys as static files — no backend
+- Deploys as static assets on **Cloudflare Workers**
 
 ## How the science works
 
@@ -44,17 +44,42 @@ npm run build
 
 Output goes to `dist/`.
 
-## Deploy to Cloudflare Pages
+## Test
 
-1. Push this repo to GitHub
-2. In the Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-3. Select this repo and use these build settings:
-   - **Framework preset**: `None` (or Vite if listed)
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-   - **Node version**: `20` (set as `NODE_VERSION` env var)
-4. Deploy
-5. Under **Custom domains**, add `frostbomb.com` and `www.frostbomb.com`
+```sh
+npm test
+```
+
+Playwright starts the local Vite server automatically from `playwright.config.ts`.
+
+## Preview the Worker
+
+```sh
+npm run preview
+```
+
+This builds the app and serves the Worker locally with Wrangler.
+
+## Deploy to Cloudflare Workers
+
+```sh
+npm run deploy
+```
+
+The Worker is configured in `wrangler.jsonc` as `frostbombsite`. The Vite Cloudflare plugin builds static assets into `dist/`, and Wrangler deploys those assets to Cloudflare Workers.
+
+Recommended Cloudflare settings:
+
+- **Build command**: `npm run build`
+- **Deploy command**: `npm run deploy`
+- **Node version**: `20`
+- **Custom domain**: `frostbomb.com`
+
+### Domain redirects
+
+This project deploys to Cloudflare Workers, not Cloudflare Pages. Do not use a Pages-style `_redirects` file with absolute URLs; Workers static assets reject that during deploy.
+
+If `www.frostbomb.com` should redirect to `frostbomb.com`, configure it with a Cloudflare Redirect Rule or Worker route so the path and query string are preserved.
 
 ## Share a specific snowflake
 
