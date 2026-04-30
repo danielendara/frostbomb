@@ -239,6 +239,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let isRunning = false;
   let averageDelta = 1 / 60;
   let slowFrameCount = 0;
+  let needsMatrixUpdate = false;
   const entryState = { progress: 0 };
   const ENTRY_DURATION_MS = 2200;
   let entryStartTime = 0;
@@ -366,6 +367,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         flakeHolder.add(coreMesh);
       }
 
+      needsMatrixUpdate = true;
+
       if (animate && !prefersReducedMotion) {
         startEntryTween();
       } else {
@@ -470,6 +473,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       particleMat.color.set(0xffffff);
       particleMat.opacity = 0.5;
     }
+    const wasEntryActive = entryActive;
     tickEntryTween();
 
     const eased = entryState.progress;
@@ -487,31 +491,34 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     flakeHolder.rotation.y = rotation.y + mouse.x * 0.4 + autoY;
     flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoX;
 
-    if (branchMesh && currentFlakeData) {
-      for (let i = 0; i < currentFlakeData.instances.length; i++) {
-        const data = currentFlakeData.instances[i];
-        const delay = data.dist * 0.15 + data.depth * 0.1;
-        const progress = Math.max(0, Math.min(1, (eased * 1.5 - delay) * 2));
-        const s = easeOutExpo(progress);
+    if (wasEntryActive || entryActive || needsMatrixUpdate) {
+      if (branchMesh && currentFlakeData) {
+        for (let i = 0; i < currentFlakeData.instances.length; i++) {
+          const data = currentFlakeData.instances[i];
+          const delay = data.dist * 0.15 + data.depth * 0.1;
+          const progress = Math.max(0, Math.min(1, (eased * 1.5 - delay) * 2));
+          const s = easeOutExpo(progress);
 
-        dummy.position.set(...data.position);
-        dummy.rotation.set(...data.rotation);
-        dummy.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
-        dummy.updateMatrix();
-        branchMesh.setMatrixAt(i, dummy.matrix);
+          dummy.position.set(data.position[0], data.position[1], data.position[2]);
+          dummy.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
+          dummy.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
+          dummy.updateMatrix();
+          branchMesh.setMatrixAt(i, dummy.matrix);
+        }
+        branchMesh.instanceMatrix.needsUpdate = true;
       }
-      branchMesh.instanceMatrix.needsUpdate = true;
-    }
 
-    if (coreMesh && currentFlakeData) {
-      const data = currentFlakeData.core;
-      const s = eased;
-      coreMesh.position.set(...data.position);
-      coreMesh.rotation.set(...data.rotation);
-      coreMesh.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
-    }
+      if (coreMesh && currentFlakeData) {
+        const data = currentFlakeData.core;
+        const s = eased;
+        coreMesh.position.set(data.position[0], data.position[1], data.position[2]);
+        coreMesh.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
+        coreMesh.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
+      }
 
-    flakeHolder.position.y = (1 - eased) * -2;
+      flakeHolder.position.y = (1 - eased) * -2;
+      needsMatrixUpdate = false;
+    }
 
     composer.render(delta);
 
