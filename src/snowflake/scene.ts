@@ -246,9 +246,17 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let entryActive = false;
 
   function syncEntryState() {
-    canvas.dataset.entryActive = entryActive.toString();
-    canvas.dataset.entryProgress = entryState.progress.toFixed(3);
+    const active = entryActive.toString();
+    const progress = entryState.progress.toFixed(3);
+    // Only update DOM if values changed to avoid redundant work and test instability
+    if (canvas.dataset.entryActive !== active) {
+      canvas.dataset.entryActive = active;
+    }
+    if (canvas.dataset.entryProgress !== progress) {
+      canvas.dataset.entryProgress = progress;
+    }
   }
+  syncEntryState();
 
   function startEntryTween() {
     entryState.progress = 0;
@@ -264,7 +272,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   function tickEntryTween() {
     if (!entryActive) {
-      syncEntryState();
       return;
     }
     const t = (performance.now() - entryStartTime) / ENTRY_DURATION_MS;
