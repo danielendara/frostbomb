@@ -17,13 +17,6 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
   const width = canvas.width;
   const height = canvas.height;
 
-  // Cache canvas for the static background (regions, grid, labels)
-  // This avoids re-calculating thousands of pixels on every update.
-  const cacheCanvas = document.createElement('canvas');
-  cacheCanvas.width = width;
-  cacheCanvas.height = height;
-  const cacheCtx = cacheCanvas.getContext('2d');
-
   function toX(temp: number) {
     // 0 to -40 maps to width to 0 (0 on right, -40 on left)
     return ((temp + 40) / 40) * width;
@@ -34,11 +27,17 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     return height - ss * height;
   }
 
-  function drawBackgroundToCache() {
+  // Cache static background (morphology regions, grid, labels) to offscreen canvas
+  const cacheCanvas = document.createElement('canvas');
+  cacheCanvas.width = width;
+  cacheCanvas.height = height;
+  const cacheCtx = cacheCanvas.getContext('2d');
+
+  function drawBackground() {
     if (!cacheCtx) return;
     cacheCtx.clearRect(0, 0, width, height);
 
-    // Sample the grid to draw the morphology regions
+    // Sample morphology regions (high-density grid)
     const res = 4;
     for (let x = 0; x < width; x += res) {
       for (let y = 0; y < height; y += res) {
@@ -66,7 +65,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     }
     cacheCtx.stroke();
 
-    // Labels for regions (rough positions)
+    // Labels
     cacheCtx.fillStyle = 'rgba(230, 237, 245, 0.3)';
     cacheCtx.font = 'italic 8px "JetBrains Mono"';
     cacheCtx.fillText('Dendrites', toX(-15), toY(0.8));
@@ -75,8 +74,15 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     cacheCtx.fillText('Needles', toX(-7), toY(0.8));
   }
 
-  // Pre-render the background once
-  drawBackgroundToCache();
+  drawBackground();
+
+  let isDisposed = false;
+  // Re-draw background when fonts are ready to ensure JetBrains Mono is used
+  if (document.fonts) {
+    document.fonts.ready.then(() => {
+      if (!isDisposed) drawBackground();
+    });
+  }
 
   function drawPath(path: { temp: number; ss: number }[]) {
     if (path.length === 0) return;
@@ -110,10 +116,14 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
 
   return {
     update: (path: { temp: number; ss: number }[]) => {
+      if (isDisposed) return;
       ctx.clearRect(0, 0, width, height);
-      // Blit the cached background in one operation (~3750x faster than re-drawing)
+      // Fast blit of pre-rendered background
       ctx.drawImage(cacheCanvas, 0, 0);
       drawPath(path);
+    },
+    dispose: () => {
+      isDisposed = true;
     }
   };
 }
