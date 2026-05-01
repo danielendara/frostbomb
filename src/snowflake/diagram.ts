@@ -27,44 +27,61 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     return height - ss * height;
   }
 
-  function drawBackground() {
-    ctx!.clearRect(0, 0, width, height);
+  // Cache static background (morphology regions, grid, labels) to offscreen canvas
+  const cacheCanvas = document.createElement('canvas');
+  cacheCanvas.width = width;
+  cacheCanvas.height = height;
+  const cacheCtx = cacheCanvas.getContext('2d');
 
-    // We can sample the grid to draw the regions
+  function drawBackground() {
+    if (!cacheCtx) return;
+    cacheCtx.clearRect(0, 0, width, height);
+
+    // Sample morphology regions (high-density grid)
     const res = 4;
     for (let x = 0; x < width; x += res) {
       for (let y = 0; y < height; y += res) {
         const temp = (x / width) * 40 - 40;
         const ss = (height - y) / height;
         const habit = getHabit(temp, ss);
-        ctx!.fillStyle = HABIT_COLORS[habit];
-        ctx!.fillRect(x, y, res, res);
+        cacheCtx.fillStyle = HABIT_COLORS[habit];
+        cacheCtx.fillRect(x, y, res, res);
       }
     }
 
     // Grid lines
-    ctx!.strokeStyle = 'rgba(230, 237, 245, 0.05)';
-    ctx!.lineWidth = 1;
-    ctx!.beginPath();
+    cacheCtx.strokeStyle = 'rgba(230, 237, 245, 0.05)';
+    cacheCtx.lineWidth = 1;
+    cacheCtx.beginPath();
     for (let t = -40; t <= 0; t += 10) {
       const x = toX(t);
-      ctx!.moveTo(x, 0);
-      ctx!.lineTo(x, height);
+      cacheCtx.moveTo(x, 0);
+      cacheCtx.lineTo(x, height);
     }
     for (let s = 0; s <= 1; s += 0.25) {
       const y = toY(s);
-      ctx!.moveTo(0, y);
-      ctx!.lineTo(width, y);
+      cacheCtx.moveTo(0, y);
+      cacheCtx.lineTo(width, y);
     }
-    ctx!.stroke();
+    cacheCtx.stroke();
 
-    // Labels for regions (rough positions)
-    ctx!.fillStyle = 'rgba(230, 237, 245, 0.3)';
-    ctx!.font = 'italic 8px "JetBrains Mono"';
-    ctx!.fillText('Dendrites', toX(-15), toY(0.8));
-    ctx!.fillText('Plates', toX(-15), toY(0.2));
-    ctx!.fillText('Columns', toX(-7), toY(0.2));
-    ctx!.fillText('Needles', toX(-7), toY(0.8));
+    // Labels
+    cacheCtx.fillStyle = 'rgba(230, 237, 245, 0.3)';
+    cacheCtx.font = 'italic 8px "JetBrains Mono"';
+    cacheCtx.fillText('Dendrites', toX(-15), toY(0.8));
+    cacheCtx.fillText('Plates', toX(-15), toY(0.2));
+    cacheCtx.fillText('Columns', toX(-7), toY(0.2));
+    cacheCtx.fillText('Needles', toX(-7), toY(0.8));
+  }
+
+  drawBackground();
+
+  let isDisposed = false;
+  // Re-draw background when fonts are ready to ensure JetBrains Mono is used
+  if (document.fonts) {
+    document.fonts.ready.then(() => {
+      if (!isDisposed) drawBackground();
+    });
   }
 
   function drawPath(path: { temp: number; ss: number }[]) {
@@ -99,8 +116,14 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
 
   return {
     update: (path: { temp: number; ss: number }[]) => {
-      drawBackground();
+      if (isDisposed) return;
+      ctx.clearRect(0, 0, width, height);
+      // Fast blit of pre-rendered background
+      ctx.drawImage(cacheCanvas, 0, 0);
       drawPath(path);
+    },
+    dispose: () => {
+      isDisposed = true;
     }
   };
 }
