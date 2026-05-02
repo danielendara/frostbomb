@@ -14,8 +14,10 @@ import { getHabit, GrowthConditions, Habit } from './nakaya.ts';
  */
 
 interface Segment {
-  start: THREE.Vector3;
-  end: THREE.Vector3;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
   thickness: number;
   depth: number;
   thicknessVariation: number;
@@ -40,41 +42,43 @@ export function buildSnowflake(
   rand: Rand,
 ): BuildResult {
   const segments: Segment[] = [];
-  const mainAxis = new THREE.Vector3(1, 0, 0);
-  const origin = new THREE.Vector3(0, 0, 0);
-
   const noise2D = createNoise2D(() => rand.next());
 
   // Build one primary arm along +X
   buildArm(
     segments,
-    origin,
-    mainAxis,
+    0, 0, // startX, startY
+    1, 0, // dirX, dirY
     3.5, // Total target length
-    0,
+    0, // depth
     conditions,
     rand,
     noise2D,
   );
 
-  // 6-fold symmetry: clone the arm at 60° intervals
-  const symmetric: Segment[] = [];
+  // Convert one arm to InstanceData
+  const armInstances = segmentsToInstanceData(segments);
+
+  // 6-fold symmetry: clone the arm data at 60° intervals
+  const instances: InstanceData[] = [];
   for (let i = 0; i < 6; i++) {
     const angle = (i * Math.PI * 2) / 6;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    for (const seg of segments) {
-      symmetric.push({
-        start: rotateZ(seg.start, cos, sin),
-        end: rotateZ(seg.end, cos, sin),
-        thickness: seg.thickness,
-        depth: seg.depth,
-        thicknessVariation: seg.thicknessVariation,
+    for (const inst of armInstances) {
+      instances.push({
+        position: [
+          inst.position[0] * cos - inst.position[1] * sin,
+          inst.position[0] * sin + inst.position[1] * cos,
+          inst.position[2]
+        ],
+        rotation: [inst.rotation[0], inst.rotation[1], inst.rotation[2] + angle],
+        scale: [inst.scale[0], inst.scale[1], inst.scale[2]],
+        dist: inst.dist,
+        depth: inst.depth,
       });
     }
   }
-
-  const instances = segmentsToInstanceData(symmetric);
 
   // Core parameters from start of path
   const startParams = paramsFor(conditions.path[0].temp, conditions.path[0].ss);
@@ -92,7 +96,7 @@ export function buildSnowflake(
     depth: 0,
   };
 
-  return { instances, branchCount: symmetric.length + 1, core };
+  return { instances, branchCount: instances.length + 1, core };
 }
 
 function getZDepthScale(habit: Habit): number {
@@ -101,10 +105,6 @@ function getZDepthScale(habit: Habit): number {
     : habit === 'capped_column'
       ? 1.8
       : 1.0;
-}
-
-function rotateZ(v: THREE.Vector3, cos: number, sin: number): THREE.Vector3 {
-  return new THREE.Vector3(v.x * cos - v.y * sin, v.x * sin + v.y * cos, v.z);
 }
 
 interface Params {
@@ -223,8 +223,10 @@ function paramsFor(temp: number, ss: number): Params {
 
 function buildArm(
   segments: Segment[],
-  start: THREE.Vector3,
-  direction: THREE.Vector3,
+  startX: number,
+  startY: number,
+  dirX: number,
+  dirY: number,
   length: number,
   depth: number,
   conditions: GrowthConditions,
@@ -232,7 +234,7 @@ function buildArm(
   noise2D: (x: number, y: number) => number,
 ) {
   // Sample parameters from the atmospheric path based on distance from core
-  const dist = start.length();
+  const dist = Math.sqrt(startX * startX + startY * startY);
   const maxDist = 3.5;
   const pathIdx = Math.min(
     conditions.path.length - 1,
@@ -243,13 +245,17 @@ function buildArm(
 
   if (depth > params.maxDepth || length < 0.08) return;
 
-  const end = start.clone().addScaledVector(direction, length);
-  const mid = start.clone().add(end).multiplyScalar(0.5);
-  const thicknessVariation = 1 + noise2D(mid.x * 3, mid.y * 3) * 0.15;
+  const endX = startX + dirX * length;
+  const endY = startY + dirY * length;
+  const midX = (startX + endX) * 0.5;
+  const midY = (startY + endY) * 0.5;
+  const thicknessVariation = 1 + noise2D(midX * 3, midY * 3) * 0.15;
 
   segments.push({
-    start: start.clone(),
-    end,
+    startX,
+    startY,
+    endX,
+    endY,
     thickness: params.primaryThickness,
     depth,
     thicknessVariation,
@@ -267,21 +273,28 @@ function buildArm(
     const localProb = params.sideBranchProb * (1 - t * 0.4);
     if (!rand.chance(localProb)) continue;
 
-    const point = start.clone().addScaledVector(direction, t * length);
+    const pointX = startX + dirX * (t * length);
+    const pointY = startY + dirY * (t * length);
     const sideLen = length * params.sideBranchDecay * rand.range(0.4, 1.0) * (1 - t * 0.5);
 
     // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-    // Add organic variation using simplex noise based on position and depth
-    const noiseVal = noise2D(point.x * 2, point.y * 2);
+    const noiseVal = noise2D(pointX * 2, pointY * 2);
     const angleVariation = noiseVal * 0.1;
     const angle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
 
     for (const sign of [-1, 1]) {
-      const dir = rotateVec(direction, sign * angle);
+      const a = sign * angle;
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      const nextDirX = dirX * cos - dirY * sin;
+      const nextDirY = dirX * sin + dirY * cos;
+
       buildArm(
         segments,
-        point,
-        dir,
+        pointX,
+        pointY,
+        nextDirX,
+        nextDirY,
         sideLen,
         depth + 1,
         conditions,
@@ -291,16 +304,19 @@ function buildArm(
     }
   }
 
-  // Optional pointed tip extension (tiny final segment for dendrites/needles)
+  // Optional pointed tip extension
   if (params.hasTip && depth === 0) {
-    const tipDir = direction.clone();
-    const tipEnd = end.clone().addScaledVector(tipDir, 0.12);
-    const tipMid = end.clone().add(tipEnd).multiplyScalar(0.5);
-    const tipThicknessVariation = 1 + noise2D(tipMid.x * 3, tipMid.y * 3) * 0.15;
+    const tipEndX = endX + dirX * 0.12;
+    const tipEndY = endY + dirY * 0.12;
+    const tipMidX = (endX + tipEndX) * 0.5;
+    const tipMidY = (endY + tipEndY) * 0.5;
+    const tipThicknessVariation = 1 + noise2D(tipMidX * 3, tipMidY * 3) * 0.15;
 
     segments.push({
-      start: end.clone(),
-      end: tipEnd,
+      startX: endX,
+      startY: endY,
+      endX: tipEndX,
+      endY: tipEndY,
       thickness: params.primaryThickness * 0.4,
       depth: depth + 1,
       thicknessVariation: tipThicknessVariation,
@@ -308,47 +324,37 @@ function buildArm(
   }
 }
 
-function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  return new THREE.Vector3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
-}
-
-function segmentsToInstanceData(
-  segments: Segment[],
-): InstanceData[] {
+function segmentsToInstanceData(segments: Segment[]): InstanceData[] {
   const data: InstanceData[] = [];
 
   for (const seg of segments) {
-    const length = seg.start.distanceTo(seg.end);
+    const dx = seg.endX - seg.startX;
+    const dy = seg.endY - seg.startY;
+    const length = Math.sqrt(dx * dx + dy * dy);
     if (length < 0.001) continue;
 
     const finalThickness = seg.thickness * seg.thicknessVariation;
-
-    const segmentMid = seg.start.clone().add(seg.end).multiplyScalar(0.5);
+    const midX = (seg.startX + seg.endX) * 0.5;
+    const midY = (seg.startY + seg.endY) * 0.5;
 
     // Add subtle jitter for organic feel
     const jitter = 0.015;
     const position: [number, number, number] = [
-      segmentMid.x + (seg.thicknessVariation - 1) * jitter,
-      segmentMid.y + (seg.thicknessVariation - 1) * jitter,
-      segmentMid.z + (seg.thicknessVariation - 1) * jitter,
+      midX + (seg.thicknessVariation - 1) * jitter,
+      midY + (seg.thicknessVariation - 1) * jitter,
+      (seg.thicknessVariation - 1) * jitter,
     ];
 
-    const dir = seg.end.clone().sub(seg.start).normalize();
-    const angle = Math.atan2(dir.y, dir.x);
+    const angle = Math.atan2(dy, dx);
 
     // Default unit cylinder is along Y. We want it along the branch direction.
-    // We'll rotate it around Z by angle, but first we need it to be horizontal.
-    // Cylinder is along Y, so rotating by -PI/2 around Z makes it along X.
-    // Then we add our angle.
+    // Cylinder is along Y, so rotating by PI/2 around Z makes it along the X-axis (offset).
     const rotation: [number, number, number] = [
-      (seg.thicknessVariation - 1) * 0.1, // Subtle tilt out of plane (around X)
+      (seg.thicknessVariation - 1) * 0.1, // Subtle tilt
       0,
-      angle + Math.PI / 2, // Rotate to match direction
+      angle + Math.PI / 2,
     ];
 
-    // Scale: X and Z for thickness, Y for length
     const scale: [number, number, number] = [
       finalThickness,
       length,
@@ -359,10 +365,21 @@ function segmentsToInstanceData(
       position,
       rotation,
       scale,
-      dist: seg.start.length(),
+      dist: Math.sqrt(seg.startX * seg.startX + seg.startY * seg.startY),
       depth: seg.depth,
     });
   }
 
   return data;
+}
+
+// Internal utility functions (maintained for compatibility and internal use)
+export function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return new THREE.Vector3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
+}
+
+export function rotateZ(v: THREE.Vector3, cos: number, sin: number): THREE.Vector3 {
+  return new THREE.Vector3(v.x * cos - v.y * sin, v.x * sin + v.y * cos, v.z);
 }
