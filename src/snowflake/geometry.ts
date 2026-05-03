@@ -33,9 +33,12 @@ export interface InstanceData {
 
 export interface BuildResult {
   instances: InstanceData[];
+  matrices: Float32Array;
   branchCount: number;
   core: InstanceData;
 }
+
+const dummy = new THREE.Object3D();
 
 export function buildSnowflake(
   conditions: GrowthConditions,
@@ -61,22 +64,33 @@ export function buildSnowflake(
 
   // 6-fold symmetry: clone the arm data at 60° intervals
   const instances: InstanceData[] = [];
+  const matrices = new Float32Array(armInstances.length * 6 * 16);
+
   for (let i = 0; i < 6; i++) {
     const angle = (i * Math.PI * 2) / 6;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    for (const inst of armInstances) {
+    for (let j = 0; j < armInstances.length; j++) {
+      const inst = armInstances[j];
+      const posX = inst.position[0] * cos - inst.position[1] * sin;
+      const posY = inst.position[0] * sin + inst.position[1] * cos;
+      const posZ = inst.position[2];
+      const rotZ = inst.rotation[2] + angle;
+
       instances.push({
-        position: [
-          inst.position[0] * cos - inst.position[1] * sin,
-          inst.position[0] * sin + inst.position[1] * cos,
-          inst.position[2]
-        ],
-        rotation: [inst.rotation[0], inst.rotation[1], inst.rotation[2] + angle],
+        position: [posX, posY, posZ],
+        rotation: [inst.rotation[0], inst.rotation[1], rotZ],
         scale: [inst.scale[0], inst.scale[1], inst.scale[2]],
         dist: inst.dist,
         depth: inst.depth,
       });
+
+      // Pre-compute matrix
+      dummy.position.set(posX, posY, posZ);
+      dummy.rotation.set(inst.rotation[0], inst.rotation[1], rotZ);
+      dummy.scale.set(inst.scale[0], inst.scale[1], inst.scale[2]);
+      dummy.updateMatrix();
+      dummy.matrix.toArray(matrices, (i * armInstances.length + j) * 16);
     }
   }
 
@@ -96,7 +110,7 @@ export function buildSnowflake(
     depth: 0,
   };
 
-  return { instances, branchCount: instances.length + 1, core };
+  return { instances, matrices, branchCount: instances.length + 1, core };
 }
 
 function getZDepthScale(habit: Habit): number {

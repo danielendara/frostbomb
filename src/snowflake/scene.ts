@@ -284,7 +284,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     syncEntryState();
   }
 
-  const dummy = new THREE.Object3D();
   const tempColor = new THREE.Color();
 
   const sceneInterface: Scene = {
@@ -336,12 +335,16 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         if (enabled) {
           material.color.set('#ffb2d1');
           material.emissive.set('#ff80bf');
+          particleMat.color.set('#ffb2d1');
+          particleMat.opacity = 0.6;
           if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x0c0512);
           }
         } else {
           material.color.set('#ffffff');
           material.emissive.set('#e0f0ff');
+          particleMat.color.set(0xffffff);
+          particleMat.opacity = 0.5;
           if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x050912);
           }
@@ -353,6 +356,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       if (!enabled) {
         // Restore Pink or Default mode colors
         sceneInterface.setPinkMode(sceneInterface.isPinkModeEnabled);
+      } else {
+        // Boost opacity when entering Prism mode
+        particleMat.opacity = 0.8;
       }
     },
     updateFlake: (data: BuildResult, animate = true) => {
@@ -468,17 +474,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
     particles.geometry.attributes.position.needsUpdate = true;
 
-    // Match particle colors to modes
+    // Match particle colors to modes (Prism Mode only, others are handled by setters)
     if (sceneInterface.isPrismModeEnabled) {
       const hue = (performance.now() * 0.00015 + 0.5) % 1; // Offset hue slightly
       particleMat.color.setHSL(hue, 0.8, 0.8);
       particleMat.opacity = 0.8;
-    } else if (sceneInterface.isPinkModeEnabled) {
-      particleMat.color.set('#ffb2d1');
-      particleMat.opacity = 0.6;
-    } else {
-      particleMat.color.set(0xffffff);
-      particleMat.opacity = 0.5;
     }
     const wasEntryActive = entryActive;
     tickEntryTween();
@@ -500,17 +500,43 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     if (wasEntryActive || entryActive || needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {
-        for (let i = 0; i < currentFlakeData.instances.length; i++) {
-          const data = currentFlakeData.instances[i];
-          const delay = data.dist * 0.15 + data.depth * 0.1;
-          const progress = Math.max(0, Math.min(1, (eased * 1.5 - delay) * 2));
-          const s = easeOutExpo(progress);
+        if (eased === 1) {
+          // Fast-path for finished animation: bulk copy pre-computed matrices
+          branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
+        } else {
+          // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
+          const target = branchMesh.instanceMatrix.array as Float32Array;
+          const source = currentFlakeData.matrices;
 
-          dummy.position.set(data.position[0], data.position[1], data.position[2]);
-          dummy.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
-          dummy.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
-          dummy.updateMatrix();
-          branchMesh.setMatrixAt(i, dummy.matrix);
+          for (let i = 0; i < currentFlakeData.instances.length; i++) {
+            const data = currentFlakeData.instances[i];
+            const delay = data.dist * 0.15 + data.depth * 0.1;
+            const progress = Math.max(0, Math.min(1, (eased * 1.5 - delay) * 2));
+            const s = easeOutExpo(progress);
+
+            const idx = i * 16;
+            // Copy 4x4 matrix from source to target while scaling the 3x3 basis vectors
+            // Column 1
+            target[idx + 0] = source[idx + 0] * s;
+            target[idx + 1] = source[idx + 1] * s;
+            target[idx + 2] = source[idx + 2] * s;
+            target[idx + 3] = source[idx + 3]; // 0
+            // Column 2
+            target[idx + 4] = source[idx + 4] * s;
+            target[idx + 5] = source[idx + 5] * s;
+            target[idx + 6] = source[idx + 6] * s;
+            target[idx + 7] = source[idx + 7]; // 0
+            // Column 3
+            target[idx + 8] = source[idx + 8] * s;
+            target[idx + 9] = source[idx + 9] * s;
+            target[idx + 10] = source[idx + 10] * s;
+            target[idx + 11] = source[idx + 11]; // 0
+            // Column 4 (Translation remains constant)
+            target[idx + 12] = source[idx + 12];
+            target[idx + 13] = source[idx + 13];
+            target[idx + 14] = source[idx + 14];
+            target[idx + 15] = source[idx + 15]; // 1
+          }
         }
         branchMesh.instanceMatrix.needsUpdate = true;
       }
