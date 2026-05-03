@@ -284,7 +284,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     syncEntryState();
   }
 
-  const dummy = new THREE.Object3D();
   const tempColor = new THREE.Color();
 
   const sceneInterface: Scene = {
