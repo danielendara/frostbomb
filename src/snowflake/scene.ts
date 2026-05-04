@@ -372,7 +372,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       branchMesh = new THREE.InstancedMesh(
         branchGeom,
         material,
-        data.instances.length,
+        data.matrices.length / 16,
       );
       flakeHolder.add(branchMesh);
 
@@ -507,35 +507,40 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
+          const armLen = currentFlakeData.armInstances.length;
 
-          for (let i = 0; i < currentFlakeData.instances.length; i++) {
-            const data = currentFlakeData.instances[i];
-            const delay = data.dist * 0.15 + data.depth * 0.1;
+          // Optimization: Outer loop over the single arm's instances.
+          // We calculate the growth scale 's' once per segment and apply it to all 6 symmetry instances.
+          for (let j = 0; j < armLen; j++) {
+            const delay = currentFlakeData.delays[j];
             const progress = Math.max(0, Math.min(1, (eased * 1.5 - delay) * 2));
             const s = easeOutExpo(progress);
 
-            const idx = i * 16;
-            // Copy 4x4 matrix from source to target while scaling the 3x3 basis vectors
-            // Column 1
-            target[idx + 0] = source[idx + 0] * s;
-            target[idx + 1] = source[idx + 1] * s;
-            target[idx + 2] = source[idx + 2] * s;
-            target[idx + 3] = source[idx + 3]; // 0
-            // Column 2
-            target[idx + 4] = source[idx + 4] * s;
-            target[idx + 5] = source[idx + 5] * s;
-            target[idx + 6] = source[idx + 6] * s;
-            target[idx + 7] = source[idx + 7]; // 0
-            // Column 3
-            target[idx + 8] = source[idx + 8] * s;
-            target[idx + 9] = source[idx + 9] * s;
-            target[idx + 10] = source[idx + 10] * s;
-            target[idx + 11] = source[idx + 11]; // 0
-            // Column 4 (Translation remains constant)
-            target[idx + 12] = source[idx + 12];
-            target[idx + 13] = source[idx + 13];
-            target[idx + 14] = source[idx + 14];
-            target[idx + 15] = source[idx + 15]; // 1
+            // Inner loop: Apply same scale to all 6 arms using fixed stride
+            for (let i = 0; i < 6; i++) {
+              const idx = (i * armLen + j) * 16;
+              // Copy 4x4 matrix from source to target while scaling the 3x3 basis vectors
+              // Column 1
+              target[idx + 0] = source[idx + 0] * s;
+              target[idx + 1] = source[idx + 1] * s;
+              target[idx + 2] = source[idx + 2] * s;
+              target[idx + 3] = source[idx + 3]; // 0
+              // Column 2
+              target[idx + 4] = source[idx + 4] * s;
+              target[idx + 5] = source[idx + 5] * s;
+              target[idx + 6] = source[idx + 6] * s;
+              target[idx + 7] = source[idx + 7]; // 0
+              // Column 3
+              target[idx + 8] = source[idx + 8] * s;
+              target[idx + 9] = source[idx + 9] * s;
+              target[idx + 10] = source[idx + 10] * s;
+              target[idx + 11] = source[idx + 11]; // 0
+              // Column 4 (Translation remains constant)
+              target[idx + 12] = source[idx + 12];
+              target[idx + 13] = source[idx + 13];
+              target[idx + 14] = source[idx + 14];
+              target[idx + 15] = source[idx + 15]; // 1
+            }
           }
         }
         branchMesh.instanceMatrix.needsUpdate = true;

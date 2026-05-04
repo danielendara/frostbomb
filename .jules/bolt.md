@@ -12,3 +12,8 @@
 **Learning:** Three.js `Object3D.updateMatrix()` and `InstancedMesh.setMatrixAt()` perform $O(N)$ full matrix compositions (position, rotation, scale) every frame if called in the render loop. For static or simple-scaled instanced geometry, this is redundant.
 **Action:** Pre-compute base transformation matrices during geometry generation (incorporating 6-fold symmetry and branch rotations). During animation, apply manual component-wise scaling to the pre-computed matrix entries (e.g., scaling the first three columns for the 3x3 basis) to bypass `compose()` math. Implement a bulk `TypedArray.set()` fast-path for completed animations.
 **Impact:** Significantly reduced CPU overhead in the render loop. Avoided $O(N)$ object property lookups and matrix multiplications per frame.
+
+## 2025-05-17 - [Symmetry-Aware Data Structures & Render Loop]
+**Learning:** Even with pre-computed matrices, iterating over 6N instances in the render loop to calculate individual growth animations (e.g., `easeOutExpo`) is redundant for symmetrical structures. Storing 6N metadata objects also increases GC pressure.
+**Action:** Streamline `BuildResult` to store only 1/6th of the segment metadata (primary arm). Use a `Float32Array` for animation delays. In the render loop, calculate the animation state once per primary segment and apply it to all six symmetrical matrices using fixed strides in the `instanceMatrix` array.
+**Impact:** Reduced easing math and property lookups by 83% (6x) in the hot animation path. Eliminated thousands of short-lived object allocations per snowflake generation.
