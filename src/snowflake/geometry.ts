@@ -32,7 +32,8 @@ export interface InstanceData {
 }
 
 export interface BuildResult {
-  instances: InstanceData[];
+  armInstances: InstanceData[];
+  delays: Float32Array;
   matrices: Float32Array;
   branchCount: number;
   core: InstanceData;
@@ -62,8 +63,16 @@ export function buildSnowflake(
   // Convert one arm to InstanceData
   const armInstances = segmentsToInstanceData(segments);
 
-  // 6-fold symmetry: clone the arm data at 60° intervals
-  const instances: InstanceData[] = [];
+  // Pre-calculate animation delays for the arm to avoid redundant math in the render loop
+  const delays = new Float32Array(armInstances.length);
+  for (let j = 0; j < armInstances.length; j++) {
+    const inst = armInstances[j];
+    delays[j] = inst.dist * 0.15 + inst.depth * 0.1;
+  }
+
+  // 6-fold symmetry: compute matrices into the Float32Array.
+  // We no longer create a massive 6N array of InstanceData objects here,
+  // which saves significant memory allocation and GC pressure.
   const matrices = new Float32Array(armInstances.length * 6 * 16);
 
   for (let i = 0; i < 6; i++) {
@@ -76,14 +85,6 @@ export function buildSnowflake(
       const posY = inst.position[0] * sin + inst.position[1] * cos;
       const posZ = inst.position[2];
       const rotZ = inst.rotation[2] + angle;
-
-      instances.push({
-        position: [posX, posY, posZ],
-        rotation: [inst.rotation[0], inst.rotation[1], rotZ],
-        scale: [inst.scale[0], inst.scale[1], inst.scale[2]],
-        dist: inst.dist,
-        depth: inst.depth,
-      });
 
       // Pre-compute matrix
       dummy.position.set(posX, posY, posZ);
@@ -110,7 +111,13 @@ export function buildSnowflake(
     depth: 0,
   };
 
-  return { instances, matrices, branchCount: instances.length + 1, core };
+  return {
+    armInstances,
+    delays,
+    matrices,
+    branchCount: armInstances.length * 6 + 1,
+    core,
+  };
 }
 
 function getZDepthScale(habit: Habit): number {
