@@ -362,19 +362,29 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       }
     },
     updateFlake: (data: BuildResult, animate = true) => {
-      if (branchMesh) {
-        flakeHolder.remove(branchMesh);
-        branchMesh.dispose();
+      currentFlakeData = data;
+      const requiredCount = data.matrices.length / 16;
+
+      // Only recreate the InstancedMesh if the existing one is too small.
+      // We add a bit of headroom to avoid frequent re-allocations during interactive growth.
+      const currentCapacity = branchMesh ? branchMesh.instanceMatrix.array.length / 16 : 0;
+
+      if (!branchMesh || requiredCount > currentCapacity) {
+        if (branchMesh) {
+          flakeHolder.remove(branchMesh);
+          branchMesh.dispose();
+        }
+
+        const capacity = Math.ceil(requiredCount * 1.25);
+        branchMesh = new THREE.InstancedMesh(
+          branchGeom,
+          material,
+          capacity,
+        );
+        flakeHolder.add(branchMesh);
       }
 
-      currentFlakeData = data;
-
-      branchMesh = new THREE.InstancedMesh(
-        branchGeom,
-        material,
-        data.matrices.length / 16,
-      );
-      flakeHolder.add(branchMesh);
+      branchMesh.count = requiredCount;
 
       if (!flakeHolder.children.includes(coreMesh)) {
         flakeHolder.add(coreMesh);
@@ -500,6 +510,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     if (wasEntryActive || entryActive || needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {
+        const matrixCount = currentFlakeData.matrices.length;
         if (eased === 1) {
           // Fast-path for finished animation: bulk copy pre-computed matrices
           branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
@@ -543,6 +554,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             }
           }
         }
+        // Optimize GPU upload by only sending the active portion of the buffer
+        branchMesh.instanceMatrix.clearUpdateRanges();
+        branchMesh.instanceMatrix.addUpdateRange(0, matrixCount);
         branchMesh.instanceMatrix.needsUpdate = true;
       }
 
