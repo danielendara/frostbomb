@@ -48,6 +48,10 @@ export function buildSnowflake(
   const segments: Segment[] = [];
   const noise2D = createNoise2D(() => rand.next());
 
+  // Pre-calculate parameters for the entire atmospheric path to avoid thousands
+  // of redundant getHabit() and switch-case executions during recursion.
+  const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
+
   // Build one primary arm along +X
   buildArm(
     segments,
@@ -55,7 +59,7 @@ export function buildSnowflake(
     1, 0, // dirX, dirY
     3.5, // Total target length
     0, // depth
-    conditions,
+    pathParams,
     rand,
     noise2D,
   );
@@ -250,19 +254,18 @@ function buildArm(
   dirY: number,
   length: number,
   depth: number,
-  conditions: GrowthConditions,
+  pathParams: Params[],
   rand: Rand,
   noise2D: (x: number, y: number) => number,
 ) {
-  // Sample parameters from the atmospheric path based on distance from core
+  // Sample parameters from the pre-calculated path based on distance from core
   const dist = Math.sqrt(startX * startX + startY * startY);
   const maxDist = 3.5;
   const pathIdx = Math.min(
-    conditions.path.length - 1,
-    Math.floor((dist / maxDist) * conditions.path.length),
+    pathParams.length - 1,
+    Math.floor((dist / maxDist) * pathParams.length),
   );
-  const p = conditions.path[pathIdx];
-  const params = paramsFor(p.temp, p.ss);
+  const params = pathParams[pathIdx];
 
   if (depth > params.maxDepth || length < 0.08) return;
 
@@ -318,7 +321,7 @@ function buildArm(
         nextDirY,
         sideLen,
         depth + 1,
-        conditions,
+        pathParams,
         rand,
         noise2D,
       );
