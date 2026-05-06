@@ -97,19 +97,23 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   });
 
   const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
-  const coreGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
 
   // Snowfall particles
   const particleCount = prefersReducedMotion ? 80 : 200;
   const particleGeom = new THREE.BufferGeometry();
   const particlePos = new Float32Array(particleCount * 3);
   const particleVel = new Float32Array(particleCount);
+  const particleSinPhase = new Float32Array(particleCount);
+  const particleCosPhase = new Float32Array(particleCount);
 
   for (let i = 0; i < particleCount; i++) {
     particlePos[i * 3] = (Math.random() - 0.5) * 20;
     particlePos[i * 3 + 1] = (Math.random() - 0.5) * 20;
     particlePos[i * 3 + 2] = (Math.random() - 0.5) * 10;
     particleVel[i] = 0.02 + Math.random() * 0.03;
+    const phase = Math.random() * Math.PI * 2;
+    particleSinPhase[i] = Math.sin(phase);
+    particleCosPhase[i] = Math.cos(phase);
   }
 
   particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
@@ -124,7 +128,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   scene.add(particles);
 
   let branchMesh: THREE.InstancedMesh | null = null;
-  const coreMesh = new THREE.Mesh(coreGeom, material);
+  const coreMesh = new THREE.Mesh(branchGeom, material);
   let currentFlakeData: BuildResult | null = null;
 
   let composer: RenderPipeline = {
@@ -270,11 +274,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     syncEntryState();
   }
 
-  function tickEntryTween() {
+  function tickEntryTween(now: number) {
     if (!entryActive) {
       return;
     }
-    const t = (performance.now() - entryStartTime) / ENTRY_DURATION_MS;
+    const t = (now - entryStartTime) / ENTRY_DURATION_MS;
     if (t >= 1) {
       entryState.progress = 1;
       entryActive = false;
@@ -316,7 +320,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       composer.dispose();
       branchMesh?.dispose();
       branchGeom.dispose();
-      coreGeom.dispose();
       material.dispose();
       particleGeom.dispose();
       particleMat.dispose();
@@ -452,7 +455,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   function animate(timestamp?: number) {
     if (!isRunning) return;
     frameId = requestAnimationFrame(animate);
-    timer.update(timestamp);
+    const now = timestamp ?? performance.now();
+    timer.update(now);
     const delta = timer.getDelta();
     const motionScale = prefersReducedMotion ? 0.25 : 1;
     time += delta * 0.3 * motionScale;
@@ -460,7 +464,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     // Update snowflake material colors for Prism Mode
     if (sceneInterface.isPrismModeEnabled) {
-      const hue = (performance.now() * 0.0001) % 1;
+      const hue = (now * 0.0001) % 1;
       material.color.setHSL(hue, 0.6, 0.8);
       material.emissive.setHSL(hue, 0.8, 0.6);
       if (scene.fog instanceof THREE.FogExp2) {
@@ -472,10 +476,16 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     // Animate snowfall particles
     const positions = particles.geometry.attributes.position.array as Float32Array;
+    // Optimization: Use trig identity sin(a + b) = sin(a)cos(b) + cos(a)sin(b)
+    // to replace 200 sin() calls with 2 sin/cos calls per frame.
+    const sinTime = Math.sin(time);
+    const cosTime = Math.cos(time);
+
     for (let i = 0; i < particleCount; i++) {
       positions[i * 3 + 1] -= particleVel[i] * motionScale;
-      // Horizontal drift
-      positions[i * 3] += Math.sin(time + i) * 0.002 * motionScale;
+      // Horizontal drift using pre-calculated phase components
+      const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
+      positions[i * 3] += drift * 0.002 * motionScale;
 
       if (positions[i * 3 + 1] < -10) {
         positions[i * 3 + 1] = 10;
@@ -486,12 +496,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     // Match particle colors to modes (Prism Mode only, others are handled by setters)
     if (sceneInterface.isPrismModeEnabled) {
-      const hue = (performance.now() * 0.00015 + 0.5) % 1; // Offset hue slightly
+      const hue = (now * 0.00015 + 0.5) % 1; // Offset hue slightly
       particleMat.color.setHSL(hue, 0.8, 0.8);
-      particleMat.opacity = 0.8;
     }
     const wasEntryActive = entryActive;
-    tickEntryTween();
+    tickEntryTween(now);
 
     const eased = entryState.progress;
 
