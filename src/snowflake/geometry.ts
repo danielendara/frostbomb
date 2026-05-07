@@ -18,6 +18,10 @@ interface Segment {
   startY: number;
   endX: number;
   endY: number;
+  dirX: number;
+  dirY: number;
+  length: number;
+  dist: number;
   thickness: number;
   depth: number;
   thicknessVariation: number;
@@ -75,27 +79,62 @@ export function buildSnowflake(
   }
 
   // 6-fold symmetry: compute matrices into the Float32Array.
-  // We no longer create a massive 6N array of InstanceData objects here,
-  // which saves significant memory allocation and GC pressure.
+  // Optimization: Instead of 6N matrix compositions, we compute the base arm matrix (angle 0)
+  // once and apply Z-rotation transformations manually to the matrix elements.
   const matrices = new Float32Array(armInstances.length * 6 * 16);
+  const armLen = armInstances.length;
 
+  // Pre-calculate symmetry angles
+  const cosines = new Float32Array(6);
+  const sines = new Float32Array(6);
   for (let i = 0; i < 6; i++) {
     const angle = (i * Math.PI * 2) / 6;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    for (let j = 0; j < armInstances.length; j++) {
-      const inst = armInstances[j];
-      const posX = inst.position[0] * cos - inst.position[1] * sin;
-      const posY = inst.position[0] * sin + inst.position[1] * cos;
-      const posZ = inst.position[2];
-      const rotZ = inst.rotation[2] + angle;
+    cosines[i] = Math.cos(angle);
+    sines[i] = Math.sin(angle);
+  }
 
-      // Pre-compute matrix
-      dummy.position.set(posX, posY, posZ);
-      dummy.rotation.set(inst.rotation[0], inst.rotation[1], rotZ);
-      dummy.scale.set(inst.scale[0], inst.scale[1], inst.scale[2]);
-      dummy.updateMatrix();
-      dummy.matrix.toArray(matrices, (i * armInstances.length + j) * 16);
+  for (let j = 0; j < armLen; j++) {
+    const inst = armInstances[j];
+    // Compute base matrix for the first arm (i=0)
+    dummy.position.set(inst.position[0], inst.position[1], inst.position[2]);
+    dummy.rotation.set(inst.rotation[0], inst.rotation[1], inst.rotation[2]);
+    dummy.scale.set(inst.scale[0], inst.scale[1], inst.scale[2]);
+    dummy.updateMatrix();
+    const m = dummy.matrix.elements;
+
+    // Apply rotation for each of the 6 symmetry instances
+    for (let i = 0; i < 6; i++) {
+      const c = cosines[i];
+      const s = sines[i];
+      const offset = (i * armLen + j) * 16;
+
+      // Fast-path for i=0 (identity rotation)
+      if (i === 0) {
+        matrices.set(m, offset);
+        continue;
+      }
+
+      // Pre-multiply matrix by Z-rotation: M' = Rz * M
+      // Column 1
+      matrices[offset + 0] = c * m[0] - s * m[1];
+      matrices[offset + 1] = s * m[0] + c * m[1];
+      matrices[offset + 2] = m[2];
+      matrices[offset + 3] = m[3];
+      // Column 2
+      matrices[offset + 4] = c * m[4] - s * m[5];
+      matrices[offset + 5] = s * m[4] + c * m[5];
+      matrices[offset + 6] = m[6];
+      matrices[offset + 7] = m[7];
+      // Column 3
+      matrices[offset + 8] = c * m[8] - s * m[9];
+      matrices[offset + 9] = s * m[8] + c * m[9];
+      matrices[offset + 10] = m[10];
+      matrices[offset + 11] = m[11];
+      // Column 4 (Translation)
+      matrices[offset + 12] = c * m[12] - s * m[13];
+      matrices[offset + 13] = s * m[12] + c * m[13];
+      matrices[offset + 14] = m[14];
+      matrices[offset + 15] = m[15];
     }
   }
 
@@ -280,6 +319,10 @@ function buildArm(
     startY,
     endX,
     endY,
+    dirX,
+    dirY,
+    length,
+    dist,
     thickness: params.primaryThickness,
     depth,
     thicknessVariation,
@@ -305,33 +348,44 @@ function buildArm(
     const noiseVal = noise2D(pointX * 2, pointY * 2);
     const angleVariation = noiseVal * 0.1;
     const angle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
 
-    for (const sign of [-1, 1]) {
-      const a = sign * angle;
-      const cos = Math.cos(a);
-      const sin = Math.sin(a);
-      const nextDirX = dirX * cos - dirY * sin;
-      const nextDirY = dirX * sin + dirY * cos;
+    // Right side branch (sign = 1)
+    buildArm(
+      segments,
+      pointX,
+      pointY,
+      dirX * cosA - dirY * sinA,
+      dirX * sinA + dirY * cosA,
+      sideLen,
+      depth + 1,
+      pathParams,
+      rand,
+      noise2D,
+    );
 
-      buildArm(
-        segments,
-        pointX,
-        pointY,
-        nextDirX,
-        nextDirY,
-        sideLen,
-        depth + 1,
-        pathParams,
-        rand,
-        noise2D,
-      );
-    }
+    // Left side branch (sign = -1)
+    // cos(-a) = cos(a), sin(-a) = -sin(a)
+    buildArm(
+      segments,
+      pointX,
+      pointY,
+      dirX * cosA + dirY * sinA,
+      -dirX * sinA + dirY * cosA,
+      sideLen,
+      depth + 1,
+      pathParams,
+      rand,
+      noise2D,
+    );
   }
 
   // Optional pointed tip extension
   if (params.hasTip && depth === 0) {
-    const tipEndX = endX + dirX * 0.12;
-    const tipEndY = endY + dirY * 0.12;
+    const tipLen = 0.12;
+    const tipEndX = endX + dirX * tipLen;
+    const tipEndY = endY + dirY * tipLen;
     const tipMidX = (endX + tipEndX) * 0.5;
     const tipMidY = (endY + tipEndY) * 0.5;
     const tipThicknessVariation = 1 + noise2D(tipMidX * 3, tipMidY * 3) * 0.15;
@@ -341,6 +395,10 @@ function buildArm(
       startY: endY,
       endX: tipEndX,
       endY: tipEndY,
+      dirX,
+      dirY,
+      length: tipLen,
+      dist: Math.sqrt(endX * endX + endY * endY),
       thickness: params.primaryThickness * 0.4,
       depth: depth + 1,
       thicknessVariation: tipThicknessVariation,
@@ -351,10 +409,9 @@ function buildArm(
 function segmentsToInstanceData(segments: Segment[]): InstanceData[] {
   const data: InstanceData[] = [];
 
-  for (const seg of segments) {
-    const dx = seg.endX - seg.startX;
-    const dy = seg.endY - seg.startY;
-    const length = Math.sqrt(dx * dx + dy * dy);
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const length = seg.length;
     if (length < 0.001) continue;
 
     const finalThickness = seg.thickness * seg.thicknessVariation;
@@ -363,18 +420,19 @@ function segmentsToInstanceData(segments: Segment[]): InstanceData[] {
 
     // Add subtle jitter for organic feel
     const jitter = 0.015;
+    const vVar = seg.thicknessVariation - 1;
     const position: [number, number, number] = [
-      midX + (seg.thicknessVariation - 1) * jitter,
-      midY + (seg.thicknessVariation - 1) * jitter,
-      (seg.thicknessVariation - 1) * jitter,
+      midX + vVar * jitter,
+      midY + vVar * jitter,
+      vVar * jitter,
     ];
 
-    const angle = Math.atan2(dy, dx);
+    const angle = Math.atan2(seg.dirY, seg.dirX);
 
     // Default unit cylinder is along Y. We want it along the branch direction.
     // Cylinder is along Y, so rotating by PI/2 around Z makes it along the X-axis (offset).
     const rotation: [number, number, number] = [
-      (seg.thicknessVariation - 1) * 0.1, // Subtle tilt
+      vVar * 0.1, // Subtle tilt
       0,
       angle + Math.PI / 2,
     ];
@@ -389,7 +447,7 @@ function segmentsToInstanceData(segments: Segment[]): InstanceData[] {
       position,
       rotation,
       scale,
-      dist: Math.sqrt(seg.startX * seg.startX + seg.startY * seg.startY),
+      dist: seg.dist,
       depth: seg.depth,
     });
   }
