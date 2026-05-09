@@ -25,5 +25,5 @@
 
 ## 2026-05-06 - [O(M) Animation Loop & GPU Upload Pruning]
 **Learning:** Symmetrical structures like snowflakes can have their animation metadata sorted to enable early-exit in the render loop. Combined with pre-filling the constant parts of the instance matrix, this drastically reduces per-frame CPU work.
-**Action:** Sort arm segments by growth delay during geometry generation. In the render loop, use a `break` to stop processing once the growth threshold is reached. Calculate the `maxIndex` reached and use `addUpdateRange` to prune GPU uploads for all 6 symmetry instances.
+**Action:** Sort arm segments by growth delay during geometry generation. In the render loop, use a `break` to stop processing once the growth threshold is reached. Calculate the `maxIndex` reached and use `addUpdateRange` to prune GPU uploads for all 6 symmetry instances. Crucially, call `clearUpdateRanges()` when the animation finishes or during initialization to ensure the full state is uploaded to the GPU.
 **Impact:** Reduces render loop complexity from O(N) to O(M) where M is the number of active segments. Eliminates redundant per-frame writes for translation and identity components.
