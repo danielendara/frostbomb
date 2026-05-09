@@ -22,3 +22,8 @@
 **Learning:** Constant disposal and recreation of `InstancedMesh` during interactive growth (e.g., Lab Mode sliders) causes significant GPU buffer churn and CPU overhead. Additionally, uploading the entire matrix buffer when only a fraction is used is inefficient.
 **Action:** Persist the `InstancedMesh` across updates. Implement an adaptive growth strategy with 25% headroom to minimize re-allocations. Use `addUpdateRange` (or `updateRange` depending on Three.js version) to limit GPU data transfer to only the active instance count.
 **Impact:** Eliminates frame stutters during rapid parameter adjustments. Reduces GPU memory traffic by up to 80% for smaller snowflakes sharing a large pre-allocated buffer.
+
+## 2026-05-20 - [Growth Animation Memory Write Optimization]
+**Learning:** During growth animations, updating the full 16-element 4x4 matrix for every instance in every frame is redundant when only the scale (basis vectors) is changing. Pre-filling the buffer with final translations and constant elements (0s, 1s) allows the loop to only touch the 3x3 basis.
+**Action:** In `updateFlake`, pre-fill the `instanceMatrix.array` with the target matrices and zero out the basis. In the `animate` loop, update only the 9 basis elements (indices 0,1,2, 4,5,6, 8,9,10). Added an early exit for segments that haven't started growing (`progress <= 0`).
+**Impact:** Reduced memory writes in the hot animation loop by ~44% (from 16 to 9 per instance). Eliminated redundant easing and matrix math for inactive segments.
