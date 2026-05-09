@@ -389,6 +389,20 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
       branchMesh.count = requiredCount;
 
+      // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
+      // for all active instances. This avoids needing to zero it every frame during animation.
+      const target = branchMesh.instanceMatrix.array as Float32Array;
+      target.set(data.matrices);
+      for (let i = 0; i < requiredCount; i++) {
+        const idx = i * 16;
+        // Zero out the 3x3 basis (columns 1-3)
+        target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
+        target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
+        target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
+      }
+      branchMesh.instanceMatrix.clearUpdateRanges();
+      branchMesh.instanceMatrix.needsUpdate = true;
+
       if (!flakeHolder.children.includes(coreMesh)) {
         flakeHolder.add(coreMesh);
       }
@@ -519,21 +533,30 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     if (wasEntryActive || entryActive || needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {
-        const matrixCount = currentFlakeData.matrices.length;
         if (eased === 1) {
           // Fast-path for finished animation: bulk copy pre-computed matrices
           branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
+          branchMesh.instanceMatrix.clearUpdateRanges();
         } else {
           // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
           const armLen = currentFlakeData.armInstances.length;
+          const threshold = eased * 1.5;
+          let maxIndex = 0;
 
           // Optimization: Outer loop over the single arm's instances.
           // We calculate the growth scale 's' once per segment and apply it to all 6 symmetry instances.
           for (let j = 0; j < armLen; j++) {
             const delay = currentFlakeData.delays[j];
-            const progress = Math.max(0, Math.min(1, (eased * 1.5 - delay) * 2));
+
+            // Optimization: Early break since armInstances are sorted by delay.
+            // All segments after this haven't started growing yet.
+            if (delay > threshold) break;
+
+            maxIndex = j;
+
+            const progress = Math.min(1, (threshold - delay) * 2);
             const s = easeOutExpo(progress);
 
             // Inner loop: Apply same scale to all 6 arms using fixed stride
@@ -544,28 +567,26 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               target[idx + 0] = source[idx + 0] * s;
               target[idx + 1] = source[idx + 1] * s;
               target[idx + 2] = source[idx + 2] * s;
-              target[idx + 3] = source[idx + 3]; // 0
               // Column 2
               target[idx + 4] = source[idx + 4] * s;
               target[idx + 5] = source[idx + 5] * s;
               target[idx + 6] = source[idx + 6] * s;
-              target[idx + 7] = source[idx + 7]; // 0
               // Column 3
               target[idx + 8] = source[idx + 8] * s;
               target[idx + 9] = source[idx + 9] * s;
               target[idx + 10] = source[idx + 10] * s;
-              target[idx + 11] = source[idx + 11]; // 0
-              // Column 4 (Translation remains constant)
-              target[idx + 12] = source[idx + 12];
-              target[idx + 13] = source[idx + 13];
-              target[idx + 14] = source[idx + 14];
-              target[idx + 15] = source[idx + 15]; // 1
             }
           }
+
+          // Optimize GPU upload by only sending the active portion of the buffer.
+          // We only need to upload up to the highest arm index reached in the 6-fold symmetry buffer.
+          branchMesh.instanceMatrix.clearUpdateRanges();
+          for (let i = 0; i < 6; i++) {
+            const start = (i * armLen) * 16;
+            const count = (maxIndex + 1) * 16;
+            branchMesh.instanceMatrix.addUpdateRange(start, count);
+          }
         }
-        // Optimize GPU upload by only sending the active portion of the buffer
-        branchMesh.instanceMatrix.clearUpdateRanges();
-        branchMesh.instanceMatrix.addUpdateRange(0, matrixCount);
         branchMesh.instanceMatrix.needsUpdate = true;
       }
 
@@ -595,5 +616,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 }
 
 function easeOutExpo(t: number): number {
+  if (t <= 0) return 0;
   return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }

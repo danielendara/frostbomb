@@ -71,6 +71,14 @@ export function buildSnowflake(
   // Convert one arm to InstanceData
   const armInstances = segmentsToInstanceData(segments);
 
+  // Optimization: Sort segments by growth delay. This allows the render loop to
+  // break early once it reaches segments that haven't started growing yet.
+  armInstances.sort((a, b) => {
+    const delayA = a.dist * 0.15 + a.depth * 0.1;
+    const delayB = b.dist * 0.15 + b.depth * 0.1;
+    return delayA - delayB;
+  });
+
   // Pre-calculate animation delays for the arm to avoid redundant math in the render loop
   const delays = new Float32Array(armInstances.length);
   for (let j = 0; j < armInstances.length; j++) {
