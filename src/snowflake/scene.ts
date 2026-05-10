@@ -389,6 +389,20 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
       branchMesh.count = requiredCount;
 
+      // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
+      // for all active instances. This avoids needing to zero it every frame during animation.
+      const target = branchMesh.instanceMatrix.array as Float32Array;
+      target.set(data.matrices);
+      for (let i = 0; i < requiredCount; i++) {
+        const idx = i * 16;
+        // Zero out the 3x3 basis (columns 1-3)
+        target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
+        target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
+        target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
+      }
+      branchMesh.instanceMatrix.clearUpdateRanges();
+      branchMesh.instanceMatrix.needsUpdate = true;
+
       if (!flakeHolder.children.includes(coreMesh)) {
         flakeHolder.add(coreMesh);
       }
@@ -396,16 +410,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       needsMatrixUpdate = true;
 
       if (animate && !prefersReducedMotion) {
-        // Pre-fill matrices with target values so we only need to scale basis elements in the loop
-        branchMesh.instanceMatrix.array.set(data.matrices);
-        // Zero out the basis for the starting frame of the animation
-        const arr = branchMesh.instanceMatrix.array as Float32Array;
-        for (let i = 0; i < data.matrices.length / 16; i++) {
-          const idx = i * 16;
-          arr[idx + 0] = arr[idx + 1] = arr[idx + 2] = 0;
-          arr[idx + 4] = arr[idx + 5] = arr[idx + 6] = 0;
-          arr[idx + 8] = arr[idx + 9] = arr[idx + 10] = 0;
-        }
         startEntryTween();
       } else {
         entryState.progress = 1;
@@ -529,31 +533,36 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     if (wasEntryActive || entryActive || needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {
-        const matrixCount = currentFlakeData.matrices.length;
         if (eased === 1) {
           // Fast-path for finished animation: bulk copy pre-computed matrices
           branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
+          branchMesh.instanceMatrix.clearUpdateRanges();
         } else {
           // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
           const armLen = currentFlakeData.armInstances.length;
-          const t15 = eased * 1.5;
+          const threshold = eased * 1.5;
+          let maxIndex = 0;
 
           // Optimization: Outer loop over the single arm's instances.
           // We calculate the growth scale 's' once per segment and apply it to all 6 symmetry instances.
           for (let j = 0; j < armLen; j++) {
             const delay = currentFlakeData.delays[j];
-            const progress = Math.max(0, Math.min(1, (t15 - delay) * 2));
-            if (progress <= 0) continue; // Not yet started growing
 
+            // Optimization: Early break since armInstances are sorted by delay.
+            // All segments after this haven't started growing yet.
+            if (delay > threshold) break;
+
+            maxIndex = j;
+
+            const progress = Math.min(1, (threshold - delay) * 2);
             const s = easeOutExpo(progress);
 
             // Inner loop: Apply same scale to all 6 arms using fixed stride
             for (let i = 0; i < 6; i++) {
               const idx = (i * armLen + j) * 16;
-              // Update only 3x3 basis elements (9 writes).
-              // Translations and constant elements were already set during pre-fill.
+              // Copy 4x4 matrix from source to target while scaling the 3x3 basis vectors
               // Column 1
               target[idx + 0] = source[idx + 0] * s;
               target[idx + 1] = source[idx + 1] * s;
@@ -568,10 +577,16 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               target[idx + 10] = source[idx + 10] * s;
             }
           }
+
+          // Optimize GPU upload by only sending the active portion of the buffer.
+          // We only need to upload up to the highest arm index reached in the 6-fold symmetry buffer.
+          branchMesh.instanceMatrix.clearUpdateRanges();
+          for (let i = 0; i < 6; i++) {
+            const start = (i * armLen) * 16;
+            const count = (maxIndex + 1) * 16;
+            branchMesh.instanceMatrix.addUpdateRange(start, count);
+          }
         }
-        // Optimize GPU upload by only sending the active portion of the buffer
-        branchMesh.instanceMatrix.clearUpdateRanges();
-        branchMesh.instanceMatrix.addUpdateRange(0, matrixCount);
         branchMesh.instanceMatrix.needsUpdate = true;
       }
 
