@@ -389,19 +389,27 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
       branchMesh.count = requiredCount;
 
-      // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
-      // for all active instances. This avoids needing to zero it every frame during animation.
-      const target = branchMesh.instanceMatrix.array as Float32Array;
-      target.set(data.matrices);
-      for (let i = 0; i < requiredCount; i++) {
-        const idx = i * 16;
-        // Zero out the 3x3 basis (columns 1-3)
-        target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
-        target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
-        target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
+      if (!animate) {
+        // Fast-path for non-animated updates (e.g. Lab Mode): directly copy the pre-computed
+        // matrices to the GPU buffer and skip the basis-zeroing loop.
+        branchMesh.instanceMatrix.array.set(data.matrices);
+        branchMesh.instanceMatrix.clearUpdateRanges();
+        branchMesh.instanceMatrix.needsUpdate = true;
+      } else {
+        // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
+        // for all active instances. This avoids needing to zero it every frame during animation.
+        const target = branchMesh.instanceMatrix.array as Float32Array;
+        target.set(data.matrices);
+        for (let i = 0; i < requiredCount; i++) {
+          const idx = i * 16;
+          // Zero out the 3x3 basis (columns 1-3)
+          target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
+          target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
+          target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
+        }
+        branchMesh.instanceMatrix.clearUpdateRanges();
+        branchMesh.instanceMatrix.needsUpdate = true;
       }
-      branchMesh.instanceMatrix.clearUpdateRanges();
-      branchMesh.instanceMatrix.needsUpdate = true;
 
       if (!flakeHolder.children.includes(coreMesh)) {
         flakeHolder.add(coreMesh);
@@ -541,7 +549,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
-          const armLen = currentFlakeData.armInstances.length;
+          const armLen = currentFlakeData.armCount;
           const threshold = eased * 1.5;
           let maxIndex = 0;
 
