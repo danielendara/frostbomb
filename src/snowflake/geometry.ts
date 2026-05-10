@@ -36,7 +36,7 @@ export interface InstanceData {
 }
 
 export interface BuildResult {
-  armInstances: InstanceData[];
+  armCount: number;
   delays: Float32Array;
   matrices: Float32Array;
   branchCount: number;
@@ -68,29 +68,18 @@ export function buildSnowflake(
     noise2D,
   );
 
-  // Convert one arm to InstanceData
-  const armInstances = segmentsToInstanceData(segments);
-
   // Optimization: Sort segments by growth delay. This allows the render loop to
   // break early once it reaches segments that haven't started growing yet.
-  armInstances.sort((a, b) => {
+  segments.sort((a, b) => {
     const delayA = a.dist * 0.15 + a.depth * 0.1;
     const delayB = b.dist * 0.15 + b.depth * 0.1;
     return delayA - delayB;
   });
 
-  // Pre-calculate animation delays for the arm to avoid redundant math in the render loop
-  const delays = new Float32Array(armInstances.length);
-  for (let j = 0; j < armInstances.length; j++) {
-    const inst = armInstances[j];
-    delays[j] = inst.dist * 0.15 + inst.depth * 0.1;
-  }
-
-  // 6-fold symmetry: compute matrices into the Float32Array.
-  // Optimization: Instead of 6N matrix compositions, we compute the base arm matrix (angle 0)
-  // once and apply Z-rotation transformations manually to the matrix elements.
-  const matrices = new Float32Array(armInstances.length * 6 * 16);
-  const armLen = armInstances.length;
+  // Pre-calculate animation delays and matrices directly from segments to avoid O(N) object allocations
+  const armLen = segments.length;
+  const delays = new Float32Array(armLen);
+  const matrices = new Float32Array(armLen * 6 * 16);
 
   // Pre-calculate symmetry angles
   const cosines = new Float32Array(6);
@@ -102,11 +91,25 @@ export function buildSnowflake(
   }
 
   for (let j = 0; j < armLen; j++) {
-    const inst = armInstances[j];
+    const seg = segments[j];
+    const delay = seg.dist * 0.15 + seg.depth * 0.1;
+    delays[j] = delay;
+
+    // Inline transformation logic from segmentsToInstanceData
+    const length = seg.length;
+    const finalThickness = seg.thickness * seg.thicknessVariation;
+    const midX = (seg.startX + seg.endX) * 0.5;
+    const midY = (seg.startY + seg.endY) * 0.5;
+
+    // Add subtle jitter for organic feel
+    const jitter = 0.015;
+    const vVar = seg.thicknessVariation - 1;
+    const angle = Math.atan2(seg.dirY, seg.dirX);
+
     // Compute base matrix for the first arm (i=0)
-    dummy.position.set(inst.position[0], inst.position[1], inst.position[2]);
-    dummy.rotation.set(inst.rotation[0], inst.rotation[1], inst.rotation[2]);
-    dummy.scale.set(inst.scale[0], inst.scale[1], inst.scale[2]);
+    dummy.position.set(midX + vVar * jitter, midY + vVar * jitter, vVar * jitter);
+    dummy.rotation.set(vVar * 0.1, 0, angle + Math.PI / 2);
+    dummy.scale.set(finalThickness, length, finalThickness);
     dummy.updateMatrix();
     const m = dummy.matrix.elements;
 
@@ -163,10 +166,10 @@ export function buildSnowflake(
   };
 
   return {
-    armInstances,
+    armCount: armLen,
     delays,
     matrices,
-    branchCount: armInstances.length * 6 + 1,
+    branchCount: armLen * 6 + 1,
     core,
   };
 }
@@ -414,54 +417,6 @@ function buildArm(
   }
 }
 
-function segmentsToInstanceData(segments: Segment[]): InstanceData[] {
-  const data: InstanceData[] = [];
-
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    const length = seg.length;
-    if (length < 0.001) continue;
-
-    const finalThickness = seg.thickness * seg.thicknessVariation;
-    const midX = (seg.startX + seg.endX) * 0.5;
-    const midY = (seg.startY + seg.endY) * 0.5;
-
-    // Add subtle jitter for organic feel
-    const jitter = 0.015;
-    const vVar = seg.thicknessVariation - 1;
-    const position: [number, number, number] = [
-      midX + vVar * jitter,
-      midY + vVar * jitter,
-      vVar * jitter,
-    ];
-
-    const angle = Math.atan2(seg.dirY, seg.dirX);
-
-    // Default unit cylinder is along Y. We want it along the branch direction.
-    // Cylinder is along Y, so rotating by PI/2 around Z makes it along the X-axis (offset).
-    const rotation: [number, number, number] = [
-      vVar * 0.1, // Subtle tilt
-      0,
-      angle + Math.PI / 2,
-    ];
-
-    const scale: [number, number, number] = [
-      finalThickness,
-      length,
-      finalThickness,
-    ];
-
-    data.push({
-      position,
-      rotation,
-      scale,
-      dist: seg.dist,
-      depth: seg.depth,
-    });
-  }
-
-  return data;
-}
 
 // Internal utility functions (maintained for compatibility and internal use)
 export function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
