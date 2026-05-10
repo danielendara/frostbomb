@@ -410,16 +410,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       needsMatrixUpdate = true;
 
       if (animate && !prefersReducedMotion) {
-        // Pre-fill matrices with target values so we only need to scale basis elements in the loop
-        branchMesh.instanceMatrix.array.set(data.matrices);
-        // Zero out the basis for the starting frame of the animation
-        const arr = branchMesh.instanceMatrix.array as Float32Array;
-        for (let i = 0; i < data.matrices.length / 16; i++) {
-          const idx = i * 16;
-          arr[idx + 0] = arr[idx + 1] = arr[idx + 2] = 0;
-          arr[idx + 4] = arr[idx + 5] = arr[idx + 6] = 0;
-          arr[idx + 8] = arr[idx + 9] = arr[idx + 10] = 0;
-        }
         startEntryTween();
       } else {
         entryState.progress = 1;
@@ -552,22 +542,27 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
           const armLen = currentFlakeData.armInstances.length;
-          const t15 = eased * 1.5;
+          const threshold = eased * 1.5;
+          let maxIndex = 0;
 
           // Optimization: Outer loop over the single arm's instances.
           // We calculate the growth scale 's' once per segment and apply it to all 6 symmetry instances.
           for (let j = 0; j < armLen; j++) {
             const delay = currentFlakeData.delays[j];
-            const progress = Math.max(0, Math.min(1, (t15 - delay) * 2));
-            if (progress <= 0) continue; // Not yet started growing
 
+            // Optimization: Early break since armInstances are sorted by delay.
+            // All segments after this haven't started growing yet.
+            if (delay > threshold) break;
+
+            maxIndex = j;
+
+            const progress = Math.min(1, (threshold - delay) * 2);
             const s = easeOutExpo(progress);
 
             // Inner loop: Apply same scale to all 6 arms using fixed stride
             for (let i = 0; i < 6; i++) {
               const idx = (i * armLen + j) * 16;
-              // Update only 3x3 basis elements (9 writes).
-              // Translations and constant elements were already set during pre-fill.
+              // Copy 4x4 matrix from source to target while scaling the 3x3 basis vectors
               // Column 1
               target[idx + 0] = source[idx + 0] * s;
               target[idx + 1] = source[idx + 1] * s;
