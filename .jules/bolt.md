@@ -23,7 +23,7 @@
 **Action:** Persist the `InstancedMesh` across updates. Implement an adaptive growth strategy with 25% headroom to minimize re-allocations. Use `addUpdateRange` (or `updateRange` depending on Three.js version) to limit GPU data transfer to only the active instance count.
 **Impact:** Eliminates frame stutters during rapid parameter adjustments. Reduces GPU memory traffic by up to 80% for smaller snowflakes sharing a large pre-allocated buffer.
 
-## 2026-05-06 - [O(M) Animation Loop & GPU Upload Pruning]
-**Learning:** Symmetrical structures like snowflakes can have their animation metadata sorted to enable early-exit in the render loop. Combined with pre-filling the constant parts of the instance matrix, this drastically reduces per-frame CPU work.
-**Action:** Sort arm segments by growth delay during geometry generation. In the render loop, use a `break` to stop processing once the growth threshold is reached. Calculate the `maxIndex` reached and use `addUpdateRange` to prune GPU uploads for all 6 symmetry instances. Crucially, call `clearUpdateRanges()` when the animation finishes or during initialization to ensure the full state is uploaded to the GPU.
-**Impact:** Reduces render loop complexity from O(N) to O(M) where M is the number of active segments. Eliminates redundant per-frame writes for translation and identity components.
+## 2026-05-20 - [Growth Animation Memory Write Optimization]
+**Learning:** During growth animations, updating the full 16-element 4x4 matrix for every instance in every frame is redundant when only the scale (basis vectors) is changing. Pre-filling the buffer with final translations and constant elements (0s, 1s) allows the loop to only touch the 3x3 basis.
+**Action:** In `updateFlake`, pre-fill the `instanceMatrix.array` with the target matrices and zero out the basis. In the `animate` loop, update only the 9 basis elements (indices 0,1,2, 4,5,6, 8,9,10). Added an early exit for segments that haven't started growing (`progress <= 0`).
+**Impact:** Reduced memory writes in the hot animation loop by ~44% (from 16 to 9 per instance). Eliminated redundant easing and matrix math for inactive segments.
