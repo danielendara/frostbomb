@@ -22,6 +22,10 @@ interface Segment {
   dirY: number;
   length: number;
   dist: number;
+  midX: number;
+  midY: number;
+  angle: number;
+  delay: number;
   thickness: number;
   depth: number;
   thicknessVariation: number;
@@ -66,19 +70,17 @@ export function buildSnowflake(
     pathParams,
     rand,
     noise2D,
+    0, // Initial distance from core
+    0, // Initial angle
   );
 
   // Optimization: Sort segments by growth delay. This allows the render loop to
   // break early once it reaches segments that haven't started growing yet.
-  segments.sort((a, b) => {
-    const delayA = a.dist * 0.15 + a.depth * 0.1;
-    const delayB = b.dist * 0.15 + b.depth * 0.1;
-    return delayA - delayB;
-  });
+  segments.sort((a, b) => a.delay - b.delay);
 
   // Pre-calculate animation delays and matrices directly from segments to avoid O(N) object allocations
   const armLen = segments.length;
-  const delays = new Float32Array(armLen);
+  const delays = new Float32Array(armLen * 6);
   const matrices = new Float32Array(armLen * 6 * 16);
 
   // Pre-calculate symmetry angles
@@ -90,40 +92,40 @@ export function buildSnowflake(
     sines[i] = Math.sin(angle);
   }
 
+  const stride = armLen * 16;
   for (let j = 0; j < armLen; j++) {
     const seg = segments[j];
-    const delay = seg.dist * 0.15 + seg.depth * 0.1;
-    delays[j] = delay;
 
     // Inline transformation logic from segmentsToInstanceData
     const length = seg.length;
     const finalThickness = seg.thickness * seg.thicknessVariation;
-    const midX = (seg.startX + seg.endX) * 0.5;
-    const midY = (seg.startY + seg.endY) * 0.5;
 
     // Add subtle jitter for organic feel
     const jitter = 0.015;
     const vVar = seg.thicknessVariation - 1;
-    const angle = Math.atan2(seg.dirY, seg.dirX);
 
     // Compute base matrix for the first arm (i=0)
-    dummy.position.set(midX + vVar * jitter, midY + vVar * jitter, vVar * jitter);
-    dummy.rotation.set(vVar * 0.1, 0, angle + Math.PI / 2);
+    dummy.position.set(seg.midX + vVar * jitter, seg.midY + vVar * jitter, vVar * jitter);
+    dummy.rotation.set(vVar * 0.1, 0, seg.angle + Math.PI / 2);
     dummy.scale.set(finalThickness, length, finalThickness);
     dummy.updateMatrix();
     const m = dummy.matrix.elements;
 
     // Apply rotation for each of the 6 symmetry instances
+    let offset = j * 16;
     for (let i = 0; i < 6; i++) {
-      const c = cosines[i];
-      const s = sines[i];
-      const offset = (i * armLen + j) * 16;
+      // Populate the delays array for all 6 symmetry instances
+      delays[i * armLen + j] = seg.delay;
 
       // Fast-path for i=0 (identity rotation)
       if (i === 0) {
         matrices.set(m, offset);
+        offset += stride;
         continue;
       }
+
+      const c = cosines[i];
+      const s = sines[i];
 
       // Pre-multiply matrix by Z-rotation: M' = Rz * M
       // Column 1
@@ -146,6 +148,8 @@ export function buildSnowflake(
       matrices[offset + 13] = s * m[12] + c * m[13];
       matrices[offset + 14] = m[14];
       matrices[offset + 15] = m[15];
+
+      offset += stride;
     }
   }
 
@@ -307,9 +311,10 @@ function buildArm(
   pathParams: Params[],
   rand: Rand,
   noise2D: (x: number, y: number) => number,
+  dist: number,
+  angle: number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
-  const dist = Math.sqrt(startX * startX + startY * startY);
   const maxDist = 3.5;
   const pathIdx = Math.min(
     pathParams.length - 1,
@@ -324,6 +329,7 @@ function buildArm(
   const midX = (startX + endX) * 0.5;
   const midY = (startY + endY) * 0.5;
   const thicknessVariation = 1 + noise2D(midX * 3, midY * 3) * 0.15;
+  const delay = dist * 0.15 + depth * 0.1;
 
   segments.push({
     startX,
@@ -334,6 +340,10 @@ function buildArm(
     dirY,
     length,
     dist,
+    midX,
+    midY,
+    angle,
+    delay,
     thickness: params.primaryThickness,
     depth,
     thicknessVariation,
@@ -363,32 +373,40 @@ function buildArm(
     const sinA = Math.sin(angle);
 
     // Right side branch (sign = 1)
+    const branchDirX1 = dirX * cosA - dirY * sinA;
+    const branchDirY1 = dirX * sinA + dirY * cosA;
     buildArm(
       segments,
       pointX,
       pointY,
-      dirX * cosA - dirY * sinA,
-      dirX * sinA + dirY * cosA,
+      branchDirX1,
+      branchDirY1,
       sideLen,
       depth + 1,
       pathParams,
       rand,
       noise2D,
+      t * length + dist,
+      Math.atan2(branchDirY1, branchDirX1),
     );
 
     // Left side branch (sign = -1)
     // cos(-a) = cos(a), sin(-a) = -sin(a)
+    const branchDirX2 = dirX * cosA + dirY * sinA;
+    const branchDirY2 = -dirX * sinA + dirY * cosA;
     buildArm(
       segments,
       pointX,
       pointY,
-      dirX * cosA + dirY * sinA,
-      -dirX * sinA + dirY * cosA,
+      branchDirX2,
+      branchDirY2,
       sideLen,
       depth + 1,
       pathParams,
       rand,
       noise2D,
+      t * length + dist,
+      Math.atan2(branchDirY2, branchDirX2),
     );
   }
 
@@ -400,6 +418,8 @@ function buildArm(
     const tipMidX = (endX + tipEndX) * 0.5;
     const tipMidY = (endY + tipEndY) * 0.5;
     const tipThicknessVariation = 1 + noise2D(tipMidX * 3, tipMidY * 3) * 0.15;
+    const tipDist = length + dist;
+    const tipDelay = tipDist * 0.15 + (depth + 1) * 0.1;
 
     segments.push({
       startX: endX,
@@ -409,7 +429,11 @@ function buildArm(
       dirX,
       dirY,
       length: tipLen,
-      dist: Math.sqrt(endX * endX + endY * endY),
+      dist: tipDist,
+      midX: tipMidX,
+      midY: tipMidY,
+      angle: angle,
+      delay: tipDelay,
       thickness: params.primaryThickness * 0.4,
       depth: depth + 1,
       thicknessVariation: tipThicknessVariation,
