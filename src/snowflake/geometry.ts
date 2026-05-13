@@ -25,6 +25,10 @@ interface Segment {
   thickness: number;
   depth: number;
   thicknessVariation: number;
+  midX: number;
+  midY: number;
+  angle: number;
+  delay: number;
 }
 
 export interface InstanceData {
@@ -61,6 +65,8 @@ export function buildSnowflake(
     segments,
     0, 0, // startX, startY
     1, 0, // dirX, dirY
+    0, // angle
+    0, // dist
     3.5, // Total target length
     0, // depth
     pathParams,
@@ -68,13 +74,9 @@ export function buildSnowflake(
     noise2D,
   );
 
-  // Optimization: Sort segments by growth delay. This allows the render loop to
-  // break early once it reaches segments that haven't started growing yet.
-  segments.sort((a, b) => {
-    const delayA = a.dist * 0.15 + a.depth * 0.1;
-    const delayB = b.dist * 0.15 + b.depth * 0.1;
-    return delayA - delayB;
-  });
+  // Optimization: Sort segments by pre-calculated growth delay. This allows the
+  // render loop to break early once it reaches segments that haven't started growing yet.
+  segments.sort((a, b) => a.delay - b.delay);
 
   // Pre-calculate animation delays and matrices directly from segments to avoid O(N) object allocations
   const armLen = segments.length;
@@ -90,62 +92,60 @@ export function buildSnowflake(
     sines[i] = Math.sin(angle);
   }
 
+  const armStride = armLen * 16;
   for (let j = 0; j < armLen; j++) {
     const seg = segments[j];
-    const delay = seg.dist * 0.15 + seg.depth * 0.1;
-    delays[j] = delay;
+    delays[j] = seg.delay;
 
     // Inline transformation logic from segmentsToInstanceData
     const length = seg.length;
     const finalThickness = seg.thickness * seg.thicknessVariation;
-    const midX = (seg.startX + seg.endX) * 0.5;
-    const midY = (seg.startY + seg.endY) * 0.5;
 
     // Add subtle jitter for organic feel
     const jitter = 0.015;
     const vVar = seg.thicknessVariation - 1;
-    const angle = Math.atan2(seg.dirY, seg.dirX);
 
     // Compute base matrix for the first arm (i=0)
-    dummy.position.set(midX + vVar * jitter, midY + vVar * jitter, vVar * jitter);
-    dummy.rotation.set(vVar * 0.1, 0, angle + Math.PI / 2);
+    dummy.position.set(seg.midX + vVar * jitter, seg.midY + vVar * jitter, vVar * jitter);
+    dummy.rotation.set(vVar * 0.1, 0, seg.angle + Math.PI / 2);
     dummy.scale.set(finalThickness, length, finalThickness);
     dummy.updateMatrix();
     const m = dummy.matrix.elements;
 
     // Apply rotation for each of the 6 symmetry instances
+    // Optimization: Use additive stride-based indexing to avoid multiplications.
+    let offset = j * 16;
     for (let i = 0; i < 6; i++) {
       const c = cosines[i];
       const s = sines[i];
-      const offset = (i * armLen + j) * 16;
 
       // Fast-path for i=0 (identity rotation)
       if (i === 0) {
         matrices.set(m, offset);
-        continue;
+      } else {
+        // Pre-multiply matrix by Z-rotation: M' = Rz * M
+        // Column 1
+        matrices[offset + 0] = c * m[0] - s * m[1];
+        matrices[offset + 1] = s * m[0] + c * m[1];
+        matrices[offset + 2] = m[2];
+        matrices[offset + 3] = m[3];
+        // Column 2
+        matrices[offset + 4] = c * m[4] - s * m[5];
+        matrices[offset + 5] = s * m[4] + c * m[5];
+        matrices[offset + 6] = m[6];
+        matrices[offset + 7] = m[7];
+        // Column 3
+        matrices[offset + 8] = c * m[8] - s * m[9];
+        matrices[offset + 9] = s * m[8] + c * m[9];
+        matrices[offset + 10] = m[10];
+        matrices[offset + 11] = m[11];
+        // Column 4 (Translation)
+        matrices[offset + 12] = c * m[12] - s * m[13];
+        matrices[offset + 13] = s * m[12] + c * m[13];
+        matrices[offset + 14] = m[14];
+        matrices[offset + 15] = m[15];
       }
-
-      // Pre-multiply matrix by Z-rotation: M' = Rz * M
-      // Column 1
-      matrices[offset + 0] = c * m[0] - s * m[1];
-      matrices[offset + 1] = s * m[0] + c * m[1];
-      matrices[offset + 2] = m[2];
-      matrices[offset + 3] = m[3];
-      // Column 2
-      matrices[offset + 4] = c * m[4] - s * m[5];
-      matrices[offset + 5] = s * m[4] + c * m[5];
-      matrices[offset + 6] = m[6];
-      matrices[offset + 7] = m[7];
-      // Column 3
-      matrices[offset + 8] = c * m[8] - s * m[9];
-      matrices[offset + 9] = s * m[8] + c * m[9];
-      matrices[offset + 10] = m[10];
-      matrices[offset + 11] = m[11];
-      // Column 4 (Translation)
-      matrices[offset + 12] = c * m[12] - s * m[13];
-      matrices[offset + 13] = s * m[12] + c * m[13];
-      matrices[offset + 14] = m[14];
-      matrices[offset + 15] = m[15];
+      offset += armStride;
     }
   }
 
@@ -302,6 +302,8 @@ function buildArm(
   startY: number,
   dirX: number,
   dirY: number,
+  angle: number,
+  dist: number,
   length: number,
   depth: number,
   pathParams: Params[],
@@ -309,7 +311,6 @@ function buildArm(
   noise2D: (x: number, y: number) => number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
-  const dist = Math.sqrt(startX * startX + startY * startY);
   const maxDist = 3.5;
   const pathIdx = Math.min(
     pathParams.length - 1,
@@ -337,6 +338,10 @@ function buildArm(
     thickness: params.primaryThickness,
     depth,
     thicknessVariation,
+    midX,
+    midY,
+    angle,
+    delay: dist * 0.15 + depth * 0.1,
   });
 
   if (depth >= params.maxDepth) return;
@@ -358,9 +363,10 @@ function buildArm(
     // Real snowflakes: side branches grow at 60° (hexagonal lattice)
     const noiseVal = noise2D(pointX * 2, pointY * 2);
     const angleVariation = noiseVal * 0.1;
-    const angle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
+    const branchAngle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
+    const cosA = Math.cos(branchAngle);
+    const sinA = Math.sin(branchAngle);
+    const sideDist = dist + t * length;
 
     // Right side branch (sign = 1)
     buildArm(
@@ -369,6 +375,8 @@ function buildArm(
       pointY,
       dirX * cosA - dirY * sinA,
       dirX * sinA + dirY * cosA,
+      angle + branchAngle,
+      sideDist,
       sideLen,
       depth + 1,
       pathParams,
@@ -384,6 +392,8 @@ function buildArm(
       pointY,
       dirX * cosA + dirY * sinA,
       -dirX * sinA + dirY * cosA,
+      angle - branchAngle,
+      sideDist,
       sideLen,
       depth + 1,
       pathParams,
@@ -400,6 +410,7 @@ function buildArm(
     const tipMidX = (endX + tipEndX) * 0.5;
     const tipMidY = (endY + tipEndY) * 0.5;
     const tipThicknessVariation = 1 + noise2D(tipMidX * 3, tipMidY * 3) * 0.15;
+    const tipDist = length; // dist + length, where dist is 0 for depth 0 primary arm
 
     segments.push({
       startX: endX,
@@ -409,10 +420,14 @@ function buildArm(
       dirX,
       dirY,
       length: tipLen,
-      dist: Math.sqrt(endX * endX + endY * endY),
+      dist: tipDist,
       thickness: params.primaryThickness * 0.4,
       depth: depth + 1,
       thicknessVariation: tipThicknessVariation,
+      midX: tipMidX,
+      midY: tipMidY,
+      angle,
+      delay: tipDist * 0.15 + (depth + 1) * 0.1,
     });
   }
 }

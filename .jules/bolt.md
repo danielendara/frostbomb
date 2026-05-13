@@ -32,3 +32,8 @@
 **Learning:** Intermediate object allocations (like `InstanceData`) in the geometry generation pipeline create significant GC pressure, especially for complex snowflakes with thousands of segments. Additionally, redundant per-frame basis-zeroing during static "Lab Mode" updates consumes unnecessary CPU cycles.
 **Action:** Inline transformation logic to populate `matrices` and `delays` Float32Arrays directly from sorted `segments`, eliminating the middleman object. Implement a fast-path in `updateFlake` to skip basis-zeroing and redundant matrix writes when `animate` is false.
 **Impact:** Drastically reduced memory overhead and GC churn. Significantly improved responsiveness of Lab Mode sliders by making static updates O(1) buffer copies instead of O(N) loops.
+
+## 2026-05-08 - [Recursive Geometry Pre-calculation]
+**Learning:** Performing recursive trigonometric (`Math.atan2`) and square root (`Math.sqrt`) calculations within the snowflake geometry generation pipeline is a bottleneck when dealing with high-complexity dendrites. Storing these values during the initial tree traversal eliminates redundant math in the subsequent sorting and matrix population phases.
+**Action:** Move distance and angle calculations into the recursive `buildArm` function. Pass them as parameters to avoid re-computing from coordinates. Pre-calculate `midX`, `midY`, and animation `delay` on the `Segment` object.
+**Impact:** Drastically reduces CPU work in the hot path of the geometry pipeline. Improves sorting efficiency by using pre-calculated scalars.
