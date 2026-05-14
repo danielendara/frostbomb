@@ -22,6 +22,10 @@ interface Segment {
   dirY: number;
   length: number;
   dist: number;
+  midX: number;
+  midY: number;
+  angle: number;
+  delay: number;
   thickness: number;
   depth: number;
   thicknessVariation: number;
@@ -72,6 +76,8 @@ export function buildSnowflake(
     pathParams,
     rand,
     noise2D,
+    0, // Initial distance from core
+    0, // Initial angle
   );
 
   // Optimization: Sort segments by pre-calculated growth delay. This allows the
@@ -80,7 +86,7 @@ export function buildSnowflake(
 
   // Pre-calculate animation delays and matrices directly from segments to avoid O(N) object allocations
   const armLen = segments.length;
-  const delays = new Float32Array(armLen);
+  const delays = new Float32Array(armLen * 6);
   const matrices = new Float32Array(armLen * 6 * 16);
 
   // Pre-calculate symmetry angles
@@ -309,6 +315,8 @@ function buildArm(
   pathParams: Params[],
   rand: Rand,
   noise2D: (x: number, y: number) => number,
+  dist: number,
+  angle: number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
   const maxDist = 3.5;
@@ -325,6 +333,7 @@ function buildArm(
   const midX = (startX + endX) * 0.5;
   const midY = (startY + endY) * 0.5;
   const thicknessVariation = 1 + noise2D(midX * 3, midY * 3) * 0.15;
+  const delay = dist * 0.15 + depth * 0.1;
 
   segments.push({
     startX,
@@ -335,6 +344,10 @@ function buildArm(
     dirY,
     length,
     dist,
+    midX,
+    midY,
+    angle,
+    delay,
     thickness: params.primaryThickness,
     depth,
     thicknessVariation,
@@ -369,6 +382,8 @@ function buildArm(
     const sideDist = dist + t * length;
 
     // Right side branch (sign = 1)
+    const branchDirX1 = dirX * cosA - dirY * sinA;
+    const branchDirY1 = dirX * sinA + dirY * cosA;
     buildArm(
       segments,
       pointX,
@@ -382,10 +397,14 @@ function buildArm(
       pathParams,
       rand,
       noise2D,
+      t * length + dist,
+      Math.atan2(branchDirY1, branchDirX1),
     );
 
     // Left side branch (sign = -1)
     // cos(-a) = cos(a), sin(-a) = -sin(a)
+    const branchDirX2 = dirX * cosA + dirY * sinA;
+    const branchDirY2 = -dirX * sinA + dirY * cosA;
     buildArm(
       segments,
       pointX,
@@ -399,6 +418,8 @@ function buildArm(
       pathParams,
       rand,
       noise2D,
+      t * length + dist,
+      Math.atan2(branchDirY2, branchDirX2),
     );
   }
 
