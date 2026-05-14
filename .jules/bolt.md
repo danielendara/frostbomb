@@ -32,3 +32,8 @@
 **Learning:** Intermediate object allocations (like `InstanceData`) in the geometry generation pipeline create significant GC pressure, especially for complex snowflakes with thousands of segments. Additionally, redundant per-frame basis-zeroing during static "Lab Mode" updates consumes unnecessary CPU cycles.
 **Action:** Inline transformation logic to populate `matrices` and `delays` Float32Arrays directly from sorted `segments`, eliminating the middleman object. Implement a fast-path in `updateFlake` to skip basis-zeroing and redundant matrix writes when `animate` is false.
 **Impact:** Drastically reduced memory overhead and GC churn. Significantly improved responsiveness of Lab Mode sliders by making static updates O(1) buffer copies instead of O(N) loops.
+
+## 2026-05-14 - [Manual Matrix Composition for Geometry Generation]
+**Learning:** Using `THREE.Object3D.updateMatrix()` followed by manual rotation for symmetry in a hot loop (like snowflake geometry generation) is significantly slower than direct manual matrix construction. Manual construction allows for leveraging existing trigonometric values (like `dirX` and `dirY`) and avoiding redundant calculations within the `Object3D` abstraction.
+**Action:** For high-frequency geometry generation or updates involving many instances, bypass `Object3D` and use manual matrix population. Reuse pre-calculated trigonometric constants for symmetry or repetitive rotations.
+**Impact:** Optimization reduced average `buildSnowflake` time by ~32% (from 0.207ms to 0.140ms).

@@ -47,7 +47,14 @@ export interface BuildResult {
   core: InstanceData;
 }
 
-const dummy = new THREE.Object3D();
+// Pre-calculate symmetry angles once to avoid per-snowflake overhead.
+const SYMMETRY_COSINES = new Float32Array(6);
+const SYMMETRY_SINES = new Float32Array(6);
+for (let i = 0; i < 6; i++) {
+  const angle = (i * Math.PI * 2) / 6;
+  SYMMETRY_COSINES[i] = Math.cos(angle);
+  SYMMETRY_SINES[i] = Math.sin(angle);
+}
 
 export function buildSnowflake(
   conditions: GrowthConditions,
@@ -83,15 +90,6 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
-  // Pre-calculate symmetry angles
-  const cosines = new Float32Array(6);
-  const sines = new Float32Array(6);
-  for (let i = 0; i < 6; i++) {
-    const angle = (i * Math.PI * 2) / 6;
-    cosines[i] = Math.cos(angle);
-    sines[i] = Math.sin(angle);
-  }
-
   const armStride = armLen * 16;
   for (let j = 0; j < armLen; j++) {
     const seg = segments[j];
@@ -105,46 +103,72 @@ export function buildSnowflake(
     const jitter = 0.015;
     const vVar = seg.thicknessVariation - 1;
 
-    // Compute base matrix for the first arm (i=0)
-    dummy.position.set(seg.midX + vVar * jitter, seg.midY + vVar * jitter, vVar * jitter);
-    dummy.rotation.set(vVar * 0.1, 0, seg.angle + Math.PI / 2);
-    dummy.scale.set(finalThickness, length, finalThickness);
-    dummy.updateMatrix();
-    const m = dummy.matrix.elements;
+    // Manual matrix construction for base arm (i=0) incorporating jitter and rotation.
+    // Optimization: Avoids THREE.Object3D.updateMatrix() overhead and redundant trig.
+    const ax = vVar * 0.1;
+    const cax = Math.cos(ax);
+    const sax = Math.sin(ax);
+    const cbz = -seg.dirY; // cos(angle + PI/2)
+    const sbz = seg.dirX;  // sin(angle + PI/2)
+
+    const sx = finalThickness;
+    const sy = length;
+    const sz = finalThickness;
+
+    const m0 = cbz * sx;
+    const m1 = sbz * sx;
+    const m4 = -sbz * cax * sy;
+    const m5 = cbz * cax * sy;
+    const m6 = sax * sy;
+    const m8 = sbz * sax * sz;
+    const m9 = -cbz * sax * sz;
+    const m10 = cax * sz;
+    const m12 = seg.midX + vVar * jitter;
+    const m13 = seg.midY + vVar * jitter;
+    const m14 = vVar * jitter;
 
     // Apply rotation for each of the 6 symmetry instances
     // Optimization: Use additive stride-based indexing to avoid multiplications.
     let offset = j * 16;
     for (let i = 0; i < 6; i++) {
-      const c = cosines[i];
-      const s = sines[i];
+      const ci = SYMMETRY_COSINES[i];
+      const si = SYMMETRY_SINES[i];
 
-      // Fast-path for i=0 (identity rotation)
       if (i === 0) {
-        matrices.set(m, offset);
+        matrices[offset + 0] = m0;
+        matrices[offset + 1] = m1;
+        matrices[offset + 2] = 0;
+        matrices[offset + 3] = 0;
+        matrices[offset + 4] = m4;
+        matrices[offset + 5] = m5;
+        matrices[offset + 6] = m6;
+        matrices[offset + 7] = 0;
+        matrices[offset + 8] = m8;
+        matrices[offset + 9] = m9;
+        matrices[offset + 10] = m10;
+        matrices[offset + 11] = 0;
+        matrices[offset + 12] = m12;
+        matrices[offset + 13] = m13;
+        matrices[offset + 14] = m14;
+        matrices[offset + 15] = 1;
       } else {
-
-        // Pre-multiply matrix by Z-rotation: M' = Rz * M
-        // Column 1
-        matrices[offset + 0] = c * m[0] - s * m[1];
-        matrices[offset + 1] = s * m[0] + c * m[1];
-        matrices[offset + 2] = m[2];
-        matrices[offset + 3] = m[3];
-        // Column 2
-        matrices[offset + 4] = c * m[4] - s * m[5];
-        matrices[offset + 5] = s * m[4] + c * m[5];
-        matrices[offset + 6] = m[6];
-        matrices[offset + 7] = m[7];
-        // Column 3
-        matrices[offset + 8] = c * m[8] - s * m[9];
-        matrices[offset + 9] = s * m[8] + c * m[9];
-        matrices[offset + 10] = m[10];
-        matrices[offset + 11] = m[11];
-        // Column 4 (Translation)
-        matrices[offset + 12] = c * m[12] - s * m[13];
-        matrices[offset + 13] = s * m[12] + c * m[13];
-        matrices[offset + 14] = m[14];
-        matrices[offset + 15] = m[15];
+        // Pre-multiply matrix by Z-rotation: M' = Rz(theta_i) * M
+        matrices[offset + 0] = ci * m0 - si * m1;
+        matrices[offset + 1] = si * m0 + ci * m1;
+        matrices[offset + 2] = 0;
+        matrices[offset + 3] = 0;
+        matrices[offset + 4] = ci * m4 - si * m5;
+        matrices[offset + 5] = si * m4 + ci * m5;
+        matrices[offset + 6] = m6;
+        matrices[offset + 7] = 0;
+        matrices[offset + 8] = ci * m8 - si * m9;
+        matrices[offset + 9] = si * m8 + ci * m9;
+        matrices[offset + 10] = m10;
+        matrices[offset + 11] = 0;
+        matrices[offset + 12] = ci * m12 - si * m13;
+        matrices[offset + 13] = si * m12 + ci * m13;
+        matrices[offset + 14] = m14;
+        matrices[offset + 15] = 1;
       }
       offset += armStride;
     }
