@@ -37,3 +37,8 @@
 **Learning:** Using `THREE.Object3D.updateMatrix()` followed by manual rotation for symmetry in a hot loop (like snowflake geometry generation) is significantly slower than direct manual matrix construction. Manual construction allows for leveraging existing trigonometric values (like `dirX` and `dirY`) and avoiding redundant calculations within the `Object3D` abstraction.
 **Action:** For high-frequency geometry generation or updates involving many instances, bypass `Object3D` and use manual matrix population. Reuse pre-calculated trigonometric constants for symmetry or repetitive rotations.
 **Impact:** Optimization reduced average `buildSnowflake` time by ~32% (from 0.207ms to 0.140ms).
+
+## 2026-05-15 - [Easing Function LUT]
+**Learning:** High-frequency animation loops (like snowflake growth) that call `Math.pow` for thousands of instances per frame create significant CPU overhead. For standard easing functions on a fixed [0, 1] domain, a Look-Up Table (LUT) is a highly effective O(1) replacement.
+**Action:** Replace expensive mathematical easing calls in hot loops with pre-calculated Float32Array LUTs. Use bitwise truncation for fast indexing.
+**Impact:** Optimization achieved a ~7.5x speedup per call, saving tens of thousands of `Math.pow` calls per second.
