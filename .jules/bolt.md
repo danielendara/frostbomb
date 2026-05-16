@@ -42,3 +42,8 @@
 **Learning:** High-frequency animation loops (like snowflake growth) that call `Math.pow` for thousands of instances per frame create significant CPU overhead. For standard easing functions on a fixed [0, 1] domain, a Look-Up Table (LUT) is a highly effective O(1) replacement.
 **Action:** Replace expensive mathematical easing calls in hot loops with pre-calculated Float32Array LUTs. Use bitwise truncation for fast indexing.
 **Impact:** Optimization achieved a ~7.5x speedup per call, saving tens of thousands of `Math.pow` calls per second.
+
+## 2026-05-16 - [Recursive Geometry Memory & Math Optimizations]
+**Learning:** Storing unused spatial properties (startX, endX, dist, etc.) in every recursive segment of a snowflake creates unnecessary memory pressure and GC churn. Additionally, standard divisions and redundant trig multiplications in the recursion branch points add measurable overhead.
+**Action:** Trim the `Segment` interface to strictly used properties for matrix generation. Replace divisions with multiplications of pre-calculated inverse constants. Pre-calculate common rotation products once per branch pair to halve the multiplication count in side-branch vector math.
+**Impact:** Significantly reduced memory footprint per generated snowflake. Improved recursion speed by minimizing stack frame size and arithmetic operations.
