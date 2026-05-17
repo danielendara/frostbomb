@@ -1,20 +1,39 @@
-# frostbomb
+# ❄️ frost·bomb
 
-A procedurally generated 3D snowflake in your browser. Every page load grows a new crystal, seeded from the real physics of ice formation — temperature, supersaturation, and the hexagonal symmetry of H₂O.
+A procedurally generated 3D snowflake laboratory in your browser. Every page load grows a unique crystal seeded from the real physics of ice formation — temperature, supersaturation, and the hexagonal symmetry of the H₂O crystal lattice.
 
-Refresh the page (or press `R`) to grow another one.
+**[Live Site](https://frostbomb.com)**
 
-## Stack
+---
 
-- **Vite** + **TypeScript** — fast dev server, type-safe build
-- **Three.js** — WebGL rendering with a physical ice material (real refractive index 1.31)
-- **simplex-noise** — organic variation in branch thickness
-- Zero runtime dependencies beyond the above
-- Deploys as static assets on **Cloudflare Workers**
+## ✨ Features
 
-## How the science works
+- **Procedural Growth:** Generates unique geometry based on a 5-character seed.
+- **Scientific Accuracy:** Uses the Nakaya morphology diagram to map atmospheric conditions to crystal habits.
+- **Atmospheric Path:** Simulates varying conditions as the snowflake "falls," leading to hybrid forms (e.g., plates transitioning to dendrites).
+- **Lab Mode:** Take manual control of temperature and humidity to see how they influence growth in real-time.
+- **Visual Modes:**
+    - **Pink Mode:** A soft, glowing aesthetic.
+    - **Prism Mode:** Dynamic HSL color cycling and chromatic dispersion.
+- **Interactive:** Full 3D orbit controls, parallax effects, and smooth growth animations.
+- **Export:** Save your favorite flakes as high-quality PNGs.
 
-Each visit picks a point on the [Nakaya morphology diagram](https://en.wikipedia.org/wiki/Snowflake#Classification), which maps temperature + supersaturation to a crystal habit:
+### ⌨️ Keyboard Shortcuts
+
+| Key | Action |
+|---|---|
+| `R` | **Regrow** a new random snowflake |
+| `L` | Toggle **Lab Mode** (manual controls) |
+| `P` | Toggle **Pink Mode** |
+| `M` | Toggle **Prism Mode** (rainbow) |
+| `S` | **Save** current snowflake as PNG |
+
+---
+
+## 🔬 The Science
+
+### Nakaya Morphology Diagram
+Each flake is grown by sampling a path through the **Nakaya Diagram**, which maps temperature and supersaturation (humidity) to specific crystal habits:
 
 | Conditions | Habit |
 |---|---|
@@ -22,79 +41,74 @@ Each visit picks a point on the [Nakaya morphology diagram](https://en.wikipedia
 | ~-5°C, high SS | Needle |
 | -5 to -8°C, low SS | Hollow column |
 | -10 to -12°C | Sector plate |
-| **-15°C, high SS** | **Stellar / fernlike dendrite** ← the classic "snowflake" |
+| **-15°C, high SS** | **Stellar / fernlike dendrite** ← The "classic" snowflake |
 | -22 to -40°C | Thick plates, columns |
 
-One arm is generated with seeded-random branching, then rotated-copied 6 times for true hexagonal symmetry — just like the real ice Ih crystal lattice.
+### Hexagonal Symmetry
+Real ice (Ice Ih) has a hexagonal crystal structure. `frostbomb` generates one primary arm using seeded-random branching logic and then rotates it 6 times to ensure true crystallographic symmetry.
 
-## Develop
+---
 
-```sh
-npm install
-npm run dev
+## ⚡ Performance Optimizations
+
+Built with a focus on 60fps performance, even during complex geometry generation:
+
+- **GPU Update Ranges:** Uses `addUpdateRange` to only transfer modified matrix data to the GPU during growth animations, minimizing PCIe bus traffic.
+- **Fast Easing (LUT):** Replaces expensive `Math.pow` calls with a 1024-entry **Look-Up Table (LUT)** for O(1) easing, resulting in a ~7.5x speedup.
+- **Trig Expansion:** The snowfall particle system uses the `sin(a+b)` trigonometric identity to reduce `Math.sin` calls from 200 per frame to just 2.
+- **Geometry Reuse:** Reuses a single `InstancedMesh` and `CylinderGeometry` to prevent GPU buffer churn and memory fragmentation.
+- **Offscreen Caching:** The Nakaya diagram's static background is cached on an offscreen canvas, improving its redraw performance by ~36x.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Vite** + **TypeScript**
+- **Three.js** — WebGL rendering with `MeshPhysicalMaterial` for realistic ice (IOR 1.31, dispersion, transmission).
+- **postprocessing** — High-quality bloom and SMAA.
+- **Tweakpane** — Lightweight UI for Lab Mode.
+- **simplex-noise** — Organic variation in branch thickness and angles.
+- **Cloudflare Workers** — Static asset hosting and deployment.
+
+---
+
+## 🚀 Development
+
+### Setup
+```bash
+pnpm install
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`).
+### Local Dev
+```bash
+pnpm dev
+```
+Open `http://localhost:5173`.
 
-## Build
-
-```sh
-npm run build
+### Build & Preview
+```bash
+pnpm build
+pnpm preview # Serves the Worker locally with Wrangler
 ```
 
-Output goes to `dist/`.
-
-## Test
-
-```sh
-npm test
+### Testing
+```bash
+pnpm test # Runs Playwright end-to-end tests
 ```
 
-Playwright starts the local Vite server automatically from `playwright.config.ts`.
-
-## Preview the Worker
-
-```sh
-npm run preview
+### Deployment
+```bash
+pnpm deploy # Deploys to Cloudflare Workers
 ```
 
-This builds the app and serves the Worker locally with Wrangler.
+---
 
-## Deploy to Cloudflare Workers
+## 🔗 Sharing
 
-```sh
-npm run deploy
-```
+Every snowflake has a unique seed. Share a specific crystal by appending `?seed=xxxxx` to the URL:
 
-The Worker is configured in `wrangler.jsonc` as `frostbombsite`. The Vite Cloudflare plugin builds static assets into `dist/`, and Wrangler deploys those assets to Cloudflare Workers.
+`https://frostbomb.com/?seed=k3m7q`
 
-Recommended Cloudflare settings:
+---
 
-- **Build command**: `npm run build`
-- **Deploy command**: `npm run deploy`
-- **Node version**: `20`
-- **Custom domain**: `frostbomb.com`
-
-### Domain redirects
-
-This project deploys to Cloudflare Workers, not Cloudflare Pages. Do not use a Pages-style `_redirects` file with absolute URLs; Workers static assets reject that during deploy.
-
-If `www.frostbomb.com` should redirect to `frostbomb.com`, configure it with a Cloudflare Redirect Rule or Worker route so the path and query string are preserved.
-
-## Share a specific snowflake
-
-Every flake has a 5-character seed (shown in the top right). Share it like:
-
-```
-https://frostbomb.com/?seed=k3m7q
-```
-
-Anyone visiting that URL sees the identical crystal.
-
-## Keys & buttons
-
-- **R** — grow a new flake
-- **L** — toggle Lab Mode
-- **S** — save snowflake as PNG
-- **Grow another** button — same thing
-- Mouse movement — parallax (subtle)
+*“A snowflake is one of God's most fragile creations, but look what they can do when they stick together.”*
