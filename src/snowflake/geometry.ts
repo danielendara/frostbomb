@@ -59,10 +59,13 @@ export function buildSnowflake(
 ): BuildResult {
   const segments: Segment[] = [];
   const noise2D = createNoise2D(() => rand.next());
+  const path = conditions.path.length > 0
+    ? conditions.path
+    : [{ temp: conditions.temperatureC, ss: conditions.supersaturation }];
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
+  const pathParams = path.map((p) => paramsFor(p.temp, p.ss));
 
   // Build one primary arm along +X
   buildArm(
@@ -154,7 +157,7 @@ export function buildSnowflake(
   }
 
   // Core parameters from start of path
-  const startParams = paramsFor(conditions.path[0].temp, conditions.path[0].ss);
+  const startParams = paramsFor(path[0].temp, path[0].ss);
 
   // Add a solid hexagonal core
   const coreRadius = Math.max(0.2, startParams.primaryThickness * 2.5);

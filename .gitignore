@@ -1,10 +1,14 @@
 node_modules
 dist
+cdk.out/
 .DS_Store
 *.log
 .vite
 .env
 .env.local
+backups/*.json
+!backups/.gitkeep
+infra/bun.lock
 
 # wrangler files
 .wrangler
@@ -14,3 +18,9 @@ dist
 
 # playwright results
 test-results/
+playwright-report/
+
+# clawpatch
+.clawpatch/*
+!.clawpatch/
+!.clawpatch/config.json
