@@ -107,6 +107,19 @@ function setText(id: string, value: string) {
   if (el) el.textContent = value;
 }
 
+function announce(message: string) {
+  const announcer = document.getElementById('a11y-announcer');
+  if (announcer) {
+    announcer.textContent = message;
+    // Clear after a delay so it can be re-announced if the same action happens again
+    setTimeout(() => {
+      if (announcer.textContent === message) {
+        announcer.textContent = '';
+      }
+    }, 3000);
+  }
+}
+
 document.getElementById('refresh')?.addEventListener('click', () => {
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
@@ -177,19 +190,25 @@ function updateFromPane() {
 
 document.getElementById('btn-copy')?.addEventListener('click', () => {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
-  navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('btn-copy');
-    if (btn) {
-      const labelEl = btn.querySelector('.action-btn__label');
-      if (labelEl) {
-        const originalLabel = labelEl.textContent;
-        labelEl.textContent = 'Copied!';
-        setTimeout(() => {
-          labelEl.textContent = originalLabel;
-        }, 2000);
+  navigator.clipboard.writeText(url)
+    .then(() => {
+      const btn = document.getElementById('btn-copy');
+      if (btn) {
+        const labelEl = btn.querySelector('.action-btn__label');
+        if (labelEl) {
+          const originalLabel = labelEl.textContent;
+          labelEl.textContent = 'Copied!';
+          announce('Link copied to clipboard');
+          setTimeout(() => {
+            labelEl.textContent = originalLabel;
+          }, 2000);
+        }
       }
-    }
-  });
+    })
+    .catch((err) => {
+      console.error('Failed to copy: ', err);
+      announce('Failed to copy link');
+    });
 });
 
 function saveSnowflake() {

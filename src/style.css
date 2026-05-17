@@ -164,6 +164,11 @@ body.pink-mode {
   color: var(--accent);
 }
 
+.lab-toggle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
 .lab-toggle span {
   color: var(--ink-dim);
 }
@@ -385,6 +390,11 @@ body.pink-mode {
   background: rgba(230, 237, 245, 0.05);
 }
 
+.action-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
 .action-btn--toggle.active {
   border-color: var(--accent);
   color: var(--accent);
@@ -427,6 +437,11 @@ body.pink-mode {
   color: var(--accent);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(158, 201, 255, 0.15);
+}
+
+.refresh:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .refresh__icon {
