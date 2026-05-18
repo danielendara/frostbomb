@@ -13,17 +13,6 @@ import { getHabit, GrowthConditions, Habit } from './nakaya.ts';
  * warmer+drier → plainer geometry.
  */
 
-interface Segment {
-  dirX: number;
-  dirY: number;
-  length: number;
-  thickness: number;
-  thicknessVariation: number;
-  midX: number;
-  midY: number;
-  delay: number;
-}
-
 export interface InstanceData {
   position: [number, number, number];
   rotation: [number, number, number];
@@ -44,6 +33,14 @@ export interface BuildResult {
 const INV_MAX_DIST = 1 / 3.5;
 const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 
+// Performance Optimization: Flat buffer for segments to eliminate thousands of O(N) object allocations
+// per snowflake generation. This drastically reduces GC pressure and improves memory locality.
+const MAX_SEGMENTS_PER_ARM = 10000;
+const SEGMENT_STRIDE = 8;
+const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
+const SEGMENT_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
+let currentSegmentCount = 0;
+
 // Pre-calculate symmetry angles once to avoid per-snowflake overhead.
 const SYMMETRY_COSINES = new Float32Array(6);
 const SYMMETRY_SINES = new Float32Array(6);
@@ -57,7 +54,7 @@ export function buildSnowflake(
   conditions: GrowthConditions,
   rand: Rand,
 ): BuildResult {
-  const segments: Segment[] = [];
+  currentSegmentCount = 0;
   const noise2D = createNoise2D(() => rand.next());
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
@@ -66,7 +63,6 @@ export function buildSnowflake(
 
   // Build one primary arm along +X
   buildArm(
-    segments,
     0, 0, // startX, startY
     1, 0, // dirX, dirY
     0, // dist
@@ -77,35 +73,48 @@ export function buildSnowflake(
     noise2D,
   );
 
-  // Optimization: Sort segments by pre-calculated growth delay. This allows the
+  // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
-  segments.sort((a, b) => a.delay - b.delay);
+  // We use a Float32Array-backed index list to avoid object property access overhead during sort.
+  const armLen = currentSegmentCount;
+  const sortedIndices = SEGMENT_INDICES.subarray(0, armLen);
+  sortedIndices.sort((a, b) => SEGMENT_BUFFER[a * SEGMENT_STRIDE + 7] - SEGMENT_BUFFER[b * SEGMENT_STRIDE + 7]);
 
   // Pre-calculate animation delays and matrices directly from segments to avoid O(N) object allocations
-  const armLen = segments.length;
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
   const stride = armLen * 16;
   for (let j = 0; j < armLen; j++) {
-    const seg = segments[j];
-    delays[j] = seg.delay;
+    const segIdx = sortedIndices[j] * SEGMENT_STRIDE;
+
+    const dirX = SEGMENT_BUFFER[segIdx + 0];
+    const dirY = SEGMENT_BUFFER[segIdx + 1];
+    const length = SEGMENT_BUFFER[segIdx + 2];
+    const thickness = SEGMENT_BUFFER[segIdx + 3];
+    const thicknessVariation = SEGMENT_BUFFER[segIdx + 4];
+    const midX = SEGMENT_BUFFER[segIdx + 5];
+    const midY = SEGMENT_BUFFER[segIdx + 6];
+    const delay = SEGMENT_BUFFER[segIdx + 7];
+
+    delays[j] = delay;
 
     // Inline transformation logic from segmentsToInstanceData
-    const length = seg.length;
-    const finalThickness = seg.thickness * seg.thicknessVariation;
+    const finalThickness = thickness * thicknessVariation;
 
     // Add subtle jitter for organic feel
     const jitter = 0.015;
-    const vVar = seg.thicknessVariation - 1;
+    const vVar = thicknessVariation - 1;
 
     // Manual matrix construction for base arm (i=0) incorporating jitter and rotation.
     // Optimization: Avoids THREE.Object3D.updateMatrix() overhead and redundant trig.
     const ax = vVar * 0.1;
-    const cax = Math.cos(ax);
-    const sax = Math.sin(ax);
-    const cbz = -seg.dirY; // cos(angle + PI/2)
-    const sbz = seg.dirX;  // sin(angle + PI/2)
+    // Performance Optimization: 2nd-order Taylor expansion for jitter (small angles).
+    // sin(x) ≈ x, cos(x) ≈ 1 - x^2/2. Avoids expensive Math.sin/cos calls.
+    const sax = ax;
+    const cax = 1 - 0.5 * ax * ax;
+    const cbz = -dirY; // cos(angle + PI/2)
+    const sbz = dirX;  // sin(angle + PI/2)
 
     const sx = finalThickness;
     const sy = length;
@@ -120,8 +129,8 @@ export function buildSnowflake(
     const m9 = -cbz * sax * sz;
     const m10 = cax * sz;
     const vJitter = vVar * jitter;
-    const m12 = seg.midX + vJitter;
-    const m13 = seg.midY + vJitter;
+    const m12 = midX + vJitter;
+    const m13 = midY + vJitter;
     const m14 = vJitter;
 
     // Apply rotation for each of the 6 symmetry instances
@@ -321,7 +330,6 @@ function paramsFor(temp: number, ss: number): Params {
 }
 
 function buildArm(
-  segments: Segment[],
   startX: number,
   startY: number,
   dirX: number,
@@ -341,6 +349,7 @@ function buildArm(
   const params = pathParams[pathIdx];
 
   if (depth > params.maxDepth || length < 0.08) return;
+  if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
   const endX = startX + dirX * length;
   const endY = startY + dirY * length;
@@ -348,16 +357,18 @@ function buildArm(
   const midY = (startY + endY) * 0.5;
   const thicknessVariation = 1 + noise2D(midX * 3, midY * 3) * 0.15;
 
-  segments.push({
-    dirX,
-    dirY,
-    length,
-    thickness: params.primaryThickness,
-    thicknessVariation,
-    midX,
-    midY,
-    delay: dist * 0.15 + depth * 0.1,
-  });
+  const bIdx = currentSegmentCount * SEGMENT_STRIDE;
+  SEGMENT_BUFFER[bIdx + 0] = dirX;
+  SEGMENT_BUFFER[bIdx + 1] = dirY;
+  SEGMENT_BUFFER[bIdx + 2] = length;
+  SEGMENT_BUFFER[bIdx + 3] = params.primaryThickness;
+  SEGMENT_BUFFER[bIdx + 4] = thicknessVariation;
+  SEGMENT_BUFFER[bIdx + 5] = midX;
+  SEGMENT_BUFFER[bIdx + 6] = midY;
+  SEGMENT_BUFFER[bIdx + 7] = dist * 0.15 + depth * 0.1; // delay
+
+  SEGMENT_INDICES[currentSegmentCount] = currentSegmentCount;
+  currentSegmentCount++;
 
   if (depth >= params.maxDepth || params.sideBranchProb <= 0) return;
 
@@ -398,7 +409,6 @@ function buildArm(
 
     // Right side branch (sign = 1)
     buildArm(
-      segments,
       pointX,
       pointY,
       dxca - dysa,
@@ -414,7 +424,6 @@ function buildArm(
     // Left side branch (sign = -1)
     // cos(-a) = cos(a), sin(-a) = -sin(a)
     buildArm(
-      segments,
       pointX,
       pointY,
       dxca + dysa,
@@ -430,6 +439,8 @@ function buildArm(
 
   // Optional pointed tip extension
   if (params.hasTip && depth === 0) {
+    if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
+
     const tipLen = 0.12;
     const tipEndX = endX + dirX * tipLen;
     const tipEndY = endY + dirY * tipLen;
@@ -439,16 +450,18 @@ function buildArm(
 
     const tipDist = length; // dist + length, where dist is 0 for depth 0 primary arm
 
-    segments.push({
-      dirX,
-      dirY,
-      length: tipLen,
-      thickness: params.primaryThickness * 0.4,
-      thicknessVariation: tipThicknessVariation,
-      midX: tipMidX,
-      midY: tipMidY,
-      delay: tipDist * 0.15 + (depth + 1) * 0.1,
-    });
+    const tIdx = currentSegmentCount * SEGMENT_STRIDE;
+    SEGMENT_BUFFER[tIdx + 0] = dirX;
+    SEGMENT_BUFFER[tIdx + 1] = dirY;
+    SEGMENT_BUFFER[tIdx + 2] = tipLen;
+    SEGMENT_BUFFER[tIdx + 3] = params.primaryThickness * 0.4;
+    SEGMENT_BUFFER[tIdx + 4] = tipThicknessVariation;
+    SEGMENT_BUFFER[tIdx + 5] = tipMidX;
+    SEGMENT_BUFFER[tIdx + 6] = tipMidY;
+    SEGMENT_BUFFER[tIdx + 7] = tipDist * 0.15 + (depth + 1) * 0.1;
+
+    SEGMENT_INDICES[currentSegmentCount] = currentSegmentCount;
+    currentSegmentCount++;
   }
 }
 

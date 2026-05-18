@@ -52,3 +52,8 @@
 **Learning:** Skipping zero-value writes in matrix population loops is a common micro-optimization, but it is unsafe if the underlying `Float32Array` buffer is reused or pooled. Stale data from previous generations can cause non-deterministic visual glitches.
 **Action:** Always explicitly initialize all 16 indices of a transformation matrix in hot loops, even for identity components and zeros, unless the buffer is guaranteed to be zero-allocated (e.g., via `new Float32Array()` without reuse).
 **Impact:** Ensures rendering correctness across multiple snowflake regenerations without compromising the performance gains of manual matrix construction.
+
+## 2026-05-20 - [Data-Oriented Segment Buffer & Trig Approximations]
+**Learning:** Procedural generation of tree-like structures (like snowflake arms) using recursive functions that return or allocate objects causes significant GC pressure. Transitioning to a Data-Oriented Design (DOD) with pre-allocated `Float32Array` buffers eliminates this churn. Furthermore, for small-angle jitter or perturbations, 2nd-order Taylor expansions are a faster alternative to standard `Math.sin`/`Math.cos` calls.
+**Action:** Refactor recursive generation to write directly into a flat `Float32Array` (the `SEGMENT_BUFFER`) with a fixed stride (e.g., 8). Use 2nd-order Taylor series approximations for small-angle trigonometric perturbations in hot recursive paths.
+**Impact:** Eliminated thousands of short-lived object allocations per snowflake generation, significantly reducing garbage collection overhead. Improved cache locality for subsequent sorting and matrix population phases.
