@@ -59,13 +59,10 @@ export function buildSnowflake(
 ): BuildResult {
   const segments: Segment[] = [];
   const noise2D = createNoise2D(() => rand.next());
-  const path = conditions.path.length > 0
-    ? conditions.path
-    : [{ temp: conditions.temperatureC, ss: conditions.supersaturation }];
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  const pathParams = path.map((p) => paramsFor(p.temp, p.ss));
+  const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
 
   // Build one primary arm along +X
   buildArm(
@@ -89,6 +86,7 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
+  const stride = armLen * 16;
   for (let j = 0; j < armLen; j++) {
     const seg = segments[j];
     delays[j] = seg.delay;
@@ -126,16 +124,35 @@ export function buildSnowflake(
     const m13 = seg.midY + vJitter;
     const m14 = vJitter;
 
-    // Apply rotation for each of the 6 symmetry instances.
-    // Optimization: All 6 instances of a segment are stored contiguously (j * 96).
-    // This improves cache locality in the render loop and allows for single-range GPU uploads.
-    let offset = j * 96;
-    for (let i = 0; i < 6; i++) {
+    // Apply rotation for each of the 6 symmetry instances
+    // Optimization: Use additive stride-based indexing to avoid multiplications.
+    let offset = j * 16;
+
+    // Special case for i=0 to avoid 48 multiplications and 24 additions/subtractions.
+    matrices[offset + 0] = m0;
+    matrices[offset + 1] = m1;
+    matrices[offset + 2] = 0;
+    matrices[offset + 3] = 0;
+    matrices[offset + 4] = m4;
+    matrices[offset + 5] = m5;
+    matrices[offset + 6] = m6;
+    matrices[offset + 7] = 0;
+    matrices[offset + 8] = m8;
+    matrices[offset + 9] = m9;
+    matrices[offset + 10] = m10;
+    matrices[offset + 11] = 0;
+    matrices[offset + 12] = m12;
+    matrices[offset + 13] = m13;
+    matrices[offset + 14] = m14;
+    matrices[offset + 15] = 1;
+
+    offset += stride;
+
+    for (let i = 1; i < 6; i++) {
       const ci = SYMMETRY_COSINES[i];
       const si = SYMMETRY_SINES[i];
 
       // Pre-multiply matrix by Z-rotation: M' = Rz(theta_i) * M
-      // Formula reduces to identity for i=0 where ci=1, si=0.
       matrices[offset + 0] = ci * m0 - si * m1;
       matrices[offset + 1] = si * m0 + ci * m1;
       matrices[offset + 2] = 0;
@@ -152,12 +169,12 @@ export function buildSnowflake(
       matrices[offset + 13] = si * m12 + ci * m13;
       matrices[offset + 14] = m14;
       matrices[offset + 15] = 1;
-      offset += 16;
+      offset += stride;
     }
   }
 
   // Core parameters from start of path
-  const startParams = paramsFor(path[0].temp, path[0].ss);
+  const startParams = pathParams[0];
 
   // Add a solid hexagonal core
   const coreRadius = Math.max(0.2, startParams.primaryThickness * 2.5);
@@ -342,21 +359,29 @@ function buildArm(
     delay: dist * 0.15 + depth * 0.1,
   });
 
-  if (depth >= params.maxDepth) return;
+  if (depth >= params.maxDepth || params.sideBranchProb <= 0) return;
 
   // Walk along the main branch, occasionally spawning side branches
   const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
+  if (numSteps <= 1) return;
+
+  const invNumSteps = 1 / numSteps;
+  const stepX = dirX * length * invNumSteps;
+  const stepY = dirY * length * invNumSteps;
+  const sideLenBase = length * params.sideBranchDecay;
+  let pointX = startX;
+  let pointY = startY;
 
   for (let i = 1; i < numSteps; i++) {
-    const t = i / numSteps;
+    pointX += stepX;
+    pointY += stepY;
+
+    const t = i * invNumSteps;
     // Side branches get less likely near the tip
     const localProb = params.sideBranchProb * (1 - t * 0.4);
     if (!rand.chance(localProb)) continue;
 
-    const tLen = t * length;
-    const pointX = startX + dirX * tLen;
-    const pointY = startY + dirY * tLen;
-    const sideLen = length * params.sideBranchDecay * rand.range(0.4, 1.0) * (1 - t * 0.5);
+    const sideLen = sideLenBase * rand.range(0.4, 1.0) * (1 - t * 0.5);
 
     // Real snowflakes: side branches grow at 60° (hexagonal lattice)
     const noiseVal = noise2D(pointX * 2, pointY * 2);
@@ -364,7 +389,7 @@ function buildArm(
     const branchAngle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
     const cosA = Math.cos(branchAngle);
     const sinA = Math.sin(branchAngle);
-    const sideDist = dist + tLen;
+    const sideDist = dist + t * length;
 
     const dxca = dirX * cosA;
     const dysa = dirY * sinA;

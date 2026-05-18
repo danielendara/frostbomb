@@ -48,7 +48,7 @@
 **Action:** Trim the `Segment` interface to strictly used properties for matrix generation. Replace divisions with multiplications of pre-calculated inverse constants. Pre-calculate common rotation products once per branch pair to halve the multiplication count in side-branch vector math.
 **Impact:** Significantly reduced memory footprint per generated snowflake. Improved recursion speed by minimizing stack frame size and arithmetic operations.
 
-## 2026-05-17 - [Segment-Major Layout & Dynamic Draw Pruning]
-**Learning:** For symmetrical structures (like 6-fold snowflakes), an "arm-major" layout (storing all segments of arm 1, then arm 2, etc.) forces multiple fragmented GPU uploads and prevents efficient draw pruning. A "segment-major" layout (storing all 6 symmetry instances of segment 0, then segment 1, etc.) allows for contiguous memory access and a single GPU update range.
-**Action:** Group symmetry instances contiguously in the `matrices` Float32Array. Update the render loop to utilize this layout and dynamically adjust `mesh.count` to prune non-grown segments from the GPU pipeline.
-**Impact:** Reduced GPU upload calls from 6 to 1 per frame. Significantly decreased vertex shader pressure by skipping rendering for segments that haven't started growing.
+## 2026-05-18 - [Buffer Reuse Safety in Performance-Critical Loops]
+**Learning:** Skipping zero-value writes in matrix population loops is a common micro-optimization, but it is unsafe if the underlying `Float32Array` buffer is reused or pooled. Stale data from previous generations can cause non-deterministic visual glitches.
+**Action:** Always explicitly initialize all 16 indices of a transformation matrix in hot loops, even for identity components and zeros, unless the buffer is guaranteed to be zero-allocated (e.g., via `new Float32Array()` without reuse).
+**Impact:** Ensures rendering correctness across multiple snowflake regenerations without compromising the performance gains of manual matrix construction.

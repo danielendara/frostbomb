@@ -334,20 +334,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       window.removeEventListener('resize', updateCamera);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       reducedMotionQuery.removeEventListener('change', handleReducedMotionChange);
-      branchMesh?.parent?.remove(branchMesh);
-      coreMesh.parent?.remove(coreMesh);
-      particles.parent?.remove(particles);
-      flakeHolder.parent?.remove(flakeHolder);
-      ambient.parent?.remove(ambient);
-      keyLight.parent?.remove(keyLight);
-      rimLight.parent?.remove(rimLight);
-      glint1.parent?.remove(glint1);
-      glint2.parent?.remove(glint2);
       renderer.dispose();
       composer.dispose();
       branchMesh?.dispose();
-      branchMesh = null;
-      currentFlakeData = null;
       branchGeom.dispose();
       material.dispose();
       particleGeom.dispose();
@@ -428,7 +417,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       } else {
         // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
         // for all active instances. This avoids needing to zero it every frame during animation.
-        // With the new segment-major layout, all instances of a segment are contiguous.
         const target = branchMesh.instanceMatrix.array as Float32Array;
         target.set(data.matrices);
         for (let i = 0; i < requiredCount; i++) {
@@ -606,8 +594,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const s = easeOutExpoFast(progress);
 
             // Inner loop: Apply scale to all 6 symmetry instances.
-            // Optimization: All 6 instances are contiguous in the segment-major layout (j * 96).
-            let idx = j * 96;
+            // Optimization: Use additive indexing to avoid redundant multiplications.
+            let idx = j * 16;
+            const stride = armLen * 16;
 
             for (let i = 0; i < 6; i++) {
               // Column 1
@@ -622,30 +611,27 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               target[idx + 8] = source[idx + 8] * s;
               target[idx + 9] = source[idx + 9] * s;
               target[idx + 10] = source[idx + 10] * s;
-              idx += 16;
+              idx += stride;
             }
           }
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.
-          // In the segment-major layout, all instances for a segment are contiguous, so we only
-          // need a single update range covering all 6 instances of the active segments.
+          // Using plural update ranges (supported in Three.js r159+) to minimize PCIe bus traffic.
           if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
             branchMesh.instanceMatrix.clearUpdateRanges();
             if (maxIndex >= minAnimatedIndex) {
-              const start = minAnimatedIndex * 96; // minAnimatedIndex * 6 * 16
-              const count = (maxIndex - minAnimatedIndex + 1) * 96;
-              branchMesh.instanceMatrix.addUpdateRange(start, count);
+              const updateCount = (maxIndex - minAnimatedIndex + 1) * 16;
+              for (let i = 0; i < 6; i++) {
+                const start = (i * armLen + minAnimatedIndex) * 16;
+                branchMesh.instanceMatrix.addUpdateRange(start, updateCount);
+              }
             }
           } else {
-            // Fallback for older Three.js versions
-            const start = minAnimatedIndex * 96;
-            const end = (maxIndex + 1) * 96;
+            // Fallback for older Three.js versions: update the entire modified range
+            const start = minAnimatedIndex * 16;
+            const end = (5 * armLen + maxIndex + 1) * 16;
             (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: end - start };
           }
-
-          // Optimization: Dynamic draw pruning. Adjust the instance count to only render
-          // segments that have started growing. This saves vertex shader work and improves throughput.
-          branchMesh.count = (maxIndex + 1) * 6;
         }
         branchMesh.instanceMatrix.needsUpdate = true;
       }
