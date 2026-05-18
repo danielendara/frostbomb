@@ -59,10 +59,13 @@ export function buildSnowflake(
 ): BuildResult {
   const segments: Segment[] = [];
   const noise2D = createNoise2D(() => rand.next());
+  const path = conditions.path.length > 0
+    ? conditions.path
+    : [{ temp: conditions.temperatureC, ss: conditions.supersaturation }];
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
+  const pathParams = path.map((p) => paramsFor(p.temp, p.ss));
 
   // Build one primary arm along +X
   buildArm(
@@ -86,7 +89,6 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
-  const armStride = armLen * 16;
   for (let j = 0; j < armLen; j++) {
     const seg = segments[j];
     delays[j] = seg.delay;
@@ -169,7 +171,7 @@ export function buildSnowflake(
       matrices[offset + 13] = si * m12 + ci * m13;
       matrices[offset + 14] = m14;
       matrices[offset + 15] = 1;
-      offset += armStride;
+      offset += 16;
     }
   }
 
