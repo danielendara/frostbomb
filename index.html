@@ -32,7 +32,7 @@
           <button id="guide-toggle" class="lab-toggle" title="Explain terminology" aria-pressed="false">
             Guide
           </button>
-          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode" aria-pressed="false">
+          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-pressed="false">
             Lab Mode: <span id="lab-status">OFF</span>
           </button>
         </div>
@@ -85,11 +85,11 @@
             <span class="action-btn__icon" aria-hidden="true">⟳</span>
             <span class="action-btn__label">Auto-Rotate</span>
           </button>
-          <button class="action-btn action-btn--toggle" id="btn-pink" title="Toggle pink mode" aria-pressed="false">
+          <button class="action-btn action-btn--toggle" id="btn-pink" title="Toggle pink mode (P)" aria-pressed="false">
             <span class="action-btn__icon" aria-hidden="true">💖</span>
             <span class="action-btn__label">Pink</span>
           </button>
-          <button class="action-btn action-btn--toggle" id="btn-prism" title="Toggle prism mode" aria-pressed="false">
+          <button class="action-btn action-btn--toggle" id="btn-prism" title="Toggle prism mode (M)" aria-pressed="false">
             <span class="action-btn__icon" aria-hidden="true">🌈</span>
             <span class="action-btn__label">Prism</span>
           </button>
@@ -99,11 +99,11 @@
           <span class="action-btn__icon" aria-hidden="true">⎘</span>
           <span class="action-btn__label">Copy Link</span>
         </button>
-        <button class="action-btn" id="btn-save" title="Save as PNG">
+        <button class="action-btn" id="btn-save" title="Save as PNG (S)">
           <span class="action-btn__icon" aria-hidden="true">↓</span>
           <span class="action-btn__label">Save PNG</span>
         </button>
-        <button class="refresh" id="refresh" title="Grow another snowflake">
+        <button class="refresh" id="refresh" title="Grow another snowflake (R)">
           <span class="refresh__icon" aria-hidden="true">↻</span>
           <span class="refresh__label">grow another</span>
         </button>
@@ -113,6 +113,7 @@
       </p>
     </footer>
 
+    <div id="a11y-announcer" class="sr-only" aria-live="polite"></div>
     <div class="grain" aria-hidden="true"></div>
 
     <script type="module" src="/src/main.ts"></script>
