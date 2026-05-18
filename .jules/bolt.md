@@ -52,3 +52,8 @@
 **Learning:** Skipping zero-value writes in matrix population loops is a common micro-optimization, but it is unsafe if the underlying `Float32Array` buffer is reused or pooled. Stale data from previous generations can cause non-deterministic visual glitches.
 **Action:** Always explicitly initialize all 16 indices of a transformation matrix in hot loops, even for identity components and zeros, unless the buffer is guaranteed to be zero-allocated (e.g., via `new Float32Array()` without reuse).
 **Impact:** Ensures rendering correctness across multiple snowflake regenerations without compromising the performance gains of manual matrix construction.
+
+## 2026-05-19 - [Interleaved Symmetry Layout for Contiguous GPU Updates]
+**Learning:** Storing symmetrical instances in `InstancedMesh` with large strides (e.g., grouping by arm) necessitates multiple `addUpdateRange` calls per frame to update the GPU. Interleaving the layout so that all symmetrical instances of a single segment are contiguous (e.g., `[seg1_arm1, seg1_arm2, ..., seg1_arm6, seg2_arm1, ...]`) allows for a single, contiguous GPU memory update per segment-batch.
+**Action:** Refactor geometry generation to use an interleaved layout for symmetry arms. Consolidate GPU memory transfers in the animation loop into a single `addUpdateRange` call.
+**Impact:** Reduces PCIe bus overhead and driver overhead by consolidating 6 fragmented updates into 1. Improves CPU cache locality as all matrices for a single segment's animation calculation are now adjacent in memory.

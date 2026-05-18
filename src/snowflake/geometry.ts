@@ -86,7 +86,6 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
-  const stride = armLen * 16;
   for (let j = 0; j < armLen; j++) {
     const seg = segments[j];
     delays[j] = seg.delay;
@@ -125,8 +124,9 @@ export function buildSnowflake(
     const m14 = vJitter;
 
     // Apply rotation for each of the 6 symmetry instances
-    // Optimization: Use additive stride-based indexing to avoid multiplications.
-    let offset = j * 16;
+    // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5, seg1_arm0, ...]
+    // to improve cache locality and consolidate GPU update ranges.
+    let offset = j * 6 * 16;
 
     // Special case for i=0 to avoid 48 multiplications and 24 additions/subtractions.
     matrices[offset + 0] = m0;
@@ -146,7 +146,7 @@ export function buildSnowflake(
     matrices[offset + 14] = m14;
     matrices[offset + 15] = 1;
 
-    offset += stride;
+    offset += 16;
 
     for (let i = 1; i < 6; i++) {
       const ci = SYMMETRY_COSINES[i];
@@ -169,7 +169,7 @@ export function buildSnowflake(
       matrices[offset + 13] = si * m12 + ci * m13;
       matrices[offset + 14] = m14;
       matrices[offset + 15] = 1;
-      offset += stride;
+      offset += 16;
     }
   }
 
