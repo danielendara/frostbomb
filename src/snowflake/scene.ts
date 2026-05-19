@@ -594,9 +594,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const s = easeOutExpoFast(progress);
 
             // Inner loop: Apply scale to all 6 symmetry instances.
-            // Optimization: Use additive indexing to avoid redundant multiplications.
-            let idx = j * 16;
-            const stride = armLen * 16;
+            // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
+            // which results in contiguous memory writes and better cache locality.
+            let idx = j * 6 * 16;
 
             for (let i = 0; i < 6; i++) {
               // Column 1
@@ -611,20 +611,18 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               target[idx + 8] = source[idx + 8] * s;
               target[idx + 9] = source[idx + 9] * s;
               target[idx + 10] = source[idx + 10] * s;
-              idx += stride;
+              idx += 16;
             }
           }
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.
-          // Using plural update ranges (supported in Three.js r159+) to minimize PCIe bus traffic.
+          // Because of the interleaved layout, we can now use a SINGLE update range for all symmetry arms.
           if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
             branchMesh.instanceMatrix.clearUpdateRanges();
             if (maxIndex >= minAnimatedIndex) {
-              const updateCount = (maxIndex - minAnimatedIndex + 1) * 16;
-              for (let i = 0; i < 6; i++) {
-                const start = (i * armLen + minAnimatedIndex) * 16;
-                branchMesh.instanceMatrix.addUpdateRange(start, updateCount);
-              }
+              const start = minAnimatedIndex * 6 * 16;
+              const count = (maxIndex - minAnimatedIndex + 1) * 6 * 16;
+              branchMesh.instanceMatrix.addUpdateRange(start, count);
             }
           } else {
             // Fallback for older Three.js versions: update the entire modified range
