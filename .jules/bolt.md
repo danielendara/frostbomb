@@ -53,7 +53,7 @@
 **Action:** Always explicitly initialize all 16 indices of a transformation matrix in hot loops, even for identity components and zeros, unless the buffer is guaranteed to be zero-allocated (e.g., via `new Float32Array()` without reuse).
 **Impact:** Ensures rendering correctness across multiple snowflake regenerations without compromising the performance gains of manual matrix construction.
 
-## 2026-05-19 - [Interleaved Symmetry Layout for Contiguous GPU Updates]
-**Learning:** Storing symmetrical instances in `InstancedMesh` with large strides (e.g., grouping by arm) necessitates multiple `addUpdateRange` calls per frame to update the GPU. Interleaving the layout so that all symmetrical instances of a single segment are contiguous (e.g., `[seg1_arm1, seg1_arm2, ..., seg1_arm6, seg2_arm1, ...]`) allows for a single, contiguous GPU memory update per segment-batch.
-**Action:** Refactor geometry generation to use an interleaved layout for symmetry arms. Consolidate GPU memory transfers in the animation loop into a single `addUpdateRange` call.
-**Impact:** Reduces PCIe bus overhead and driver overhead by consolidating 6 fragmented updates into 1. Improves CPU cache locality as all matrices for a single segment's animation calculation are now adjacent in memory.
+## 2026-05-20 - [Data-Oriented Segment Buffer & Trig Approximations]
+**Learning:** Procedural generation of tree-like structures (like snowflake arms) using recursive functions that return or allocate objects causes significant GC pressure. Transitioning to a Data-Oriented Design (DOD) with pre-allocated `Float32Array` buffers eliminates this churn. Furthermore, for small-angle jitter or perturbations, 2nd-order Taylor expansions are a faster alternative to standard `Math.sin`/`Math.cos` calls.
+**Action:** Refactor recursive generation to write directly into a flat `Float32Array` (the `SEGMENT_BUFFER`) with a fixed stride (e.g., 8). Use 2nd-order Taylor series approximations for small-angle trigonometric perturbations in hot recursive paths.
+**Impact:** Eliminated thousands of short-lived object allocations per snowflake generation, significantly reducing garbage collection overhead. Improved cache locality for subsequent sorting and matrix population phases.
