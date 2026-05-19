@@ -598,6 +598,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             // which results in contiguous memory writes and better cache locality.
             let idx = j * 6 * 16;
 
+            // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
+            // These are identical for all 6 arms as they represent Z-tilt and thickness.
+            const m6s = source[idx + 6] * s;
+            const m10s = source[idx + 10] * s;
+
             for (let i = 0; i < 6; i++) {
               // Column 1
               target[idx + 0] = source[idx + 0] * s;
@@ -606,11 +611,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               // Column 2
               target[idx + 4] = source[idx + 4] * s;
               target[idx + 5] = source[idx + 5] * s;
-              target[idx + 6] = source[idx + 6] * s;
+              target[idx + 6] = m6s;
               // Column 3
               target[idx + 8] = source[idx + 8] * s;
               target[idx + 9] = source[idx + 9] * s;
-              target[idx + 10] = source[idx + 10] * s;
+              target[idx + 10] = m10s;
               idx += 16;
             }
           }

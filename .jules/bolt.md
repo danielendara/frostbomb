@@ -57,3 +57,8 @@
 **Learning:** Procedural generation of tree-like structures (like snowflake arms) using recursive functions that return or allocate objects causes significant GC pressure. Transitioning to a Data-Oriented Design (DOD) with pre-allocated `Float32Array` buffers eliminates this churn. Furthermore, for small-angle jitter or perturbations, 2nd-order Taylor expansions are a faster alternative to standard `Math.sin`/`Math.cos` calls.
 **Action:** Refactor recursive generation to write directly into a flat `Float32Array` (the `SEGMENT_BUFFER`) with a fixed stride (e.g., 8). Use 2nd-order Taylor series approximations for small-angle trigonometric perturbations in hot recursive paths.
 **Impact:** Eliminated thousands of short-lived object allocations per snowflake generation, significantly reducing garbage collection overhead. Improved cache locality for subsequent sorting and matrix population phases.
+
+## 2026-05-21 - [Recursive Loop & Animation Hoisting]
+**Learning:** Even in highly optimized procedural generation, redundant multiplications within recursive loops (like `i * invNumSteps`) and invariant calculations within symmetry loops (like Z-axis basis components) add measurable CPU overhead when scaled to thousands of instances.
+**Action:** Replace loop-index multiplications with additive tracking for distance and progress in `buildArm`. Hoist invariant Column 2 and Column 3 Z-basis components outside the inner symmetry loop in the animation path. Pre-calculate path sampling scale once per snowflake.
+**Impact:** Further reduces CPU cycles in both the geometry generation and the hot animation path, ensuring high framerates even for the most complex dendrites.

@@ -60,6 +60,8 @@ export function buildSnowflake(
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
   const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
+  // Optimization: Pre-calculate path sampling scale to save multiplications in recursion.
+  const pathScale = INV_MAX_DIST * pathParams.length;
 
   // Build one primary arm along +X
   buildArm(
@@ -69,6 +71,7 @@ export function buildSnowflake(
     3.5, // Total target length
     0, // depth
     pathParams,
+    pathScale,
     rand,
     noise2D,
   );
@@ -338,13 +341,15 @@ function buildArm(
   length: number,
   depth: number,
   pathParams: Params[],
+  pathScale: number,
   rand: Rand,
   noise2D: (x: number, y: number) => number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
+  // Optimization: use pre-calculated pathScale.
   const pathIdx = Math.min(
     pathParams.length - 1,
-    (dist * INV_MAX_DIST * pathParams.length) | 0,
+    (dist * pathScale) | 0,
   );
   const params = pathParams[pathIdx];
 
@@ -377,17 +382,21 @@ function buildArm(
   if (numSteps <= 1) return;
 
   const invNumSteps = 1 / numSteps;
-  const stepX = dirX * length * invNumSteps;
-  const stepY = dirY * length * invNumSteps;
+  const stepDist = length * invNumSteps;
+  const stepX = dirX * stepDist;
+  const stepY = dirY * stepDist;
   const sideLenBase = length * params.sideBranchDecay;
   let pointX = startX;
   let pointY = startY;
+  let t = 0;
+  let currentDist = dist;
 
   for (let i = 1; i < numSteps; i++) {
     pointX += stepX;
     pointY += stepY;
+    t += invNumSteps;
+    currentDist += stepDist;
 
-    const t = i * invNumSteps;
     // Side branches get less likely near the tip
     const localProb = params.sideBranchProb * (1 - t * 0.4);
     if (!rand.chance(localProb)) continue;
@@ -400,7 +409,7 @@ function buildArm(
     const branchAngle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
     const cosA = Math.cos(branchAngle);
     const sinA = Math.sin(branchAngle);
-    const sideDist = dist + t * length;
+    const sideDist = currentDist;
 
     const dxca = dirX * cosA;
     const dysa = dirY * sinA;
@@ -417,6 +426,7 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
+      pathScale,
       rand,
       noise2D,
     );
@@ -432,6 +442,7 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
+      pathScale,
       rand,
       noise2D,
     );
