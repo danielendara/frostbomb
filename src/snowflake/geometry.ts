@@ -33,13 +33,18 @@ export interface BuildResult {
 const INV_MAX_DIST = 1 / 3.5;
 const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 
-// Performance Optimization: Flat buffer for segments to eliminate thousands of O(N) object allocations
+// Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
 const MAX_SEGMENTS_PER_ARM = 10000;
 const SEGMENT_STRIDE = 8;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
 const SEGMENT_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
 let currentSegmentCount = 0;
+
+// Performance Optimization: Global noise instance avoids building a permutation table every time.
+// We use a fixed seed for the internal permutation table to ensure that nOffset-based
+// variation remains deterministic across different sessions.
+const noise2D = createNoise2D(() => 0.5);
 
 // Pre-calculate symmetry angles once to avoid per-snowflake overhead.
 const SYMMETRY_COSINES = new Float32Array(6);
@@ -55,11 +60,15 @@ export function buildSnowflake(
   rand: Rand,
 ): BuildResult {
   currentSegmentCount = 0;
-  const noise2D = createNoise2D(() => rand.next());
+
+  // Use a seeded offset to ensure deterministic but unique noise per snowflake.
+  const nOffset = rand.range(0, 1000);
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
   const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
+  const pathCount = pathParams.length;
+  const pathIdxScale = INV_MAX_DIST * pathCount;
 
   // Build one primary arm along +X
   buildArm(
@@ -69,18 +78,20 @@ export function buildSnowflake(
     3.5, // Total target length
     0, // depth
     pathParams,
+    pathIdxScale,
     rand,
-    noise2D,
+    nOffset,
   );
 
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
-  // We use a Float32Array-backed index list to avoid object property access overhead during sort.
   const armLen = currentSegmentCount;
   const sortedIndices = SEGMENT_INDICES.subarray(0, armLen);
   sortedIndices.sort((a, b) => SEGMENT_BUFFER[a * SEGMENT_STRIDE + 7] - SEGMENT_BUFFER[b * SEGMENT_STRIDE + 7]);
 
-  // Pre-calculate animation delays and matrices directly from segments to avoid O(N) object allocations
+  // Performance Optimization: Use shared scratchpad buffers during calculation to avoid O(N)
+  // intermediate allocations. We return a slice (copy) to ensure that the returned data
+  // is owned by the caller and not overwritten by subsequent buildSnowflake calls.
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
@@ -221,6 +232,8 @@ interface Params {
   sideBranchProb: number;
   sideBranchDecay: number;
   sideBranchAngle: number;
+  cosAngle: number;
+  sinAngle: number;
   maxDepth: number;
   habit: Habit;
   hasRidges: boolean;
@@ -229,9 +242,10 @@ interface Params {
 
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
+  let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
   switch (habit) {
     case 'fernlike_dendrite':
-      return {
+      p = {
         primaryLength: 3.04,
         primaryThickness: 0.036,
         sideBranchProb: 0.85,
@@ -242,8 +256,9 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: true,
         hasTip: true,
       };
+      break;
     case 'stellar_dendrite':
-      return {
+      p = {
         primaryLength: 2.8,
         primaryThickness: 0.048,
         sideBranchProb: 0.55 + ss * 0.25,
@@ -254,8 +269,9 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: true,
         hasTip: true,
       };
+      break;
     case 'sector_plate':
-      return {
+      p = {
         primaryLength: 2.08,
         primaryThickness: 0.176,
         sideBranchProb: 0.15,
@@ -266,8 +282,9 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: true,
         hasTip: false,
       };
+      break;
     case 'plate':
-      return {
+      p = {
         primaryLength: 1.76,
         primaryThickness: 0.28,
         sideBranchProb: 0.05,
@@ -278,8 +295,9 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: false,
       };
+      break;
     case 'needle':
-      return {
+      p = {
         primaryLength: 3.36,
         primaryThickness: 0.04,
         sideBranchProb: 0.05,
@@ -290,8 +308,9 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: true,
       };
+      break;
     case 'column':
-      return {
+      p = {
         primaryLength: 1.92,
         primaryThickness: 0.4,
         sideBranchProb: 0,
@@ -302,8 +321,9 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: false,
       };
+      break;
     case 'capped_column':
-      return {
+      p = {
         primaryLength: 2.24,
         primaryThickness: 0.144,
         sideBranchProb: 0.3,
@@ -314,8 +334,9 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: true,
         hasTip: true,
       };
+      break;
     default:
-      return {
+      p = {
         primaryLength: 1.76,
         primaryThickness: 0.28,
         sideBranchProb: 0.05,
@@ -327,6 +348,11 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
   }
+  return {
+    ...p,
+    cosAngle: Math.cos(p.sideBranchAngle),
+    sinAngle: Math.sin(p.sideBranchAngle),
+  };
 }
 
 function buildArm(
@@ -338,24 +364,23 @@ function buildArm(
   length: number,
   depth: number,
   pathParams: Params[],
+  pathIdxScale: number,
   rand: Rand,
-  noise2D: (x: number, y: number) => number,
+  nOffset: number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
   const pathIdx = Math.min(
     pathParams.length - 1,
-    (dist * INV_MAX_DIST * pathParams.length) | 0,
+    (dist * pathIdxScale) | 0,
   );
   const params = pathParams[pathIdx];
 
   if (depth > params.maxDepth || length < 0.08) return;
   if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
-  const endX = startX + dirX * length;
-  const endY = startY + dirY * length;
-  const midX = (startX + endX) * 0.5;
-  const midY = (startY + endY) * 0.5;
-  const thicknessVariation = 1 + noise2D(midX * 3, midY * 3) * 0.15;
+  const midX = startX + dirX * length * 0.5;
+  const midY = startY + dirY * length * 0.5;
+  const thicknessVariation = 1 + noise2D(midX * 3 + nOffset, midY * 3 + nOffset) * 0.15;
 
   const bIdx = currentSegmentCount * SEGMENT_STRIDE;
   SEGMENT_BUFFER[bIdx + 0] = dirX;
@@ -394,12 +419,16 @@ function buildArm(
 
     const sideLen = sideLenBase * rand.range(0.4, 1.0) * (1 - t * 0.5);
 
-    // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-    const noiseVal = noise2D(pointX * 2, pointY * 2);
-    const angleVariation = noiseVal * 0.1;
-    const branchAngle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
-    const cosA = Math.cos(branchAngle);
-    const sinA = Math.sin(branchAngle);
+    // Performance Optimization: 2nd-order Taylor expansion for small angular perturbations.
+    // Replace expensive Math.cos/sin with pre-calculated base angles and manual rotation math.
+    const noiseVal = noise2D(pointX * 2 + nOffset, pointY * 2 + nOffset);
+    const da = noiseVal * 0.1 + rand.range(-0.04, 0.04);
+    const cda = 1 - 0.5 * da * da;
+    const sda = da;
+
+    const cosA = params.cosAngle * cda - params.sinAngle * sda;
+    const sinA = params.sinAngle * cda + params.cosAngle * sda;
+
     const sideDist = dist + t * length;
 
     const dxca = dirX * cosA;
@@ -417,8 +446,9 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
+      pathIdxScale,
       rand,
-      noise2D,
+      nOffset,
     );
 
     // Left side branch (sign = -1)
@@ -432,8 +462,9 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
+      pathIdxScale,
       rand,
-      noise2D,
+      nOffset,
     );
   }
 
@@ -442,11 +473,11 @@ function buildArm(
     if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
     const tipLen = 0.12;
-    const tipEndX = endX + dirX * tipLen;
-    const tipEndY = endY + dirY * tipLen;
-    const tipMidX = (endX + tipEndX) * 0.5;
-    const tipMidY = (endY + tipEndY) * 0.5;
-    const tipThicknessVariation = 1 + noise2D(tipMidX * 3, tipMidY * 3) * 0.15;
+    const endX = startX + dirX * length;
+    const endY = startY + dirY * length;
+    const tipMidX = endX + dirX * tipLen * 0.5;
+    const tipMidY = endY + dirY * tipLen * 0.5;
+    const tipThicknessVariation = 1 + noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset) * 0.15;
 
     const tipDist = length; // dist + length, where dist is 0 for depth 0 primary arm
 
