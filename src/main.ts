@@ -107,6 +107,13 @@ function setText(id: string, value: string) {
   if (el) el.textContent = value;
 }
 
+function announce(message: string) {
+  const announcer = document.getElementById('a11y-announcer');
+  if (announcer) {
+    announcer.textContent = message;
+  }
+}
+
 document.getElementById('refresh')?.addEventListener('click', () => {
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
@@ -184,6 +191,7 @@ document.getElementById('btn-copy')?.addEventListener('click', () => {
       if (labelEl) {
         const originalLabel = labelEl.textContent;
         labelEl.textContent = 'Copied!';
+        announce('Link copied to clipboard');
         setTimeout(() => {
           labelEl.textContent = originalLabel;
         }, 2000);
@@ -201,6 +209,7 @@ function saveSnowflake() {
   link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
   link.href = dataUrl;
   link.click();
+  announce('Snowflake saved as PNG');
 }
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
@@ -259,6 +268,8 @@ window.addEventListener('keydown', (e) => {
   if (key === 'r') {
     window.history.replaceState(null, '', window.location.pathname);
     grow(isLabMode ? currentConditions : undefined);
+  } else if (key === 'g') {
+    toggleFieldGuide();
   } else if (key === 'l') {
     toggleLabMode();
   } else if (key === 'p') {

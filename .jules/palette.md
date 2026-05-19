@@ -1,6 +1,6 @@
-## 2024-05-15 - [Accessible Announcements & Focus Visibility]
-**Learning:** In highly visual/interactive applications like this snowflake lab, transient actions (like copying a link) often lack non-visual feedback. Standard tooltips or toast notifications might not be sufficient for screen reader users if not properly announced.
-**Action:** Implement a central `announce()` helper using an `aria-live="polite"` element for all transient UI feedback.
+## 2025-05-15 - Enhancing accessibility with ARIA live and shortcut hints
+**Learning:** For single-page applications with transient actions like "Copy Link" or "Save File", a global ARIA live announcer is essential to provide non-visual feedback that mirrors visual state changes (like button label swaps).
+**Action:** Always include a hidden `#a11y-announcer` and a helper `announce()` function when implementing features that provide visual-only feedback.
 
-**Learning:** Dark-mode/Canvas-heavy interfaces often accidentally suppress default browser focus indicators, making keyboard navigation "blind."
-**Action:** Explicitly define high-contrast `:focus-visible` styles for all interactive elements to ensure WCAG compliance and usability for keyboard-only users.
+**Learning:** Power users appreciate keyboard shortcuts, but they are often "hidden" features. Appending shortcut keys to the `title` attribute of buttons is a low-effort, high-impact way to improve discoverability without cluttering the UI.
+**Action:** Use the `(Key)` convention in button titles for all implemented keyboard shortcuts.
