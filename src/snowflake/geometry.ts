@@ -67,8 +67,8 @@ export function buildSnowflake(
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
   const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
-  const pathCount = pathParams.length;
-  const pathIdxScale = INV_MAX_DIST * pathCount;
+  // Optimization: Pre-calculate path sampling scale to save multiplications in recursion.
+  const pathScale = INV_MAX_DIST * pathParams.length;
 
   // Build one primary arm along +X
   buildArm(
@@ -78,7 +78,7 @@ export function buildSnowflake(
     3.5, // Total target length
     0, // depth
     pathParams,
-    pathIdxScale,
+    pathScale,
     rand,
     nOffset,
   );
@@ -364,14 +364,15 @@ function buildArm(
   length: number,
   depth: number,
   pathParams: Params[],
-  pathIdxScale: number,
+  pathScale: number,
   rand: Rand,
   nOffset: number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
+  // Optimization: use pre-calculated pathScale.
   const pathIdx = Math.min(
     pathParams.length - 1,
-    (dist * pathIdxScale) | 0,
+    (dist * pathScale) | 0,
   );
   const params = pathParams[pathIdx];
 
@@ -402,34 +403,34 @@ function buildArm(
   if (numSteps <= 1) return;
 
   const invNumSteps = 1 / numSteps;
-  const stepX = dirX * length * invNumSteps;
-  const stepY = dirY * length * invNumSteps;
+  const stepDist = length * invNumSteps;
+  const stepX = dirX * stepDist;
+  const stepY = dirY * stepDist;
   const sideLenBase = length * params.sideBranchDecay;
   let pointX = startX;
   let pointY = startY;
+  let t = 0;
+  let currentDist = dist;
 
   for (let i = 1; i < numSteps; i++) {
     pointX += stepX;
     pointY += stepY;
+    t += invNumSteps;
+    currentDist += stepDist;
 
-    const t = i * invNumSteps;
     // Side branches get less likely near the tip
     const localProb = params.sideBranchProb * (1 - t * 0.4);
     if (!rand.chance(localProb)) continue;
 
     const sideLen = sideLenBase * rand.range(0.4, 1.0) * (1 - t * 0.5);
 
-    // Performance Optimization: 2nd-order Taylor expansion for small angular perturbations.
-    // Replace expensive Math.cos/sin with pre-calculated base angles and manual rotation math.
-    const noiseVal = noise2D(pointX * 2 + nOffset, pointY * 2 + nOffset);
-    const da = noiseVal * 0.1 + rand.range(-0.04, 0.04);
-    const cda = 1 - 0.5 * da * da;
-    const sda = da;
-
-    const cosA = params.cosAngle * cda - params.sinAngle * sda;
-    const sinA = params.sinAngle * cda + params.cosAngle * sda;
-
-    const sideDist = dist + t * length;
+    // Real snowflakes: side branches grow at 60° (hexagonal lattice)
+    const noiseVal = noise2D(pointX * 2, pointY * 2);
+    const angleVariation = noiseVal * 0.1;
+    const branchAngle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
+    const cosA = Math.cos(branchAngle);
+    const sinA = Math.sin(branchAngle);
+    const sideDist = currentDist;
 
     const dxca = dirX * cosA;
     const dysa = dirY * sinA;
@@ -446,7 +447,7 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
-      pathIdxScale,
+      pathScale,
       rand,
       nOffset,
     );
@@ -462,7 +463,7 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
-      pathIdxScale,
+      pathScale,
       rand,
       nOffset,
     );
