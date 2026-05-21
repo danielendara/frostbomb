@@ -71,6 +71,7 @@ export function buildSnowflake(
   const pathScale = INV_MAX_DIST * pathParams.length;
 
   // Build one primary arm along +X
+  const maxPathIdx = pathParams.length - 1;
   buildArm(
     0, 0, // startX, startY
     1, 0, // dirX, dirY
@@ -78,6 +79,7 @@ export function buildSnowflake(
     3.5, // Total target length
     0, // depth
     pathParams,
+    maxPathIdx,
     pathScale,
     rand,
     nOffset,
@@ -370,14 +372,15 @@ function buildArm(
   length: number,
   depth: number,
   pathParams: Params[],
+  maxPathIdx: number,
   pathScale: number,
   rand: Rand,
   nOffset: number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
-  // Optimization: use pre-calculated pathScale.
+  // Optimization: use pre-calculated pathScale and maxPathIdx.
   const pathIdx = Math.min(
-    pathParams.length - 1,
+    maxPathIdx,
     (dist * pathScale) | 0,
   );
   const params = pathParams[pathIdx];
@@ -418,6 +421,16 @@ function buildArm(
   let t = 0;
   let currentDist = dist;
 
+  // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
+  const probStep = params.sideBranchProb * (invNumSteps * 0.4);
+  const lenStep = invNumSteps * 0.5;
+  const stepX2 = stepX * 2;
+  const stepY2 = stepY * 2;
+  let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
+  let currentLenFactor = 1 - invNumSteps * 0.5;
+  let px2 = (startX + stepX) * 2;
+  let py2 = (startY + stepY) * 2;
+
   for (let i = 1; i < numSteps; i++) {
     pointX += stepX;
     pointY += stepY;
@@ -425,13 +438,25 @@ function buildArm(
     currentDist += stepDist;
 
     // Side branches get less likely near the tip
-    const localProb = params.sideBranchProb * (1 - t * 0.4);
-    if (!rand.chance(localProb)) continue;
+    // Optimization: Additive tracking for localProb decay.
+    if (!rand.chance(currentLocalProb)) {
+      currentLocalProb -= probStep;
+      currentLenFactor -= lenStep;
+      px2 += stepX2;
+      py2 += stepY2;
+      continue;
+    }
 
-    const sideLen = sideLenBase * rand.range(0.4, 1.0) * (1 - t * 0.5);
+    const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
 
     // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-    const noiseVal = noise2D(pointX * 2, pointY * 2);
+    // Optimization: Additive tracking for noise coordinates px2/py2.
+    const noiseVal = noise2D(px2, py2);
+
+    currentLocalProb -= probStep;
+    currentLenFactor -= lenStep;
+    px2 += stepX2;
+    py2 += stepY2;
     const angleVariation = noiseVal * 0.1;
     // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
     // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
@@ -457,6 +482,7 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
+      maxPathIdx,
       pathScale,
       rand,
       nOffset,
@@ -473,6 +499,7 @@ function buildArm(
       sideLen,
       depth + 1,
       pathParams,
+      maxPathIdx,
       pathScale,
       rand,
       nOffset,
