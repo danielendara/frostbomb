@@ -4,3 +4,7 @@
 
 **Learning:** Power users appreciate keyboard shortcuts, but they are often "hidden" features. Appending shortcut keys to the `title` attribute of buttons is a low-effort, high-impact way to improve discoverability without cluttering the UI.
 **Action:** Use the `(Key)` convention in button titles for all implemented keyboard shortcuts.
+
+## 2025-05-15 - Dismissing overlays with Escape
+**Learning:** Global key listeners for modal/overlay dismissal should handle focus carefully. Even if an input field within the overlay has focus, the 'Escape' key should still trigger the dismissal of the entire overlay to meet user expectations for standard modal behavior.
+**Action:** Place 'Escape' dismissal logic before checks that block other shortcuts when an editable element is focused.
