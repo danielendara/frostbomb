@@ -114,10 +114,17 @@ function announce(message: string) {
   }
 }
 
-document.getElementById('refresh')?.addEventListener('click', () => {
+function handleRefresh(e?: Event) {
+  if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
+    return;
+  }
+  if (e) e.preventDefault();
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
-});
+}
+
+document.getElementById('refresh')?.addEventListener('click', handleRefresh);
+document.querySelector('.wordmark-link')?.addEventListener('click', handleRefresh);
 
 const labToggle = document.getElementById('lab-toggle');
 const guideToggle = document.getElementById('guide-toggle');
@@ -182,7 +189,7 @@ function updateFromPane() {
   grow(conditions, true, false);
 }
 
-document.getElementById('btn-copy')?.addEventListener('click', () => {
+function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
   navigator.clipboard.writeText(url).then(() => {
     const btn = document.getElementById('btn-copy');
@@ -197,8 +204,13 @@ document.getElementById('btn-copy')?.addEventListener('click', () => {
         }, 2000);
       }
     }
+  }).catch(err => {
+    console.error('Failed to copy link:', err);
+    announce('Failed to copy link');
   });
-});
+}
+
+document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 
 function saveSnowflake() {
   scene.composer.render();
@@ -209,7 +221,19 @@ function saveSnowflake() {
   link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
   link.href = dataUrl;
   link.click();
-  announce('Snowflake saved as PNG');
+
+  const btn = document.getElementById('btn-save');
+  if (btn) {
+    const labelEl = btn.querySelector('.action-btn__label');
+    if (labelEl) {
+      const originalLabel = labelEl.textContent;
+      labelEl.textContent = 'Saved!';
+      announce('Snowflake saved as PNG');
+      setTimeout(() => {
+        labelEl.textContent = originalLabel;
+      }, 2000);
+    }
+  }
 }
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
@@ -247,14 +271,16 @@ if (btnRotate) {
   btnRotate.classList.toggle('active', scene.isAutoRotateEnabled);
 }
 
-btnRotate?.addEventListener('click', () => {
+function toggleAutoRotate() {
   const enabled = !scene.isAutoRotateEnabled;
   if (btnRotate) {
     btnRotate.setAttribute('aria-pressed', enabled.toString());
     btnRotate.classList.toggle('active', enabled);
   }
   scene.setAutoRotate(enabled);
-});
+}
+
+btnRotate?.addEventListener('click', toggleAutoRotate);
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -278,6 +304,10 @@ window.addEventListener('keydown', (e) => {
     togglePrismMode();
   } else if (key === 's') {
     saveSnowflake();
+  } else if (key === 'a') {
+    toggleAutoRotate();
+  } else if (key === 'c') {
+    copyLink();
   }
 });
 
