@@ -168,21 +168,27 @@ export function buildSnowflake(
 
     offset += 16;
 
+    // Pre-calculate ratios for rotated columns to save multiplications/subtractions in the loop.
+    // Since sx == sz, we can derive rotated Y and Z basis columns from the rotated X column.
+    const K = (cax * sy) / (sx || 0.0001);
+
     for (let i = 1; i < 6; i++) {
       const ci = SYMMETRY_COSINES[i];
       const si = SYMMETRY_SINES[i];
 
-      // Pre-multiply matrix by Z-rotation: M' = Rz(theta_i) * M
-      matrices[offset + 0] = ci * m0 - si * m1;
-      matrices[offset + 1] = si * m0 + ci * m1;
+      const m0_rot = ci * m0 - si * m1;
+      const m1_rot = si * m0 + ci * m1;
+
+      matrices[offset + 0] = m0_rot;
+      matrices[offset + 1] = m1_rot;
       matrices[offset + 2] = 0;
       matrices[offset + 3] = 0;
-      matrices[offset + 4] = ci * m4 - si * m5;
-      matrices[offset + 5] = si * m4 + ci * m5;
+      matrices[offset + 4] = -m1_rot * K;
+      matrices[offset + 5] = m0_rot * K;
       matrices[offset + 6] = m6;
       matrices[offset + 7] = 0;
-      matrices[offset + 8] = ci * m8 - si * m9;
-      matrices[offset + 9] = si * m8 + ci * m9;
+      matrices[offset + 8] = m1_rot * sax;
+      matrices[offset + 9] = -m0_rot * sax;
       matrices[offset + 10] = m10;
       matrices[offset + 11] = 0;
       matrices[offset + 12] = ci * m12 - si * m13;
@@ -427,9 +433,13 @@ function buildArm(
     // Real snowflakes: side branches grow at 60° (hexagonal lattice)
     const noiseVal = noise2D(pointX * 2, pointY * 2);
     const angleVariation = noiseVal * 0.1;
-    const branchAngle = params.sideBranchAngle + angleVariation + rand.range(-0.04, 0.04);
-    const cosA = Math.cos(branchAngle);
-    const sinA = Math.sin(branchAngle);
+    // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
+    // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
+    //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
+    const v = angleVariation + rand.range(-0.04, 0.04);
+    const v2 = 0.5 * v * v;
+    const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
+    const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
     const sideDist = currentDist;
 
     const dxca = dirX * cosA;
