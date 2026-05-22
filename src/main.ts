@@ -141,13 +141,15 @@ async function toggleLabMode() {
     toggleFieldGuide();
   }
 
-  if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
+  if (labToggle) labToggle.setAttribute('aria-expanded', isLabMode.toString());
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
     labStatus.style.color = isLabMode ? 'var(--accent)' : 'var(--ink-dim)';
   }
+
+  announce(isLabMode ? 'Lab Mode enabled. Manual controls active.' : 'Lab Mode disabled.');
 
   if (isLabMode) {
     await ensurePane();
@@ -165,9 +167,11 @@ function toggleFieldGuide() {
     toggleLabMode();
   }
 
-  if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
+  if (guideToggle) guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
   if (fieldGuide) fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
+
+  announce(isGuideOpen ? 'Field Guide opened.' : 'Field Guide closed.');
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
@@ -306,7 +310,7 @@ window.addEventListener('keydown', (e) => {
   if (key === 'r') {
     window.history.replaceState(null, '', window.location.pathname);
     grow(isLabMode ? currentConditions : undefined);
-  } else if (key === 'g') {
+  } else if (key === 'g' || key === '?') {
     toggleFieldGuide();
   } else if (key === 'l') {
     toggleLabMode();

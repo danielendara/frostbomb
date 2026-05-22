@@ -1,10 +1,11 @@
-## 2025-05-15 - Enhancing accessibility with ARIA live and shortcut hints
-**Learning:** For single-page applications with transient actions like "Copy Link" or "Save File", a global ARIA live announcer is essential to provide non-visual feedback that mirrors visual state changes (like button label swaps).
-**Action:** Always include a hidden `#a11y-announcer` and a helper `announce()` function when implementing features that provide visual-only feedback.
+## 2025-05-15 - [Screen Reader Feedback]
+**Learning:** Screen reader users need explicit confirmation for state changes (like "Link copied").
+**Action:** Use an 'announce()' helper with aria-live="polite".
 
-**Learning:** Power users appreciate keyboard shortcuts, but they are often "hidden" features. Appending shortcut keys to the `title` attribute of buttons is a low-effort, high-impact way to improve discoverability without cluttering the UI.
-**Action:** Use the `(Key)` convention in button titles for all implemented keyboard shortcuts.
+## 2025-05-16 - [Keyboard Shortcut Hints]
+**Learning:** Hidden keyboard shortcuts should be hinted in 'title' attributes to improve discoverability.
+**Action:** Append shortcut keys in parentheses to button titles (e.g. "Regrow (R)").
 
-## 2025-05-15 - Dismissing overlays with Escape
-**Learning:** Global key listeners for modal/overlay dismissal should handle focus carefully. Even if an input field within the overlay has focus, the 'Escape' key should still trigger the dismissal of the entire overlay to meet user expectations for standard modal behavior.
-**Action:** Place 'Escape' dismissal logic before checks that block other shortcuts when an editable element is focused.
+## 2025-05-20 - [Aria Disclosure vs. Toggle]
+**Learning:** Buttons that show/hide content panels should use `aria-expanded` (disclosure pattern) rather than `aria-pressed` (toggle button pattern) to clearly communicate the effect on content visibility to screen readers.
+**Action:** Use `aria-expanded` and `aria-controls` for panels like "Field Guide" or "Lab Mode".
