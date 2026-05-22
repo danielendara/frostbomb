@@ -584,19 +584,22 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
             const progress = Math.min(1, (threshold - delay) * 2);
 
-            // If this segment is fully grown, advance the minimum animation pointer
-            // so we skip it entirely in the next frame.
-            if (progress >= 1) {
-              if (j === minAnimatedIndex) minAnimatedIndex++;
-            }
-
-            maxIndex = j;
-            const s = easeOutExpoFast(progress);
-
             // Inner loop: Apply scale to all 6 symmetry instances.
             // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
             // which results in contiguous memory writes and better cache locality.
             let idx = j * 6 * 16;
+
+            // If this segment is fully grown, use a fast bulk copy and advance the
+            // minimum animation pointer to skip it in the next frame.
+            if (progress >= 1) {
+              target.set(source.subarray(idx, idx + 96), idx);
+              if (j === minAnimatedIndex) minAnimatedIndex++;
+              maxIndex = j;
+              continue;
+            }
+
+            maxIndex = j;
+            const s = easeOutExpoFast(progress);
 
             // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
             // These are identical for all 6 arms as they represent Z-tilt and thickness.
@@ -607,7 +610,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               // Column 1
               target[idx + 0] = source[idx + 0] * s;
               target[idx + 1] = source[idx + 1] * s;
-              target[idx + 2] = source[idx + 2] * s;
+              // Optimization: Skip target[idx+2] as it is always 0 for snowflake segments.
               // Column 2
               target[idx + 4] = source[idx + 4] * s;
               target[idx + 5] = source[idx + 5] * s;
