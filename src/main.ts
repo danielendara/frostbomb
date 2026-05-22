@@ -288,9 +288,21 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 window.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+
+  if (key === 'escape') {
+    if (isGuideOpen) {
+      toggleFieldGuide();
+      return;
+    }
+    if (isLabMode) {
+      toggleLabMode();
+      return;
+    }
+  }
+
   if (isEditableTarget(e.target)) return;
 
-  const key = e.key.toLowerCase();
   if (key === 'r') {
     window.history.replaceState(null, '', window.location.pathname);
     grow(isLabMode ? currentConditions : undefined);
