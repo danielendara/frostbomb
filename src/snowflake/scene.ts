@@ -524,15 +524,22 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     const cosTime = Math.cos(time);
 
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3 + 1] -= particleVel[i] * motionScale;
+      const idx3 = i * 3;
+      let px = positions[idx3];
+      let py = positions[idx3 + 1];
+
+      py -= particleVel[i] * motionScale;
       // Horizontal drift using pre-calculated phase components
       const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
-      positions[i * 3] += drift * 0.002 * motionScale;
+      px += drift * 0.002 * motionScale;
 
-      if (positions[i * 3 + 1] < -10) {
-        positions[i * 3 + 1] = 10;
-        positions[i * 3] = (Math.random() - 0.5) * 20;
+      if (py < -10) {
+        py = 10;
+        px = (Math.random() - 0.5) * 20;
       }
+
+      positions[idx3] = px;
+      positions[idx3 + 1] = py;
     }
     particles.geometry.attributes.position.needsUpdate = true;
 
