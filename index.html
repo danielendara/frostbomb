@@ -29,7 +29,7 @@
       <div class="field-notes__header">
         <h2 class="field-notes__label">Growth conditions</h2>
         <div class="field-notes__toggles">
-          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G)" aria-pressed="false">
+          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G, ?)" aria-pressed="false">
             Guide
           </button>
           <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-pressed="false">
@@ -49,7 +49,7 @@
         <div id="pane-mount" class="pane-mount" aria-label="Manual growth adjustments"></div>
       </div>
 
-      <div class="field-guide" id="field-guide" style="display: none;">
+      <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="0" aria-label="Field Guide">
         <div class="field-guide__content">
           <section>
             <h3>Temperature</h3>
@@ -73,6 +73,20 @@
                 <span class="nakaya-label nakaya-label--x">Temperature (°C) →</span>
               </div>
             </div>
+          </section>
+          <section>
+            <h3>Keyboard Shortcuts</h3>
+            <dl class="shortcuts-list">
+              <div class="shortcut-item"><dt>R</dt><dd>Regrow snowflake</dd></div>
+              <div class="shortcut-item"><dt>L</dt><dd>Toggle Lab Mode</dd></div>
+              <div class="shortcut-item"><dt>G, ?</dt><dd>Toggle Field Guide</dd></div>
+              <div class="shortcut-item"><dt>P</dt><dd>Toggle Pink Mode</dd></div>
+              <div class="shortcut-item"><dt>M</dt><dd>Toggle Prism Mode</dd></div>
+              <div class="shortcut-item"><dt>S</dt><dd>Save as PNG</dd></div>
+              <div class="shortcut-item"><dt>A</dt><dd>Toggle Auto-rotate</dd></div>
+              <div class="shortcut-item"><dt>C</dt><dd>Copy share link</dd></div>
+              <div class="shortcut-item"><dt>Esc</dt><dd>Close overlay</dd></div>
+            </dl>
           </section>
         </div>
       </div>
