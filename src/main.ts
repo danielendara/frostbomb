@@ -114,6 +114,40 @@ function announce(message: string) {
   }
 }
 
+const originalLabels = new Map<string, string>();
+const labelTimeouts = new Map<string, number>();
+
+/**
+ * Sets a temporary label for a button, handling restoration robustly even with rapid clicks.
+ */
+function setTemporaryLabel(btnId: string, tempText: string, duration = 2000) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+
+  const labelEl = btn.querySelector('.action-btn__label') || btn.querySelector('#seed-display') || btn;
+  if (!labelEl) return;
+
+  // Clear existing timeout if any
+  if (labelTimeouts.has(btnId)) {
+    window.clearTimeout(labelTimeouts.get(btnId));
+  }
+
+  // Capture original label only once
+  if (!originalLabels.has(btnId)) {
+    originalLabels.set(btnId, labelEl.textContent || '');
+  }
+
+  labelEl.textContent = tempText;
+
+  const timeout = window.setTimeout(() => {
+    labelEl.textContent = originalLabels.get(btnId) || '';
+    originalLabels.delete(btnId);
+    labelTimeouts.delete(btnId);
+  }, duration);
+
+  labelTimeouts.set(btnId, timeout);
+}
+
 function handleRefresh(e?: Event) {
   if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
     return;
@@ -192,18 +226,9 @@ function updateFromPane() {
 function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
   navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('btn-copy');
-    if (btn) {
-      const labelEl = btn.querySelector('.action-btn__label');
-      if (labelEl) {
-        const originalLabel = labelEl.textContent;
-        labelEl.textContent = 'Copied!';
-        announce('Link copied to clipboard');
-        setTimeout(() => {
-          labelEl.textContent = originalLabel;
-        }, 2000);
-      }
-    }
+    setTemporaryLabel('btn-copy', 'Copied!');
+    setTemporaryLabel('btn-seed', 'Copied!');
+    announce('Link copied to clipboard');
   }).catch(err => {
     console.error('Failed to copy link:', err);
     announce('Failed to copy link');
@@ -211,6 +236,7 @@ function copyLink() {
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
+document.getElementById('btn-seed')?.addEventListener('click', copyLink);
 
 function saveSnowflake() {
   scene.composer.render();
@@ -222,18 +248,8 @@ function saveSnowflake() {
   link.href = dataUrl;
   link.click();
 
-  const btn = document.getElementById('btn-save');
-  if (btn) {
-    const labelEl = btn.querySelector('.action-btn__label');
-    if (labelEl) {
-      const originalLabel = labelEl.textContent;
-      labelEl.textContent = 'Saved!';
-      announce('Snowflake saved as PNG');
-      setTimeout(() => {
-        labelEl.textContent = originalLabel;
-      }, 2000);
-    }
-  }
+  setTemporaryLabel('btn-save', 'Saved!');
+  announce('Snowflake saved as PNG');
 }
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
