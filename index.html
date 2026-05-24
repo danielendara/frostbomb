@@ -18,7 +18,7 @@
     <canvas id="scene" aria-label="3D procedural snowflake visualization"></canvas>
 
     <header class="masthead">
-      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R)">
+      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake">
         <div class="wordmark" aria-label="frost·bomb">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
@@ -27,12 +27,12 @@
 
     <aside class="field-notes" id="field-notes">
       <div class="field-notes__header">
-        <h2 class="field-notes__label" id="field-notes-label">Growth conditions</h2>
+        <h2 class="field-notes__label">Growth conditions</h2>
         <div class="field-notes__toggles">
-          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G or ?)" aria-expanded="false" aria-controls="field-guide">
+          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G)" aria-pressed="false">
             Guide
           </button>
-          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-expanded="false" aria-controls="lab-controls">
+          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-pressed="false">
             Lab Mode: <span id="lab-status">OFF</span>
           </button>
         </div>
@@ -49,7 +49,7 @@
         <div id="pane-mount" class="pane-mount" aria-label="Manual growth adjustments"></div>
       </div>
 
-      <div class="field-guide" id="field-guide" style="display: none;" role="region" aria-label="Field Guide" tabindex="0">
+      <div class="field-guide" id="field-guide" style="display: none;">
         <div class="field-guide__content">
           <section>
             <h3>Temperature</h3>
@@ -72,20 +72,6 @@
                 <span class="nakaya-label nakaya-label--y">Supersaturation →</span>
                 <span class="nakaya-label nakaya-label--x">Temperature (°C) →</span>
               </div>
-            </div>
-          </section>
-          <section>
-            <h3>Keyboard Shortcuts</h3>
-            <div class="field-notes__list">
-              <div class="field-notes__row"><dt>Regrow</dt><dd>R</dd></div>
-              <div class="field-notes__row"><dt>Guide</dt><dd>G or ?</dd></div>
-              <div class="field-notes__row"><dt>Lab Mode</dt><dd>L</dd></div>
-              <div class="field-notes__row"><dt>Pink Mode</dt><dd>P</dd></div>
-              <div class="field-notes__row"><dt>Prism Mode</dt><dd>M</dd></div>
-              <div class="field-notes__row"><dt>Save PNG</dt><dd>S</dd></div>
-              <div class="field-notes__row"><dt>Auto-Rotate</dt><dd>A</dd></div>
-              <div class="field-notes__row"><dt>Copy Link</dt><dd>C</dd></div>
-              <div class="field-notes__row"><dt>Close Panel</dt><dd>Esc</dd></div>
             </div>
           </section>
         </div>
