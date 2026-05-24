@@ -12,3 +12,7 @@
 ## 2025-05-15 - Centralized keyboard shortcut documentation
 **Learning:** While `title` attributes are great for contextual hints, a centralized "Keyboard Shortcuts" list in a help or guide section provides a clear reference for users to learn all capabilities at once, especially for "hidden" shortcuts like `Esc` or `?`.
 **Action:** Always include a dedicated shortcuts section in the primary documentation or help overlay of the application.
+
+## 2025-05-15 - Robust Transient Feedback Logic
+**Learning:** Simple `setTimeout` based label swapping (e.g., "Copy" -> "Copied!") is vulnerable to race conditions if clicked rapidly. The "original" label captured during the second click might be the "Copied!" text, leading to a permanent UI state error.
+**Action:** Use a centralized helper with a `Map` to track and lock the true original label until the restoration cycle is complete.

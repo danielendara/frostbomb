@@ -102,16 +102,35 @@ body.pink-mode {
   opacity: 0.7;
 }
 
-.edition {
+.edition-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-dim);
+  transition: color 0.2s ease;
+}
+
+.edition-btn:hover,
+.edition-btn:focus-visible {
+  color: var(--ink);
+}
+
+.edition-btn:hover #seed-display,
+.edition-btn:focus-visible #seed-display {
+  text-decoration: underline;
+  color: var(--accent);
 }
 
 #seed-display {
   color: var(--ink);
+  transition: color 0.2s ease;
 }
 
 /* --- field notes panel --- */
@@ -566,7 +585,7 @@ body.pink-mode {
   .colophon { display: none; }
   .wordmark { font-size: 2.25rem; }
   .wordmark__subtitle { font-size: 0.55rem; }
-  .edition { font-size: 0.6rem; }
+  .edition-btn { font-size: 0.6rem; }
 }
 
 @media (max-width: 380px) {
