@@ -253,6 +253,33 @@ body.pink-mode {
   font-style: italic;
 }
 
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.shortcut-item dt {
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 0.65rem;
+}
+
+.shortcut-item dd {
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 0.8rem;
+  font-style: italic;
+  text-align: right;
+}
+
 /* --- nakaya diagram --- */
 .nakaya-container {
   margin-top: 1.25rem;
