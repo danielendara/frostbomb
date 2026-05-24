@@ -438,26 +438,13 @@ function buildArm(
     currentDist += stepDist;
 
     // Side branches get less likely near the tip
-    // Optimization: Additive tracking for localProb decay.
-    if (!rand.chance(currentLocalProb)) {
-      currentLocalProb -= probStep;
-      currentLenFactor -= lenStep;
-      px2 += stepX2;
-      py2 += stepY2;
-      continue;
-    }
+    if (rand.chance(currentLocalProb)) {
+      const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
 
-    const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
+      // Real snowflakes: side branches grow at 60° (hexagonal lattice)
+      const noiseVal = noise2D(px2, py2);
 
-    // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-    // Optimization: Additive tracking for noise coordinates px2/py2.
-    const noiseVal = noise2D(px2, py2);
-
-    currentLocalProb -= probStep;
-    currentLenFactor -= lenStep;
-    px2 += stepX2;
-    py2 += stepY2;
-    const angleVariation = noiseVal * 0.1;
+      const angleVariation = noiseVal * 0.1;
     // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
     // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
     //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
@@ -472,38 +459,46 @@ function buildArm(
     const dxsa = dirX * sinA;
     const dyca = dirY * cosA;
 
-    // Right side branch (sign = 1)
-    buildArm(
-      pointX,
-      pointY,
-      dxca - dysa,
-      dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
+      // Right side branch (sign = 1)
+      buildArm(
+        pointX,
+        pointY,
+        dxca - dysa,
+        dxsa + dyca,
+        sideDist,
+        sideLen,
+        depth + 1,
+        pathParams,
+        maxPathIdx,
+        pathScale,
+        rand,
+        nOffset,
+      );
 
-    // Left side branch (sign = -1)
-    // cos(-a) = cos(a), sin(-a) = -sin(a)
-    buildArm(
-      pointX,
-      pointY,
-      dxca + dysa,
-      -dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
+      // Left side branch (sign = -1)
+      // cos(-a) = cos(a), sin(-a) = -sin(a)
+      buildArm(
+        pointX,
+        pointY,
+        dxca + dysa,
+        -dxsa + dyca,
+        sideDist,
+        sideLen,
+        depth + 1,
+        pathParams,
+        maxPathIdx,
+        pathScale,
+        rand,
+        nOffset,
+      );
+    }
+
+    // Optimization: Additive tracking for localProb decay and noise coordinates.
+    // Moved to the end of the loop to eliminate duplicated code paths.
+    currentLocalProb -= probStep;
+    currentLenFactor -= lenStep;
+    px2 += stepX2;
+    py2 += stepY2;
   }
 
   // Optional pointed tip extension
