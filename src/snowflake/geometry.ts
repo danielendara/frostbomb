@@ -134,11 +134,16 @@ export function buildSnowflake(
 
     const m0 = cbz * sx;
     const m1 = sbz * sx;
-    const m4 = -sbz * cax * sy;
-    const m5 = cbz * cax * sy;
+
+    // Pre-calculate ratios for rotated columns to save multiplications/subtractions in the loop.
+    // Since sx == sz, we can derive rotated Y and Z basis columns from the rotated X column.
+    const K = (cax * sy) / (sx || 0.0001);
+
+    const m4 = -m1 * K;
+    const m5 = m0 * K;
     const m6 = sax * sy;
-    const m8 = sbz * sax * sz;
-    const m9 = -cbz * sax * sz;
+    const m8 = m1 * sax;
+    const m9 = -m0 * sax;
     const m10 = cax * sz;
     const vJitter = vVar * jitter;
     const m12 = midX + vJitter;
@@ -169,10 +174,6 @@ export function buildSnowflake(
     matrices[offset + 15] = 1;
 
     offset += 16;
-
-    // Pre-calculate ratios for rotated columns to save multiplications/subtractions in the loop.
-    // Since sx == sz, we can derive rotated Y and Z basis columns from the rotated X column.
-    const K = (cax * sy) / (sx || 0.0001);
 
     for (let i = 1; i < 6; i++) {
       const ci = SYMMETRY_COSINES[i];
@@ -418,7 +419,6 @@ function buildArm(
   const sideLenBase = length * params.sideBranchDecay;
   let pointX = startX;
   let pointY = startY;
-  let t = 0;
   let currentDist = dist;
 
   // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
@@ -434,14 +434,15 @@ function buildArm(
   for (let i = 1; i < numSteps; i++) {
     pointX += stepX;
     pointY += stepY;
-    t += invNumSteps;
     currentDist += stepDist;
 
     // Side branches get less likely near the tip
+    // Optimization: Additive tracking for localProb decay.
     if (rand.chance(currentLocalProb)) {
       const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
 
       // Real snowflakes: side branches grow at 60° (hexagonal lattice)
+      // Optimization: Additive tracking for noise coordinates px2/py2.
       const noiseVal = noise2D(px2, py2);
 
       const angleVariation = noiseVal * 0.1;
@@ -459,42 +460,40 @@ function buildArm(
     const dxsa = dirX * sinA;
     const dyca = dirY * cosA;
 
-      // Right side branch (sign = 1)
-      buildArm(
-        pointX,
-        pointY,
-        dxca - dysa,
-        dxsa + dyca,
-        sideDist,
-        sideLen,
-        depth + 1,
-        pathParams,
-        maxPathIdx,
-        pathScale,
-        rand,
-        nOffset,
-      );
+    // Right side branch (sign = 1)
+    buildArm(
+      pointX,
+      pointY,
+      dxca - dysa,
+      dxsa + dyca,
+      sideDist,
+      sideLen,
+      depth + 1,
+      pathParams,
+      maxPathIdx,
+      pathScale,
+      rand,
+      nOffset,
+    );
 
-      // Left side branch (sign = -1)
-      // cos(-a) = cos(a), sin(-a) = -sin(a)
-      buildArm(
-        pointX,
-        pointY,
-        dxca + dysa,
-        -dxsa + dyca,
-        sideDist,
-        sideLen,
-        depth + 1,
-        pathParams,
-        maxPathIdx,
-        pathScale,
-        rand,
-        nOffset,
-      );
+    // Left side branch (sign = -1)
+    // cos(-a) = cos(a), sin(-a) = -sin(a)
+    buildArm(
+      pointX,
+      pointY,
+      dxca + dysa,
+      -dxsa + dyca,
+      sideDist,
+      sideLen,
+      depth + 1,
+      pathParams,
+      maxPathIdx,
+      pathScale,
+      rand,
+      nOffset,
+    );
     }
 
-    // Optimization: Additive tracking for localProb decay and noise coordinates.
-    // Moved to the end of the loop to eliminate duplicated code paths.
     currentLocalProb -= probStep;
     currentLenFactor -= lenStep;
     px2 += stepX2;
