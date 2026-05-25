@@ -291,6 +291,19 @@ body.pink-mode {
   font-size: 0.65rem;
 }
 
+kbd {
+  display: inline-block;
+  padding: 2px 5px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--accent);
+  background: rgba(158, 201, 255, 0.1);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
 .shortcut-item dd {
   color: var(--ink);
   font-family: var(--display);
@@ -605,7 +618,8 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+[tabindex="0"]:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

@@ -175,7 +175,7 @@ async function toggleLabMode() {
     toggleFieldGuide();
   }
 
-  if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
+  if (labToggle) labToggle.setAttribute('aria-expanded', isLabMode.toString());
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
@@ -199,7 +199,7 @@ function toggleFieldGuide() {
     toggleLabMode();
   }
 
-  if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
+  if (guideToggle) guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
   if (fieldGuide) fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
 }

@@ -15,10 +15,10 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <canvas id="scene" aria-label="3D procedural snowflake visualization"></canvas>
+    <canvas id="scene" role="img" aria-label="3D procedural snowflake visualization"></canvas>
 
     <header class="masthead">
-      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake">
+      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R)">
         <div class="wordmark" aria-label="frost·bomb">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
@@ -31,10 +31,10 @@
       <div class="field-notes__header">
         <h2 class="field-notes__label">Growth conditions</h2>
         <div class="field-notes__toggles">
-          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G, ?)" aria-pressed="false">
+          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G, ?)" aria-expanded="false" aria-controls="field-guide">
             Guide
           </button>
-          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-pressed="false">
+          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-expanded="false" aria-controls="lab-controls">
             Lab Mode: <span id="lab-status">OFF</span>
           </button>
         </div>
@@ -69,7 +69,7 @@
             <h3>Nakaya Diagram</h3>
             <p>The physical map of snowflake shapes. Created by Ukichiro Nakaya in the 1930s, it proves that no two snowflakes are alike because no two follow the same path.</p>
             <div class="nakaya-container">
-              <canvas id="nakaya-diagram" width="300" height="200" aria-label="Nakaya morphology diagram showing snowflake growth path"></canvas>
+              <canvas id="nakaya-diagram" width="300" height="200" role="img" aria-label="Nakaya morphology diagram showing snowflake growth path"></canvas>
               <div class="nakaya-labels">
                 <span class="nakaya-label nakaya-label--y">Supersaturation →</span>
                 <span class="nakaya-label nakaya-label--x">Temperature (°C) →</span>
@@ -79,15 +79,15 @@
           <section>
             <h3>Keyboard Shortcuts</h3>
             <dl class="shortcuts-list">
-              <div class="shortcut-item"><dt>R</dt><dd>Regrow snowflake</dd></div>
-              <div class="shortcut-item"><dt>L</dt><dd>Toggle Lab Mode</dd></div>
-              <div class="shortcut-item"><dt>G, ?</dt><dd>Toggle Field Guide</dd></div>
-              <div class="shortcut-item"><dt>P</dt><dd>Toggle Pink Mode</dd></div>
-              <div class="shortcut-item"><dt>M</dt><dd>Toggle Prism Mode</dd></div>
-              <div class="shortcut-item"><dt>S</dt><dd>Save as PNG</dd></div>
-              <div class="shortcut-item"><dt>A</dt><dd>Toggle Auto-rotate</dd></div>
-              <div class="shortcut-item"><dt>C</dt><dd>Copy share link</dd></div>
-              <div class="shortcut-item"><dt>Esc</dt><dd>Close overlay</dd></div>
+              <div class="shortcut-item"><dt><kbd>R</kbd></dt><dd>Regrow snowflake</dd></div>
+              <div class="shortcut-item"><dt><kbd>L</kbd></dt><dd>Toggle Lab Mode</dd></div>
+              <div class="shortcut-item"><dt><kbd>G</kbd>, <kbd>?</kbd></dt><dd>Toggle Field Guide</dd></div>
+              <div class="shortcut-item"><dt><kbd>P</kbd></dt><dd>Toggle Pink Mode</dd></div>
+              <div class="shortcut-item"><dt><kbd>M</kbd></dt><dd>Toggle Prism Mode</dd></div>
+              <div class="shortcut-item"><dt><kbd>S</kbd></dt><dd>Save as PNG</dd></div>
+              <div class="shortcut-item"><dt><kbd>A</kbd></dt><dd>Toggle Auto-rotate</dd></div>
+              <div class="shortcut-item"><dt><kbd>C</kbd></dt><dd>Copy share link</dd></div>
+              <div class="shortcut-item"><dt><kbd>Esc</kbd></dt><dd>Close overlay</dd></div>
             </dl>
           </section>
         </div>
