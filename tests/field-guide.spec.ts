@@ -15,12 +15,12 @@ test('Guide button toggles field guide visibility', async ({ page }) => {
   await guideToggle.click();
   await expect(fieldGuide).toBeVisible();
   await expect(statsDisplay).not.toBeVisible();
-  await expect(guideToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(guideToggle).toHaveAttribute('aria-expanded', 'true');
 
   await guideToggle.click();
   await expect(fieldGuide).not.toBeVisible();
   await expect(statsDisplay).toBeVisible();
-  await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(guideToggle).toHaveAttribute('aria-expanded', 'false');
 });
 
 test('Field guide contains expected terminology', async ({ page }) => {
@@ -49,11 +49,11 @@ test('Guide and Lab Mode are mutually exclusive', async ({ page }) => {
   await labToggle.click();
   await expect(labControls).toBeVisible();
   await expect(fieldGuide).not.toBeVisible();
-  await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(guideToggle).toHaveAttribute('aria-expanded', 'false');
 
   // Open guide again, lab mode should close
   await guideToggle.click();
   await expect(fieldGuide).toBeVisible();
   await expect(labControls).not.toBeVisible();
-  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(labToggle).toHaveAttribute('aria-expanded', 'false');
 });
