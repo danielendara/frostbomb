@@ -16,3 +16,7 @@
 ## 2025-05-15 - Robust Transient Feedback Logic
 **Learning:** Simple `setTimeout` based label swapping (e.g., "Copy" -> "Copied!") is vulnerable to race conditions if clicked rapidly. The "original" label captured during the second click might be the "Copied!" text, leading to a permanent UI state error.
 **Action:** Use a centralized helper with a `Map` to track and lock the true original label until the restoration cycle is complete.
+
+## 2025-05-22 - Focus Management in Procedural Overlays
+**Learning:** When toggling overlays in a procedural UI (like those using Tweakpane), manual focus management is critical. Simply showing an overlay isn't enough; focus must be programmatically moved to the first interactive element (or the container) and restored to the trigger button upon closing to maintain a logical tab order. For Tweakpane, targeting `.tp-dfwv input` is effective for getting focus into the generated controls.
+**Action:** Implement a `lastActiveElement` pattern for all overlay toggles to ensure seamless keyboard navigation.
