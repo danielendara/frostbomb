@@ -105,6 +105,12 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
+  // Performance Optimization: Pre-fill identity component (m15) for all 6 symmetry instances.
+  // This allows us to skip 6 writes inside the main per-segment population loop.
+  for (let i = 15; i < matrices.length; i += 16) {
+    matrices[i] = 1;
+  }
+
   for (let j = 0; j < armLen; j++) {
     const packed = packedBuffer[j];
     const segIdx = (packed & 0x3FFF) * SEGMENT_STRIDE;
@@ -134,53 +140,43 @@ export function buildSnowflake(
     // sin(x) ≈ x, cos(x) ≈ 1 - x^2/2. Avoids expensive Math.sin/cos calls.
     const sax = ax;
     const cax = 1 - 0.5 * ax * ax;
+
     const cbz = -dirY; // cos(angle + PI/2)
     const sbz = dirX;  // sin(angle + PI/2)
 
     const sx = finalThickness;
     const sy = length;
-    const sz = finalThickness;
 
-    const m0 = cbz * sx;
-    const m1 = sbz * sx;
-
-    // Pre-calculate ratios for rotated columns to save multiplications/subtractions in the loop.
-    // Since sx == sz, we can derive rotated Y and Z basis columns from the rotated X column.
-    const K = (cax * sy) / (sx || 0.0001);
-
-    const m4 = -m1 * K;
-    const m5 = m0 * K;
+    // Performance Optimization: Pre-calculate scaled terms to eliminate divisions and
+    // redundant multiplications within the symmetry loop.
+    const caxsy = cax * sy;
+    const sxsax = sx * sax;
+    const sxcax = sx * cax;
     const m6 = sax * sy;
-    const m8 = m1 * sax;
-    const m9 = -m0 * sax;
-    const m10 = cax * sz;
+
     const vJitter = vVar * jitter;
     const m12 = midX + vJitter;
     const m13 = midY + vJitter;
     const m14 = vJitter;
 
     // Apply rotation for each of the 6 symmetry instances
-    // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5, seg1_arm0, ...]
+    // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5]
     // to improve cache locality and consolidate GPU update ranges.
     let offset = j * 6 * 16;
 
     // Special case for i=0 to avoid 48 multiplications and 24 additions/subtractions.
-    matrices[offset + 0] = m0;
-    matrices[offset + 1] = m1;
-    matrices[offset + 2] = 0;
-    matrices[offset + 3] = 0;
-    matrices[offset + 4] = m4;
-    matrices[offset + 5] = m5;
+    // Optimization: Skip explicit zero-writes for m2, m3, m7, m11 as buffer is zero-initialized.
+    matrices[offset + 0] = cbz * sx;
+    matrices[offset + 1] = sbz * sx;
+    matrices[offset + 4] = -sbz * caxsy;
+    matrices[offset + 5] = cbz * caxsy;
     matrices[offset + 6] = m6;
-    matrices[offset + 7] = 0;
-    matrices[offset + 8] = m8;
-    matrices[offset + 9] = m9;
-    matrices[offset + 10] = m10;
-    matrices[offset + 11] = 0;
+    matrices[offset + 8] = sbz * sxsax;
+    matrices[offset + 9] = -cbz * sxsax;
+    matrices[offset + 10] = sxcax;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
     matrices[offset + 14] = m14;
-    matrices[offset + 15] = 1;
 
     offset += 16;
 
@@ -188,25 +184,20 @@ export function buildSnowflake(
       const ci = SYMMETRY_COSINES[i];
       const si = SYMMETRY_SINES[i];
 
-      const m0_rot = ci * m0 - si * m1;
-      const m1_rot = si * m0 + ci * m1;
+      const r0 = ci * cbz - si * sbz;
+      const r1 = si * cbz + ci * sbz;
 
-      matrices[offset + 0] = m0_rot;
-      matrices[offset + 1] = m1_rot;
-      matrices[offset + 2] = 0;
-      matrices[offset + 3] = 0;
-      matrices[offset + 4] = -m1_rot * K;
-      matrices[offset + 5] = m0_rot * K;
+      matrices[offset + 0] = r0 * sx;
+      matrices[offset + 1] = r1 * sx;
+      matrices[offset + 4] = -r1 * caxsy;
+      matrices[offset + 5] = r0 * caxsy;
       matrices[offset + 6] = m6;
-      matrices[offset + 7] = 0;
-      matrices[offset + 8] = m1_rot * sax;
-      matrices[offset + 9] = -m0_rot * sax;
-      matrices[offset + 10] = m10;
-      matrices[offset + 11] = 0;
+      matrices[offset + 8] = r1 * sxsax;
+      matrices[offset + 9] = -r0 * sxsax;
+      matrices[offset + 10] = sxcax;
       matrices[offset + 12] = ci * m12 - si * m13;
       matrices[offset + 13] = si * m12 + ci * m13;
       matrices[offset + 14] = m14;
-      matrices[offset + 15] = 1;
       offset += 16;
     }
   }
