@@ -15,6 +15,7 @@ const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
 let isLabMode = false;
 let isGuideOpen = false;
+let lastActiveElement: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
@@ -171,8 +172,9 @@ async function toggleLabMode() {
   isLabMode = !isLabMode;
   const toggleGeneration = ++labToggleGeneration;
 
-  if (isLabMode && isGuideOpen) {
-    toggleFieldGuide();
+  if (isLabMode) {
+    lastActiveElement = document.activeElement as HTMLElement;
+    if (isGuideOpen) toggleFieldGuide();
   }
 
   if (labToggle) labToggle.setAttribute('aria-expanded', isLabMode.toString());
@@ -187,21 +189,36 @@ async function toggleLabMode() {
     await ensurePane();
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
     updateFromPane();
+    // Focus the first input in the pane
+    const firstInput = labControls?.querySelector('input, select, button');
+    if (firstInput instanceof HTMLElement) firstInput.focus();
   } else {
     grow(undefined, true);
+    if (lastActiveElement) {
+      lastActiveElement.focus();
+      lastActiveElement = null;
+    }
   }
 }
 
 function toggleFieldGuide() {
   isGuideOpen = !isGuideOpen;
 
-  if (isGuideOpen && isLabMode) {
-    toggleLabMode();
+  if (isGuideOpen) {
+    lastActiveElement = document.activeElement as HTMLElement;
+    if (isLabMode) toggleLabMode();
   }
 
   if (guideToggle) guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
   if (fieldGuide) fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
+
+  if (isGuideOpen) {
+    fieldGuide?.focus();
+  } else if (lastActiveElement) {
+    lastActiveElement.focus();
+    lastActiveElement = null;
+  }
 }
 
 labToggle?.addEventListener('click', toggleLabMode);

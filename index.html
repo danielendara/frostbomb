@@ -15,14 +15,15 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <a href="#main-actions" class="skip-link">Skip to actions</a>
     <canvas id="scene" role="img" aria-label="3D procedural snowflake visualization"></canvas>
 
     <header class="masthead">
-      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R)">
+      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R)" aria-keyshortcuts="r">
         <div class="wordmark" aria-label="frost·bomb">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
-      <button class="edition-btn" id="btn-seed" title="Copy share link (C)" aria-label="Copy snowflake share link">
+      <button class="edition-btn" id="btn-seed" title="Copy share link (C)" aria-label="Copy snowflake share link" aria-keyshortcuts="c">
         Vol. <span id="seed-display" aria-live="polite">·····</span>
       </button>
     </header>
@@ -31,10 +32,10 @@
       <div class="field-notes__header">
         <h2 class="field-notes__label">Growth conditions</h2>
         <div class="field-notes__toggles">
-          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G, ?)" aria-expanded="false" aria-controls="field-guide">
+          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G, ?)" aria-expanded="false" aria-controls="field-guide" aria-keyshortcuts="g ?">
             Guide
           </button>
-          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-expanded="false" aria-controls="lab-controls">
+          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-expanded="false" aria-controls="lab-controls" aria-keyshortcuts="l">
             Lab Mode: <span id="lab-status">OFF</span>
           </button>
         </div>
@@ -51,7 +52,7 @@
         <div id="pane-mount" class="pane-mount" aria-label="Manual growth adjustments"></div>
       </div>
 
-      <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="0" aria-label="Field Guide">
+      <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="-1" aria-label="Field Guide">
         <div class="field-guide__content">
           <section>
             <h3>Temperature</h3>
@@ -95,31 +96,31 @@
     </aside>
 
     <footer class="footer">
-      <nav class="actions" aria-label="Snowflake actions">
+      <nav class="actions" aria-label="Snowflake actions" id="main-actions">
         <div class="actions__group">
-          <button class="action-btn action-btn--toggle active" id="btn-rotate" title="Toggle auto-rotation (A)" aria-pressed="true">
+          <button class="action-btn action-btn--toggle active" id="btn-rotate" title="Toggle auto-rotation (A)" aria-pressed="true" aria-keyshortcuts="a">
             <span class="action-btn__icon" aria-hidden="true">⟳</span>
             <span class="action-btn__label">Auto-Rotate</span>
           </button>
-          <button class="action-btn action-btn--toggle" id="btn-pink" title="Toggle pink mode (P)" aria-pressed="false">
+          <button class="action-btn action-btn--toggle" id="btn-pink" title="Toggle pink mode (P)" aria-pressed="false" aria-keyshortcuts="p">
             <span class="action-btn__icon" aria-hidden="true">💖</span>
             <span class="action-btn__label">Pink</span>
           </button>
-          <button class="action-btn action-btn--toggle" id="btn-prism" title="Toggle prism mode (M)" aria-pressed="false">
+          <button class="action-btn action-btn--toggle" id="btn-prism" title="Toggle prism mode (M)" aria-pressed="false" aria-keyshortcuts="m">
             <span class="action-btn__icon" aria-hidden="true">🌈</span>
             <span class="action-btn__label">Prism</span>
           </button>
         </div>
         <div class="actions__divider" role="separator" aria-orientation="vertical"></div>
-        <button class="action-btn" id="btn-copy" title="Copy share link (C)">
+        <button class="action-btn" id="btn-copy" title="Copy share link (C)" aria-keyshortcuts="c">
           <span class="action-btn__icon" aria-hidden="true">⎘</span>
           <span class="action-btn__label">Copy Link</span>
         </button>
-        <button class="action-btn" id="btn-save" title="Save as PNG (S)">
+        <button class="action-btn" id="btn-save" title="Save as PNG (S)" aria-keyshortcuts="s">
           <span class="action-btn__icon" aria-hidden="true">↓</span>
           <span class="action-btn__label">Save PNG</span>
         </button>
-        <button class="refresh" id="refresh" title="Grow another snowflake (R)">
+        <button class="refresh" id="refresh" title="Grow another snowflake (R)" aria-keyshortcuts="r">
           <span class="refresh__icon" aria-hidden="true">↻</span>
           <span class="refresh__label">grow another</span>
         </button>
