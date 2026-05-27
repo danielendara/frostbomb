@@ -116,16 +116,19 @@ function announce(message: string) {
 }
 
 const originalLabels = new Map<string, string>();
+const originalIcons = new Map<string, string>();
 const labelTimeouts = new Map<string, number>();
 
 /**
- * Sets a temporary label for a button, handling restoration robustly even with rapid clicks.
+ * Sets a temporary label and optionally an icon for a button, handling restoration robustly.
  */
-function setTemporaryLabel(btnId: string, tempText: string, duration = 2000) {
+function setTemporaryLabel(btnId: string, tempText: string, duration = 2000, tempIcon?: string) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
 
   const labelEl = btn.querySelector('.action-btn__label') || btn.querySelector('#seed-display') || btn;
+  const iconEl = btn.querySelector('.action-btn__icon') || btn.querySelector('.refresh__icon');
+
   if (!labelEl) return;
 
   // Clear existing timeout if any
@@ -133,16 +136,27 @@ function setTemporaryLabel(btnId: string, tempText: string, duration = 2000) {
     window.clearTimeout(labelTimeouts.get(btnId));
   }
 
-  // Capture original label only once
+  // Capture original state only once
   if (!originalLabels.has(btnId)) {
     originalLabels.set(btnId, labelEl.textContent || '');
   }
+  if (iconEl && !originalIcons.has(btnId)) {
+    originalIcons.set(btnId, iconEl.textContent || '');
+  }
 
   labelEl.textContent = tempText;
+  if (iconEl && tempIcon) {
+    iconEl.textContent = tempIcon;
+  }
 
   const timeout = window.setTimeout(() => {
     labelEl.textContent = originalLabels.get(btnId) || '';
     originalLabels.delete(btnId);
+
+    if (iconEl && originalIcons.has(btnId)) {
+      iconEl.textContent = originalIcons.get(btnId) || '';
+      originalIcons.delete(btnId);
+    }
     labelTimeouts.delete(btnId);
   }, duration);
 
@@ -154,6 +168,15 @@ function handleRefresh(e?: Event) {
     return;
   }
   if (e) e.preventDefault();
+
+  const refreshBtn = document.getElementById('refresh');
+  if (refreshBtn) {
+    refreshBtn.classList.remove('refresh--spinning');
+    void refreshBtn.offsetWidth; // Trigger reflow
+    refreshBtn.classList.add('refresh--spinning');
+    setTimeout(() => refreshBtn.classList.remove('refresh--spinning'), 600);
+  }
+
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
 }
@@ -243,7 +266,7 @@ function updateFromPane() {
 function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
   navigator.clipboard.writeText(url).then(() => {
-    setTemporaryLabel('btn-copy', 'Copied!');
+    setTemporaryLabel('btn-copy', 'Copied!', 2000, '✓');
     setTemporaryLabel('btn-seed', 'Copied!');
     announce('Link copied to clipboard');
   }).catch(err => {
@@ -265,7 +288,7 @@ function saveSnowflake() {
   link.href = dataUrl;
   link.click();
 
-  setTemporaryLabel('btn-save', 'Saved!');
+  setTemporaryLabel('btn-save', 'Saved!', 2000, '✓');
   announce('Snowflake saved as PNG');
 }
 
