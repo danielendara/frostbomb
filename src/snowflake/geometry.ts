@@ -46,15 +46,6 @@ let currentSegmentCount = 0;
 // variation remains deterministic across different sessions.
 const noise2D = createNoise2D(() => 0.5);
 
-// Pre-calculate symmetry angles once to avoid per-snowflake overhead.
-const SYMMETRY_COSINES = new Float32Array(6);
-const SYMMETRY_SINES = new Float32Array(6);
-for (let i = 0; i < 6; i++) {
-  const angle = (i * Math.PI * 2) / 6;
-  SYMMETRY_COSINES[i] = Math.cos(angle);
-  SYMMETRY_SINES[i] = Math.sin(angle);
-}
-
 export function buildSnowflake(
   conditions: GrowthConditions,
   rand: Rand,
@@ -105,12 +96,6 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
-  // Performance Optimization: Pre-fill identity component (m15) for all 6 symmetry instances.
-  // This allows us to skip 6 writes inside the main per-segment population loop.
-  for (let i = 15; i < matrices.length; i += 16) {
-    matrices[i] = 1;
-  }
-
   for (let j = 0; j < armLen; j++) {
     const packed = packedBuffer[j];
     const segIdx = (packed & 0x3FFF) * SEGMENT_STRIDE;
@@ -159,47 +144,122 @@ export function buildSnowflake(
     const m13 = midY + vJitter;
     const m14 = vJitter;
 
-    // Apply rotation for each of the 6 symmetry instances
-    // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5]
-    // to improve cache locality and consolidate GPU update ranges.
-    let offset = j * 6 * 16;
+    // Performance Optimization: Unroll symmetry loop and leverage hexagonal symmetry
+    // (60° steps) to eliminate 2D rotation math and redundant multiplications.
+    // This reduces multiplications by ~65% and avoids 5 loop iterations per segment.
+    const S60 = 0.8660254037844386;
+    let offset = j * 96;
 
-    // Special case for i=0 to avoid 48 multiplications and 24 additions/subtractions.
-    // Optimization: Skip explicit zero-writes for m2, m3, m7, m11 as buffer is zero-initialized.
-    matrices[offset + 0] = cbz * sx;
-    matrices[offset + 1] = sbz * sx;
-    matrices[offset + 4] = -sbz * caxsy;
-    matrices[offset + 5] = cbz * caxsy;
+    // Arm 0 components
+    const m0 = cbz * sx;
+    const m1 = sbz * sx;
+    const m4 = -sbz * caxsy;
+    const m5 = cbz * caxsy;
+    const m8 = sbz * sxsax;
+    const m9 = -cbz * sxsax;
+
+    // Intermediate terms for fast rotation logic
+    const h0 = m0 * 0.5;
+    const h1 = m1 * 0.5;
+    const h4 = m4 * 0.5;
+    const h5 = m5 * 0.5;
+    const h8 = m8 * 0.5;
+    const h9 = m9 * 0.5;
+    const h12 = m12 * 0.5;
+    const h13 = m13 * 0.5;
+
+    const r0 = m0 * S60;
+    const r1 = m1 * S60;
+    const r4 = m4 * S60;
+    const r5 = m5 * S60;
+    const r8 = m8 * S60;
+    const r9 = m9 * S60;
+    const r12 = m12 * S60;
+    const r13 = m13 * S60;
+
+    // Arm 0 (0°)
+    matrices[offset + 0] = m0;
+    matrices[offset + 1] = m1;
+    matrices[offset + 4] = m4;
+    matrices[offset + 5] = m5;
     matrices[offset + 6] = m6;
-    matrices[offset + 8] = sbz * sxsax;
-    matrices[offset + 9] = -cbz * sxsax;
+    matrices[offset + 8] = m8;
+    matrices[offset + 9] = m9;
     matrices[offset + 10] = sxcax;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
     matrices[offset + 14] = m14;
+    matrices[offset + 15] = 1;
 
-    offset += 16;
+    // Arm 1 (60°)
+    matrices[offset + 16] = h0 - r1;
+    matrices[offset + 17] = r0 + h1;
+    matrices[offset + 20] = h4 - r5;
+    matrices[offset + 21] = r4 + h5;
+    matrices[offset + 22] = m6;
+    matrices[offset + 24] = h8 - r9;
+    matrices[offset + 25] = r8 + h9;
+    matrices[offset + 26] = sxcax;
+    matrices[offset + 28] = h12 - r13;
+    matrices[offset + 29] = r12 + h13;
+    matrices[offset + 30] = m14;
+    matrices[offset + 31] = 1;
 
-    for (let i = 1; i < 6; i++) {
-      const ci = SYMMETRY_COSINES[i];
-      const si = SYMMETRY_SINES[i];
+    // Arm 2 (120°)
+    matrices[offset + 32] = -h0 - r1;
+    matrices[offset + 33] = r0 - h1;
+    matrices[offset + 36] = -h4 - r5;
+    matrices[offset + 37] = r4 - h5;
+    matrices[offset + 38] = m6;
+    matrices[offset + 40] = -h8 - r9;
+    matrices[offset + 41] = r8 - h9;
+    matrices[offset + 42] = sxcax;
+    matrices[offset + 44] = -h12 - r13;
+    matrices[offset + 45] = r12 - h13;
+    matrices[offset + 46] = m14;
+    matrices[offset + 47] = 1;
 
-      const r0 = ci * cbz - si * sbz;
-      const r1 = si * cbz + ci * sbz;
+    // Arm 3 (180°)
+    matrices[offset + 48] = -m0;
+    matrices[offset + 49] = -m1;
+    matrices[offset + 52] = -m4;
+    matrices[offset + 53] = -m5;
+    matrices[offset + 54] = m6;
+    matrices[offset + 56] = -m8;
+    matrices[offset + 57] = -m9;
+    matrices[offset + 58] = sxcax;
+    matrices[offset + 60] = -m12;
+    matrices[offset + 61] = -m13;
+    matrices[offset + 62] = m14;
+    matrices[offset + 63] = 1;
 
-      matrices[offset + 0] = r0 * sx;
-      matrices[offset + 1] = r1 * sx;
-      matrices[offset + 4] = -r1 * caxsy;
-      matrices[offset + 5] = r0 * caxsy;
-      matrices[offset + 6] = m6;
-      matrices[offset + 8] = r1 * sxsax;
-      matrices[offset + 9] = -r0 * sxsax;
-      matrices[offset + 10] = sxcax;
-      matrices[offset + 12] = ci * m12 - si * m13;
-      matrices[offset + 13] = si * m12 + ci * m13;
-      matrices[offset + 14] = m14;
-      offset += 16;
-    }
+    // Arm 4 (240°)
+    matrices[offset + 64] = -h0 + r1;
+    matrices[offset + 65] = -r0 - h1;
+    matrices[offset + 68] = -h4 + r5;
+    matrices[offset + 69] = -r4 - h5;
+    matrices[offset + 70] = m6;
+    matrices[offset + 72] = -h8 + r9;
+    matrices[offset + 73] = -r8 - h9;
+    matrices[offset + 74] = sxcax;
+    matrices[offset + 76] = -h12 + r13;
+    matrices[offset + 77] = -r12 - h13;
+    matrices[offset + 78] = m14;
+    matrices[offset + 79] = 1;
+
+    // Arm 5 (300°)
+    matrices[offset + 80] = h0 + r1;
+    matrices[offset + 81] = -r0 + h1;
+    matrices[offset + 84] = h4 + r5;
+    matrices[offset + 85] = -r4 + h5;
+    matrices[offset + 86] = m6;
+    matrices[offset + 88] = h8 + r9;
+    matrices[offset + 89] = -r8 + h9;
+    matrices[offset + 90] = sxcax;
+    matrices[offset + 92] = h12 + r13;
+    matrices[offset + 93] = -r12 + h13;
+    matrices[offset + 94] = m14;
+    matrices[offset + 95] = 1;
   }
 
   // Core parameters from start of path
@@ -389,8 +449,9 @@ function buildArm(
   if (depth > params.maxDepth || length < 0.08) return;
   if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
-  const midX = startX + dirX * length * 0.5;
-  const midY = startY + dirY * length * 0.5;
+  const halfLen = length * 0.5;
+  const midX = startX + dirX * halfLen;
+  const midY = startY + dirY * halfLen;
   const thicknessVariation = 1 + noise2D(midX * 3 + nOffset, midY * 3 + nOffset) * 0.15;
 
   const bIdx = currentSegmentCount * SEGMENT_STRIDE;
