@@ -1,0 +1,3 @@
+## 2025-05-15 - [Consistency in ARIA State and Visual Feedback]
+**Learning:** Inconsistent ARIA attribute usage between JavaScript and CSS (e.g., `aria-expanded` vs `aria-pressed`) silently breaks active-state styling. Additionally, keyboard shortcuts often bypass micro-animations that are only implemented within click handlers, leading to a less "delightful" experience for power users.
+**Action:** Always verify that CSS selectors match the specific ARIA attributes being toggled in the logic. Ensure all interaction entry points (click, keyboard) share a unified handler that includes visual feedback animations.
