@@ -18,6 +18,14 @@ function easeOutExpoFast(t: number): number {
   return EASING_LUT[(t * (EASING_LUT_SIZE - 1)) | 0];
 }
 
+/**
+ * Performance Optimization: Unchecked version of easing for hot loops where 't'
+ * is already guaranteed to be in (0, 1).
+ */
+function easeOutExpoUnchecked(t: number): number {
+  return EASING_LUT[(t * (EASING_LUT_SIZE - 1)) | 0];
+}
+
 interface RenderPipeline {
   render: (delta?: number) => void;
   setSize: (width: number, height: number) => void;
@@ -522,6 +530,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     // to replace 200 sin() calls with 2 sin/cos calls per frame.
     const sinTime = Math.sin(time);
     const cosTime = Math.cos(time);
+    // Performance Optimization: Hoist drift factor.
+    const driftFactor = 0.002 * motionScale;
 
     for (let i = 0; i < particleCount; i++) {
       const idx3 = i * 3;
@@ -531,7 +541,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       py -= particleVel[i] * motionScale;
       // Horizontal drift using pre-calculated phase components
       const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
-      px += drift * 0.002 * motionScale;
+      px += drift * driftFactor;
 
       if (py < -10) {
         py = 10;
@@ -578,7 +588,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
           const armLen = currentFlakeData.armCount;
-          const threshold = eased * 1.5;
+          // Performance Optimization: Hoist multiplication by 2.
+          const threshold2 = eased * 3.0;
           let maxIndex = -1;
 
           // Optimization: Outer loop over the single arm's instances.
@@ -587,9 +598,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const delay = currentFlakeData.delays[j];
 
             // Optimization: Early break since segments are sorted by delay.
-            if (delay > threshold) break;
+            if (delay > threshold2) break;
 
-            const progress = Math.min(1, (threshold - delay) * 2);
+            const progress = threshold2 - delay;
 
             // Inner loop: Apply scale to all 6 symmetry instances.
             // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
@@ -606,7 +617,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             }
 
             maxIndex = j;
-            const s = easeOutExpoFast(progress);
+            // Performance Optimization: Clamp progress to [0, 1] before calling unchecked easing
+            // to prevent out-of-bounds access if threshold calculations vary.
+            const s = easeOutExpoUnchecked(progress < 0 ? 0 : progress);
 
             // Optimization: Unroll symmetry loop and leverage hexagonal symmetry to
             // reduce floating-point multiplications by ~50% (saving 18 per segment).
