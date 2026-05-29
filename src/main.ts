@@ -304,6 +304,7 @@ function togglePinkMode() {
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle('pink-mode', enabled);
+  announce(enabled ? 'Pink mode enabled' : 'Pink mode disabled');
 }
 
 btnPink?.addEventListener('click', togglePinkMode);
@@ -317,6 +318,7 @@ function togglePrismMode() {
     btnPrism.classList.toggle('active', enabled);
   }
   scene.setPrismMode(enabled);
+  announce(enabled ? 'Prism mode enabled' : 'Prism mode disabled');
 }
 
 btnPrism?.addEventListener('click', togglePrismMode);
@@ -334,6 +336,7 @@ function toggleAutoRotate() {
     btnRotate.classList.toggle('active', enabled);
   }
   scene.setAutoRotate(enabled);
+  announce(enabled ? 'Auto-rotation enabled' : 'Auto-rotation disabled');
 }
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
