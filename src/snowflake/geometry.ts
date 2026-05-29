@@ -191,35 +191,55 @@ export function buildSnowflake(
     matrices[offset + 14] = m14;
     matrices[offset + 15] = 1;
 
+    // Intermediate terms for Arm 1 (60°)
+    const m16 = h0 - r1;
+    const m17 = r0 + h1;
+    const m20 = h4 - r5;
+    const m21 = r4 + h5;
+    const m24 = h8 - r9;
+    const m25 = r8 + h9;
+    const m28 = h12 - r13;
+    const m29 = r12 + h13;
+
+    // Intermediate terms for Arm 2 (120°)
+    const m32 = -h0 - r1;
+    const m33 = r0 - h1;
+    const m36 = -h4 - r5;
+    const m37 = r4 - h5;
+    const m40 = -h8 - r9;
+    const m41 = r8 - h9;
+    const m44 = -h12 - r13;
+    const m45 = r12 - h13;
+
     // Arm 1 (60°)
-    matrices[offset + 16] = h0 - r1;
-    matrices[offset + 17] = r0 + h1;
-    matrices[offset + 20] = h4 - r5;
-    matrices[offset + 21] = r4 + h5;
+    matrices[offset + 16] = m16;
+    matrices[offset + 17] = m17;
+    matrices[offset + 20] = m20;
+    matrices[offset + 21] = m21;
     matrices[offset + 22] = m6;
-    matrices[offset + 24] = h8 - r9;
-    matrices[offset + 25] = r8 + h9;
+    matrices[offset + 24] = m24;
+    matrices[offset + 25] = m25;
     matrices[offset + 26] = sxcax;
-    matrices[offset + 28] = h12 - r13;
-    matrices[offset + 29] = r12 + h13;
+    matrices[offset + 28] = m28;
+    matrices[offset + 29] = m29;
     matrices[offset + 30] = m14;
     matrices[offset + 31] = 1;
 
     // Arm 2 (120°)
-    matrices[offset + 32] = -h0 - r1;
-    matrices[offset + 33] = r0 - h1;
-    matrices[offset + 36] = -h4 - r5;
-    matrices[offset + 37] = r4 - h5;
+    matrices[offset + 32] = m32;
+    matrices[offset + 33] = m33;
+    matrices[offset + 36] = m36;
+    matrices[offset + 37] = m37;
     matrices[offset + 38] = m6;
-    matrices[offset + 40] = -h8 - r9;
-    matrices[offset + 41] = r8 - h9;
+    matrices[offset + 40] = m40;
+    matrices[offset + 41] = m41;
     matrices[offset + 42] = sxcax;
-    matrices[offset + 44] = -h12 - r13;
-    matrices[offset + 45] = r12 - h13;
+    matrices[offset + 44] = m44;
+    matrices[offset + 45] = m45;
     matrices[offset + 46] = m14;
     matrices[offset + 47] = 1;
 
-    // Arm 3 (180°)
+    // Arm 3 (180°) = -Arm 0
     matrices[offset + 48] = -m0;
     matrices[offset + 49] = -m1;
     matrices[offset + 52] = -m4;
@@ -233,31 +253,31 @@ export function buildSnowflake(
     matrices[offset + 62] = m14;
     matrices[offset + 63] = 1;
 
-    // Arm 4 (240°)
-    matrices[offset + 64] = -h0 + r1;
-    matrices[offset + 65] = -r0 - h1;
-    matrices[offset + 68] = -h4 + r5;
-    matrices[offset + 69] = -r4 - h5;
+    // Arm 4 (240°) = -Arm 1
+    matrices[offset + 64] = -m16;
+    matrices[offset + 65] = -m17;
+    matrices[offset + 68] = -m20;
+    matrices[offset + 69] = -m21;
     matrices[offset + 70] = m6;
-    matrices[offset + 72] = -h8 + r9;
-    matrices[offset + 73] = -r8 - h9;
+    matrices[offset + 72] = -m24;
+    matrices[offset + 73] = -m25;
     matrices[offset + 74] = sxcax;
-    matrices[offset + 76] = -h12 + r13;
-    matrices[offset + 77] = -r12 - h13;
+    matrices[offset + 76] = -m28;
+    matrices[offset + 77] = -m29;
     matrices[offset + 78] = m14;
     matrices[offset + 79] = 1;
 
-    // Arm 5 (300°)
-    matrices[offset + 80] = h0 + r1;
-    matrices[offset + 81] = -r0 + h1;
-    matrices[offset + 84] = h4 + r5;
-    matrices[offset + 85] = -r4 + h5;
+    // Arm 5 (300°) = -Arm 2
+    matrices[offset + 80] = -m32;
+    matrices[offset + 81] = -m33;
+    matrices[offset + 84] = -m36;
+    matrices[offset + 85] = -m37;
     matrices[offset + 86] = m6;
-    matrices[offset + 88] = h8 + r9;
-    matrices[offset + 89] = -r8 + h9;
+    matrices[offset + 88] = -m40;
+    matrices[offset + 89] = -m41;
     matrices[offset + 90] = sxcax;
-    matrices[offset + 92] = h12 + r13;
-    matrices[offset + 93] = -r12 + h13;
+    matrices[offset + 92] = -m44;
+    matrices[offset + 93] = -m45;
     matrices[offset + 94] = m14;
     matrices[offset + 95] = 1;
   }

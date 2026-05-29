@@ -608,26 +608,97 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             maxIndex = j;
             const s = easeOutExpoFast(progress);
 
-            // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
-            // These are identical for all 6 arms as they represent Z-tilt and thickness.
+            // Optimization: Unroll symmetry loop and leverage hexagonal symmetry to
+            // reduce floating-point multiplications by ~50% (saving 18 per segment).
+            // We calculate Arms 0, 1, 2 and derive Arms 3, 4, 5 by negating them.
+
+            // Arm 0 components
+            const m0s = source[idx + 0] * s;
+            const m1s = source[idx + 1] * s;
+            const m4s = source[idx + 4] * s;
+            const m5s = source[idx + 5] * s;
+            const m8s = source[idx + 8] * s;
+            const m9s = source[idx + 9] * s;
+
+            // Arm 1 components
+            const m16s = source[idx + 16] * s;
+            const m17s = source[idx + 17] * s;
+            const m20s = source[idx + 20] * s;
+            const m21s = source[idx + 21] * s;
+            const m24s = source[idx + 24] * s;
+            const m25s = source[idx + 25] * s;
+
+            // Arm 2 components
+            const m32s = source[idx + 32] * s;
+            const m33s = source[idx + 33] * s;
+            const m36s = source[idx + 36] * s;
+            const m37s = source[idx + 37] * s;
+            const m40s = source[idx + 40] * s;
+            const m41s = source[idx + 41] * s;
+
+            // Hoist invariant Z-basis components (identical for all arms)
             const m6s = source[idx + 6] * s;
             const m10s = source[idx + 10] * s;
 
-            for (let i = 0; i < 6; i++) {
-              // Column 1
-              target[idx + 0] = source[idx + 0] * s;
-              target[idx + 1] = source[idx + 1] * s;
-              // Optimization: Skip target[idx+2] as it is always 0 for snowflake segments.
-              // Column 2
-              target[idx + 4] = source[idx + 4] * s;
-              target[idx + 5] = source[idx + 5] * s;
-              target[idx + 6] = m6s;
-              // Column 3
-              target[idx + 8] = source[idx + 8] * s;
-              target[idx + 9] = source[idx + 9] * s;
-              target[idx + 10] = m10s;
-              idx += 16;
-            }
+            // Arm 0
+            target[idx + 0] = m0s;
+            target[idx + 1] = m1s;
+            target[idx + 4] = m4s;
+            target[idx + 5] = m5s;
+            target[idx + 6] = m6s;
+            target[idx + 8] = m8s;
+            target[idx + 9] = m9s;
+            target[idx + 10] = m10s;
+
+            // Arm 1
+            target[idx + 16] = m16s;
+            target[idx + 17] = m17s;
+            target[idx + 20] = m20s;
+            target[idx + 21] = m21s;
+            target[idx + 22] = m6s;
+            target[idx + 24] = m24s;
+            target[idx + 25] = m25s;
+            target[idx + 26] = m10s;
+
+            // Arm 2
+            target[idx + 32] = m32s;
+            target[idx + 33] = m33s;
+            target[idx + 36] = m36s;
+            target[idx + 37] = m37s;
+            target[idx + 38] = m6s;
+            target[idx + 40] = m40s;
+            target[idx + 41] = m41s;
+            target[idx + 42] = m10s;
+
+            // Arm 3 (-Arm 0)
+            target[idx + 48] = -m0s;
+            target[idx + 49] = -m1s;
+            target[idx + 52] = -m4s;
+            target[idx + 53] = -m5s;
+            target[idx + 54] = m6s;
+            target[idx + 56] = -m8s;
+            target[idx + 57] = -m9s;
+            target[idx + 58] = m10s;
+
+            // Arm 4 (-Arm 1)
+            target[idx + 64] = -m16s;
+            target[idx + 65] = -m17s;
+            target[idx + 68] = -m20s;
+            target[idx + 69] = -m21s;
+            target[idx + 70] = m6s;
+            target[idx + 72] = -m24s;
+            target[idx + 73] = -m25s;
+            target[idx + 74] = m10s;
+
+            // Arm 5 (-Arm 2)
+            target[idx + 80] = -m32s;
+            target[idx + 81] = -m33s;
+            target[idx + 84] = -m36s;
+            target[idx + 85] = -m37s;
+            target[idx + 86] = m6s;
+            target[idx + 88] = -m40s;
+            target[idx + 89] = -m41s;
+            target[idx + 90] = m10s;
           }
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.
