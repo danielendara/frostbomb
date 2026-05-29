@@ -187,7 +187,7 @@ body.pink-mode {
   color: var(--ink-dim);
 }
 
-.lab-toggle[aria-pressed="true"] {
+.lab-toggle[aria-expanded="true"] {
   color: var(--accent);
 }
 

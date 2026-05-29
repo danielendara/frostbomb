@@ -360,8 +360,7 @@ window.addEventListener('keydown', (e) => {
   if (isEditableTarget(e.target)) return;
 
   if (key === 'r') {
-    window.history.replaceState(null, '', window.location.pathname);
-    grow(isLabMode ? currentConditions : undefined);
+    handleRefresh();
   } else if (key === 'g' || key === '?') {
     toggleFieldGuide();
   } else if (key === 'l') {
