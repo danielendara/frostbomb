@@ -318,6 +318,7 @@ function togglePrismMode() {
     btnPrism.classList.toggle('active', enabled);
   }
   scene.setPrismMode(enabled);
+  document.body.classList.toggle('prism-mode', enabled);
   announce(enabled ? 'Prism mode enabled' : 'Prism mode disabled');
 }
 
