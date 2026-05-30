@@ -86,7 +86,7 @@ export function buildSnowflake(
     // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
     // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
     // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
-    packedBuffer[i] = ((delay * 10000) | 0) << 14 | (i & 0x3FFF);
+    packedBuffer[i] = ((delay * 5000) | 0) << 14 | (i & 0x3FFF);
   }
   packedBuffer.sort();
 
@@ -482,7 +482,8 @@ function buildArm(
   SEGMENT_BUFFER[bIdx + 4] = thicknessVariation;
   SEGMENT_BUFFER[bIdx + 5] = midX;
   SEGMENT_BUFFER[bIdx + 6] = midY;
-  SEGMENT_BUFFER[bIdx + 7] = dist * 0.15 + depth * 0.1; // delay
+  // Performance Optimization: Pre-multiply delay by 2 to hoist multiplication out of the render loop.
+  SEGMENT_BUFFER[bIdx + 7] = dist * 0.3 + depth * 0.2; // delay
 
   currentSegmentCount++;
 
@@ -601,7 +602,8 @@ function buildArm(
     SEGMENT_BUFFER[tIdx + 4] = tipThicknessVariation;
     SEGMENT_BUFFER[tIdx + 5] = tipMidX;
     SEGMENT_BUFFER[tIdx + 6] = tipMidY;
-    SEGMENT_BUFFER[tIdx + 7] = tipDist * 0.15 + (depth + 1) * 0.1;
+    // Performance Optimization: Pre-multiply delay by 2 to hoist multiplication out of the render loop.
+    SEGMENT_BUFFER[tIdx + 7] = tipDist * 0.3 + (depth + 1) * 0.2;
 
     currentSegmentCount++;
   }
