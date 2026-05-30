@@ -46,6 +46,9 @@ let currentSegmentCount = 0;
 // variation remains deterministic across different sessions.
 const noise2D = createNoise2D(() => 0.5);
 
+// Performance Optimization: Hoisted constants for hexagonal symmetry (sin 60°).
+const S60 = 0.8660254037844386;
+
 export function buildSnowflake(
   conditions: GrowthConditions,
   rand: Rand,
@@ -135,7 +138,6 @@ export function buildSnowflake(
     // Performance Optimization: Pre-calculate scaled terms to eliminate divisions and
     // redundant multiplications within the symmetry loop.
     const caxsy = cax * sy;
-    const sxsax = sx * sax;
     const sxcax = sx * cax;
     const m6 = sax * sy;
 
@@ -147,7 +149,6 @@ export function buildSnowflake(
     // Performance Optimization: Unroll symmetry loop and leverage hexagonal symmetry
     // (60° steps) to eliminate 2D rotation math and redundant multiplications.
     // This reduces multiplications by ~65% and avoids 5 loop iterations per segment.
-    const S60 = 0.8660254037844386;
     let offset = j * 96;
 
     // Arm 0 components
@@ -155,8 +156,8 @@ export function buildSnowflake(
     const m1 = sbz * sx;
     const m4 = -sbz * caxsy;
     const m5 = cbz * caxsy;
-    const m8 = sbz * sxsax;
-    const m9 = -cbz * sxsax;
+    const m8 = m1 * sax;
+    const m9 = -m0 * sax;
 
     // Intermediate terms for fast rotation logic
     const h0 = m0 * 0.5;
@@ -332,6 +333,9 @@ interface Params {
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
   let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
+  let cosAngle = 0.5; // Default for PI/3
+  let sinAngle = 0.8660254037844386;
+
   switch (habit) {
     case 'fernlike_dendrite':
       p = {
@@ -397,6 +401,8 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: true,
       };
+      cosAngle = 0.7071067811865476; // PI/4
+      sinAngle = 0.7071067811865475;
       break;
     case 'column':
       p = {
@@ -410,6 +416,8 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: false,
       };
+      cosAngle = 1;
+      sinAngle = 0;
       break;
     case 'capped_column':
       p = {
@@ -439,8 +447,8 @@ function paramsFor(temp: number, ss: number): Params {
   }
   return {
     ...p,
-    cosAngle: Math.cos(p.sideBranchAngle),
-    sinAngle: Math.sin(p.sideBranchAngle),
+    cosAngle,
+    sinAngle,
   };
 }
 
