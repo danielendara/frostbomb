@@ -91,8 +91,16 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   setText('seed-display', label);
   setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
   setText('stat-humid', `${(conditions.supersaturation * 100).toFixed(0)}%`);
-  setText('stat-habit', habitLabel[conditions.habit]);
+  const habitText = habitLabel[conditions.habit];
+  setText('stat-habit', habitText);
   setText('stat-branches', `${result.branchCount}`);
+
+  // Update dynamic accessibility labels for visuals
+  const canvasLabel = `3D procedural snowflake visualization: A ${habitText} grown at ${conditions.temperatureC.toFixed(1)}°C and ${(conditions.supersaturation * 100).toFixed(0)}% humidity.`;
+  canvas.setAttribute('aria-label', canvasLabel);
+
+  const diagramLabel = `Nakaya morphology diagram showing the growth path for this ${habitText}.`;
+  nakayaCanvas?.setAttribute('aria-label', diagramLabel);
 
   if (isLabMode) {
     labParams.habit = habitLabel[conditions.habit];
@@ -191,13 +199,16 @@ const fieldGuide = document.getElementById('field-guide');
 const statsDisplay = document.getElementById('stats-display');
 const labStatus = document.getElementById('lab-status');
 
-async function toggleLabMode() {
-  isLabMode = !isLabMode;
+async function toggleLabMode(force?: boolean) {
+  const next = typeof force === 'boolean' ? force : !isLabMode;
+  if (next === isLabMode) return;
+
+  isLabMode = next;
   const toggleGeneration = ++labToggleGeneration;
 
   if (isLabMode) {
     lastActiveElement = document.activeElement as HTMLElement;
-    if (isGuideOpen) toggleFieldGuide();
+    if (isGuideOpen) toggleFieldGuide(false);
   }
 
   if (labToggle) labToggle.setAttribute('aria-expanded', isLabMode.toString());
@@ -205,7 +216,6 @@ async function toggleLabMode() {
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
-    labStatus.style.color = isLabMode ? 'var(--accent)' : 'var(--ink-dim)';
   }
 
   if (isLabMode) {
@@ -224,12 +234,15 @@ async function toggleLabMode() {
   }
 }
 
-function toggleFieldGuide() {
-  isGuideOpen = !isGuideOpen;
+function toggleFieldGuide(force?: boolean) {
+  const next = typeof force === 'boolean' ? force : !isGuideOpen;
+  if (next === isGuideOpen) return;
+
+  isGuideOpen = next;
 
   if (isGuideOpen) {
     lastActiveElement = document.activeElement as HTMLElement;
-    if (isLabMode) toggleLabMode();
+    if (isLabMode) toggleLabMode(false);
   }
 
   if (guideToggle) guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
@@ -244,8 +257,8 @@ function toggleFieldGuide() {
   }
 }
 
-labToggle?.addEventListener('click', toggleLabMode);
-guideToggle?.addEventListener('click', toggleFieldGuide);
+labToggle?.addEventListener('click', () => toggleLabMode());
+guideToggle?.addEventListener('click', () => toggleFieldGuide());
 
 function updateFromPane() {
   const t = labParams.temperature;
@@ -351,11 +364,11 @@ window.addEventListener('keydown', (e) => {
 
   if (key === 'escape') {
     if (isGuideOpen) {
-      toggleFieldGuide();
+      toggleFieldGuide(false);
       return;
     }
     if (isLabMode) {
-      toggleLabMode();
+      toggleLabMode(false);
       return;
     }
   }
