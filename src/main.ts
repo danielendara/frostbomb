@@ -91,8 +91,16 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   setText('seed-display', label);
   setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
   setText('stat-humid', `${(conditions.supersaturation * 100).toFixed(0)}%`);
-  setText('stat-habit', habitLabel[conditions.habit]);
+  const habitText = habitLabel[conditions.habit];
+  setText('stat-habit', habitText);
   setText('stat-branches', `${result.branchCount}`);
+
+  // Update dynamic accessibility labels for visuals
+  const canvasLabel = `3D procedural snowflake visualization: A ${habitText} grown at ${conditions.temperatureC.toFixed(1)}°C and ${(conditions.supersaturation * 100).toFixed(0)}% humidity.`;
+  canvas.setAttribute('aria-label', canvasLabel);
+
+  const diagramLabel = `Nakaya morphology diagram showing the growth path for this ${habitText}.`;
+  nakayaCanvas?.setAttribute('aria-label', diagramLabel);
 
   if (isLabMode) {
     labParams.habit = habitLabel[conditions.habit];
@@ -205,7 +213,6 @@ async function toggleLabMode() {
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
-    labStatus.style.color = isLabMode ? 'var(--accent)' : 'var(--ink-dim)';
   }
 
   if (isLabMode) {
