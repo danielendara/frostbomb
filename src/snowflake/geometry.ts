@@ -46,6 +46,10 @@ let currentSegmentCount = 0;
 // variation remains deterministic across different sessions.
 const noise2D = createNoise2D(() => 0.5);
 
+// Performance Optimization: Hoist the S60 constant to the module scope to avoid
+// redundant assignments within the matrix population loop.
+const S60 = 0.8660254037844386;
+
 export function buildSnowflake(
   conditions: GrowthConditions,
   rand: Rand,
@@ -135,7 +139,6 @@ export function buildSnowflake(
     // Performance Optimization: Pre-calculate scaled terms to eliminate divisions and
     // redundant multiplications within the symmetry loop.
     const caxsy = cax * sy;
-    const sxsax = sx * sax;
     const sxcax = sx * cax;
     const m6 = sax * sy;
 
@@ -147,7 +150,6 @@ export function buildSnowflake(
     // Performance Optimization: Unroll symmetry loop and leverage hexagonal symmetry
     // (60° steps) to eliminate 2D rotation math and redundant multiplications.
     // This reduces multiplications by ~65% and avoids 5 loop iterations per segment.
-    const S60 = 0.8660254037844386;
     let offset = j * 96;
 
     // Arm 0 components
@@ -155,8 +157,10 @@ export function buildSnowflake(
     const m1 = sbz * sx;
     const m4 = -sbz * caxsy;
     const m5 = cbz * caxsy;
-    const m8 = sbz * sxsax;
-    const m9 = -cbz * sxsax;
+    // Performance Optimization: Derive m8 and m9 directly from m1 and m0,
+    // saving an intermediate multiplication (sxsax = sx * sax).
+    const m8 = m1 * sax;
+    const m9 = -m0 * sax;
 
     // Intermediate terms for fast rotation logic
     const h0 = m0 * 0.5;
@@ -437,10 +441,25 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
   }
+  // Performance Optimization: Hardcode common hexagonal trigonometric values to save
+  // Math.cos/sin calls. S60 (sin 60°) is already in module scope.
+  let cosAngle = 1;
+  let sinAngle = 0;
+  if (p.sideBranchAngle === Math.PI / 3) {
+    cosAngle = 0.5;
+    sinAngle = S60;
+  } else if (p.sideBranchAngle === Math.PI / 4) {
+    // 1 / Math.sqrt(2)
+    cosAngle = sinAngle = 0.7071067811865475;
+  } else if (p.sideBranchAngle !== 0) {
+    cosAngle = Math.cos(p.sideBranchAngle);
+    sinAngle = Math.sin(p.sideBranchAngle);
+  }
+
   return {
     ...p,
-    cosAngle: Math.cos(p.sideBranchAngle),
-    sinAngle: Math.sin(p.sideBranchAngle),
+    cosAngle,
+    sinAngle,
   };
 }
 
@@ -509,6 +528,10 @@ function buildArm(
   const stepY2 = stepY * 2;
   let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
   let currentLenFactor = 1 - invNumSteps * 0.5;
+  // Performance Optimization: Use additive tracking for the base side branch length
+  // to avoid one multiplication per branch spawned in the recursive loop.
+  let currentSideLenBase = sideLenBase * currentLenFactor;
+  const sideLenBaseStep = sideLenBase * lenStep;
   let px2 = (startX + stepX) * 2;
   let py2 = (startY + stepY) * 2;
 
@@ -520,7 +543,7 @@ function buildArm(
     // Side branches get less likely near the tip
     // Optimization: Additive tracking for localProb decay.
     if (rand.chance(currentLocalProb)) {
-      const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
+      const sideLen = currentSideLenBase * rand.range(0.4, 1.0);
 
       // Real snowflakes: side branches grow at 60° (hexagonal lattice)
       // Optimization: Additive tracking for noise coordinates px2/py2.
@@ -577,6 +600,7 @@ function buildArm(
 
     currentLocalProb -= probStep;
     currentLenFactor -= lenStep;
+    currentSideLenBase -= sideLenBaseStep;
     px2 += stepX2;
     py2 += stepY2;
   }
