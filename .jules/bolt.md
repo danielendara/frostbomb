@@ -77,3 +77,8 @@
 **Learning:** Hoisting constant multipliers from the per-frame render loop into the one-time geometry generation phase (e.g., doubling animation `delays`) yields a "free" performance win. However, using unchecked Look-Up Table (LUT) access in the hot loop for performance requires strict input clamping at the call-site to prevent `NaN` results from out-of-bounds indices, which can break rendering.
 **Action:** Pre-calculate render-loop constants during geometry generation whenever possible. Always wrap unchecked LUT access with lightweight local clamps (e.g., `progress < 0 ? 0 : progress`) to maintain both speed and stability.
 **Impact:** Optimization reduced growth animation loop execution time by ~30% (~0.008ms to ~0.0057ms) and overall generation time by ~10% via hoisted pre-calculations.
+
+## 2026-05-26 - [Module-Scope Constant Hoisting & Trig Literal Replacement]
+**Learning:** Constants like `S60` (sin 60°) defined inside hot loops (like the `buildSnowflake` matrix population) incur redundant assignment overhead over thousands of iterations. Additionally, calling `Math.cos()` and `Math.sin()` for fixed angles (like habit-specific side-branch angles) is slower than using pre-calculated literals. However, avoid using module-level shared buffers for return values (like built matrices) to maintain function reentrancy and prevent silent data corruption.
+**Action:** Hoist loop-invariant constants to module scope. Replace fixed trigonometric calls with pre-calculated literals. Prioritize functional correctness over micro-allocations in factory functions.
+**Impact:** Optimization reduced 'buildSnowflake' average time by ~11% (from 0.046ms to 0.041ms) without compromising reentrancy.

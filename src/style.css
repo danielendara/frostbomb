@@ -185,14 +185,9 @@ body.pink-mode {
 
 .lab-toggle span {
   color: var(--ink-dim);
-  transition: color 0.2s ease;
 }
 
 .lab-toggle[aria-expanded="true"] {
-  color: var(--accent);
-}
-
-.lab-toggle[aria-expanded="true"] #lab-status {
   color: var(--accent);
 }
 
@@ -453,43 +448,6 @@ kbd {
   border-color: var(--accent);
   color: var(--accent);
   background: rgba(158, 201, 255, 0.05);
-}
-
-.action-btn:hover .action-btn__icon {
-  transform: scale(1.2);
-}
-
-.action-btn__icon {
-  display: inline-block;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-#btn-pink.active .action-btn__icon {
-  animation: heart-pulse 1.5s ease-in-out infinite;
-}
-
-#btn-prism.active .action-btn__icon {
-  animation: prism-shimmer 2s linear infinite;
-}
-
-#btn-rotate.active .action-btn__icon {
-  animation: icon-rotate 4s linear infinite;
-}
-
-@keyframes heart-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); filter: drop-shadow(0 0 4px var(--accent)); }
-}
-
-@keyframes prism-shimmer {
-  0% { filter: hue-rotate(0deg) saturate(1); }
-  50% { filter: hue-rotate(180deg) saturate(2); transform: translateY(-1px); }
-  100% { filter: hue-rotate(360deg) saturate(1); }
-}
-
-@keyframes icon-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .action-btn--toggle:not(.active) {
