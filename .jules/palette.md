@@ -5,3 +5,7 @@
 ## 2025-01-24 - CSS Animation & Transform Conflicts
 **Learning:** CSS keyframe animations that modify the `transform` property will overwrite any other `transform` styles (like hover scales) on the same element. This causes visual jitter or prevents hover states from working correctly. Additionally, infinite animations for "delight" should always respect user accessibility preferences.
 **Action:** Avoid combining `transform` animations with separate `transform` hover effects on the same element; consider animating a parent/child instead. Always wrap infinite animations in `@media (prefers-reduced-motion: reduce)` blocks to ensure accessibility.
+
+## 2025-01-24 - Accessibility for Procedural Visualizations
+**Learning:** Highly dynamic or procedural content (like a generated snowflake) is often invisible to screen readers. By mapping the internal state (e.g., the current "habit" or crystal type) to a descriptive `aria-label` on the canvas element and updating it in real-time, the interface becomes significantly more inclusive for users who cannot see the generated art.
+**Action:** Always identify a semantic description for procedurally generated visuals and update an `aria-label` or `aria-description` whenever the visual state changes.
