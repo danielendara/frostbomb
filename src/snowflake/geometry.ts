@@ -333,8 +333,8 @@ interface Params {
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
   let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
-  let cosAngle = 0.5; // Default for PI/3
-  let sinAngle = 0.8660254037844386;
+  let cAng = 0.5; // Default for PI/3
+  let sAng = 0.8660254037844386;
 
   switch (habit) {
     case 'fernlike_dendrite':
@@ -401,8 +401,8 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: true,
       };
-      cosAngle = 0.7071067811865476; // PI/4
-      sinAngle = 0.7071067811865475;
+      cAng = 0.7071067811865476; // PI/4
+      sAng = 0.7071067811865475;
       break;
     case 'column':
       p = {
@@ -416,8 +416,8 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: false,
       };
-      cosAngle = 1;
-      sinAngle = 0;
+      cAng = 1;
+      sAng = 0;
       break;
     case 'capped_column':
       p = {
@@ -445,25 +445,10 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
   }
-  // Performance Optimization: Hardcode common hexagonal trigonometric values to save
-  // Math.cos/sin calls. S60 (sin 60°) is already in module scope.
-  let cosAngle = 1;
-  let sinAngle = 0;
-  if (p.sideBranchAngle === Math.PI / 3) {
-    cosAngle = 0.5;
-    sinAngle = S60;
-  } else if (p.sideBranchAngle === Math.PI / 4) {
-    // 1 / Math.sqrt(2)
-    cosAngle = sinAngle = 0.7071067811865475;
-  } else if (p.sideBranchAngle !== 0) {
-    cosAngle = Math.cos(p.sideBranchAngle);
-    sinAngle = Math.sin(p.sideBranchAngle);
-  }
-
   return {
     ...p,
-    cosAngle,
-    sinAngle,
+    cosAngle: cAng,
+    sinAngle: sAng,
   };
 }
 
@@ -532,10 +517,6 @@ function buildArm(
   const stepY2 = stepY * 2;
   let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
   let currentLenFactor = 1 - invNumSteps * 0.5;
-  // Performance Optimization: Use additive tracking for the base side branch length
-  // to avoid one multiplication per branch spawned in the recursive loop.
-  let currentSideLenBase = sideLenBase * currentLenFactor;
-  const sideLenBaseStep = sideLenBase * lenStep;
   let px2 = (startX + stepX) * 2;
   let py2 = (startY + stepY) * 2;
 
@@ -547,7 +528,7 @@ function buildArm(
     // Side branches get less likely near the tip
     // Optimization: Additive tracking for localProb decay.
     if (rand.chance(currentLocalProb)) {
-      const sideLen = currentSideLenBase * rand.range(0.4, 1.0);
+      const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
 
       // Real snowflakes: side branches grow at 60° (hexagonal lattice)
       // Optimization: Additive tracking for noise coordinates px2/py2.
@@ -604,7 +585,6 @@ function buildArm(
 
     currentLocalProb -= probStep;
     currentLenFactor -= lenStep;
-    currentSideLenBase -= sideLenBaseStep;
     px2 += stepX2;
     py2 += stepY2;
   }
