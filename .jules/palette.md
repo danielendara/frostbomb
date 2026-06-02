@@ -9,3 +9,7 @@
 ## 2025-01-24 - Accessibility for Procedural Visualizations
 **Learning:** Highly dynamic or procedural content (like a generated snowflake) is often invisible to screen readers. By mapping the internal state (e.g., the current "habit" or crystal type) to a descriptive `aria-label` on the canvas element and updating it in real-time, the interface becomes significantly more inclusive for users who cannot see the generated art.
 **Action:** Always identify a semantic description for procedurally generated visuals and update an `aria-label` or `aria-description` whenever the visual state changes.
+
+## 2025-01-24 - Enhancing Clipboard Feedback with ARIA Live Regions
+**Learning:** For background actions like "Copy to Clipboard", visual-only feedback (like a button text change) is insufficient for screen reader users. Using an `aria-live="polite"` region to announce the action completion provides much better accessibility. Additionally, including the specific content being copied (e.g., the seed value) in the announcement provides extra context and reassurance.
+**Action:** Use an ARIA live region (e.g., `#a11y-announcer`) for transient feedback. Ensure the announcement includes specific context (like "Seed [value] copied") rather than just a generic "Copied".
