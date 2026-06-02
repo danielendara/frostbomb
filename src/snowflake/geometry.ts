@@ -66,6 +66,7 @@ export function buildSnowflake(
 
   // Build one primary arm along +X
   const maxPathIdx = pathParams.length - 1;
+  const rng = rand.next.bind(rand);
   buildArm(
     0, 0, // startX, startY
     1, 0, // dirX, dirY
@@ -75,23 +76,14 @@ export function buildSnowflake(
     pathParams,
     maxPathIdx,
     pathScale,
-    rand,
+    rng,
     nOffset,
+    0, // Initial pathIdx
   );
 
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
   const armLen = currentSegmentCount;
-  const packedBuffer = SORT_BUFFER.subarray(0, armLen);
-  for (let i = 0; i < armLen; i++) {
-    const delay = SEGMENT_BUFFER[i * SEGMENT_STRIDE + 7];
-    // Performance Optimization: Pack delay (high bits) and index (low bits) into a single 32-bit
-    // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
-    // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
-    // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
-    packedBuffer[i] = ((delay * 5000) | 0) << 14 | (i & 0x3FFF);
-  }
-  packedBuffer.sort();
 
   // Performance Optimization: Use shared scratchpad buffers during calculation to avoid O(N)
   // intermediate allocations. We return a slice (copy) to ensure that the returned data
@@ -99,8 +91,24 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
+  // Performance Optimization: Additive tracking for segment buffer index.
+  let segPtr7 = 7;
+  for (let i = 0; i < armLen; i++) {
+    const delay = SEGMENT_BUFFER[segPtr7];
+    // Performance Optimization: Pack delay (high bits) and index (low bits) into a single 32-bit
+    // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
+    // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
+    // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
+    SORT_BUFFER[i] = ((delay * 5000) | 0) << 14 | (i & 0x3FFF);
+    segPtr7 += SEGMENT_STRIDE;
+  }
+
+  // Sort the first armLen elements of SORT_BUFFER
+  const sortedIndices = SORT_BUFFER.subarray(0, armLen);
+  sortedIndices.sort();
+
   for (let j = 0; j < armLen; j++) {
-    const packed = packedBuffer[j];
+    const packed = sortedIndices[j];
     const segIdx = (packed & 0x3FFF) * SEGMENT_STRIDE;
 
     const dirX = SEGMENT_BUFFER[segIdx + 0];
@@ -465,15 +473,11 @@ function buildArm(
   pathParams: Params[],
   maxPathIdx: number,
   pathScale: number,
-  rand: Rand,
+  rng: () => number,
   nOffset: number,
+  pathIdx: number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
-  // Optimization: use pre-calculated pathScale and maxPathIdx.
-  const pathIdx = Math.min(
-    maxPathIdx,
-    (dist * pathScale) | 0,
-  );
   const params = pathParams[pathIdx];
 
   if (depth > params.maxDepth || length < 0.08) return;
@@ -512,15 +516,17 @@ function buildArm(
   let pointY = startY;
   let currentDist = dist;
 
-  // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
+  // Pre-calculate additive steps for local probability, side length decay, noise coordinates, and path index.
   const probStep = params.sideBranchProb * (invNumSteps * 0.4);
   const lenStep = invNumSteps * 0.5;
   const stepX2 = stepX * 2;
   const stepY2 = stepY * 2;
+  const pathStep = stepDist * pathScale;
   let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
   let currentLenFactor = 1 - invNumSteps * 0.5;
   let px2 = (startX + stepX) * 2;
   let py2 = (startY + stepY) * 2;
+  let currentPathIdxFloat = (dist + stepDist) * pathScale;
 
   for (let i = 1; i < numSteps; i++) {
     pointX += stepX;
@@ -528,67 +534,74 @@ function buildArm(
     currentDist += stepDist;
 
     // Side branches get less likely near the tip
-    // Optimization: Additive tracking for localProb decay.
-    if (rand.chance(currentLocalProb)) {
-      const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
+    // Optimization: Inline rand.chance and additive tracking for localProb decay.
+    if (rng() < currentLocalProb) {
+      // Performance Optimization: Inline rand.range calls to eliminate function overhead and
+      // redundant arithmetic in the hot recursive loop.
+      const sideLen = sideLenBase * (0.4 + 0.6 * rng()) * currentLenFactor;
 
       // Real snowflakes: side branches grow at 60° (hexagonal lattice)
       // Optimization: Additive tracking for noise coordinates px2/py2.
       const noiseVal = noise2D(px2, py2);
 
       const angleVariation = noiseVal * 0.1;
-    // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
-    // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
-    //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
-    const v = angleVariation + rand.range(-0.04, 0.04);
-    const v2 = 0.5 * v * v;
-    const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
-    const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
-    const sideDist = currentDist;
+      // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
+      const v = angleVariation + (-0.04 + 0.08 * rng());
+      const v2 = 0.5 * v * v;
+      const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
+      const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
+      const sideDist = currentDist;
 
-    const dxca = dirX * cosA;
-    const dysa = dirY * sinA;
-    const dxsa = dirX * sinA;
-    const dyca = dirY * cosA;
+      const dxca = dirX * cosA;
+      const dysa = dirY * sinA;
+      const dxsa = dirX * sinA;
+      const dyca = dirY * cosA;
 
-    // Right side branch (sign = 1)
-    buildArm(
-      pointX,
-      pointY,
-      dxca - dysa,
-      dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
+      // Performance Optimization: Pre-calculate path index for recursive calls to save
+      // redundant Math.min and floor operations at the start of every function call.
+      const nextPathIdx = Math.min(maxPathIdx, currentPathIdxFloat | 0);
 
-    // Left side branch (sign = -1)
-    // cos(-a) = cos(a), sin(-a) = -sin(a)
-    buildArm(
-      pointX,
-      pointY,
-      dxca + dysa,
-      -dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
+      // Right side branch (sign = 1)
+      buildArm(
+        pointX,
+        pointY,
+        dxca - dysa,
+        dxsa + dyca,
+        sideDist,
+        sideLen,
+        depth + 1,
+        pathParams,
+        maxPathIdx,
+        pathScale,
+        rng,
+        nOffset,
+        nextPathIdx,
+      );
+
+      // Left side branch (sign = -1)
+      // cos(-a) = cos(a), sin(-a) = -sin(a)
+      buildArm(
+        pointX,
+        pointY,
+        dxca + dysa,
+        -dxsa + dyca,
+        sideDist,
+        sideLen,
+        depth + 1,
+        pathParams,
+        maxPathIdx,
+        pathScale,
+        rng,
+        nOffset,
+        nextPathIdx,
+      );
     }
 
     currentLocalProb -= probStep;
     currentLenFactor -= lenStep;
     px2 += stepX2;
     py2 += stepY2;
+    currentPathIdxFloat += pathStep;
   }
 
   // Optional pointed tip extension
