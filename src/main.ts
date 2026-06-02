@@ -87,6 +87,11 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   scene.updateFlake(result, animate);
   nakayaDiagram?.update(conditions.path);
 
+  // Update canvas ARIA label for screen readers
+  if (canvas) {
+    canvas.setAttribute('aria-label', `3D procedural snowflake visualization showing a ${habitLabel[conditions.habit]}`);
+  }
+
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
   setText('seed-display', label);
   setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
@@ -278,6 +283,14 @@ function copyLink() {
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 document.getElementById('btn-seed')?.addEventListener('click', copyLink);
 
+function triggerShutter() {
+  const shutter = document.getElementById('shutter');
+  if (!shutter) return;
+  shutter.classList.remove('shutter--active');
+  void shutter.offsetWidth; // Trigger reflow
+  shutter.classList.add('shutter--active');
+}
+
 function saveSnowflake() {
   scene.composer.render();
 
@@ -288,6 +301,7 @@ function saveSnowflake() {
   link.href = dataUrl;
   link.click();
 
+  triggerShutter();
   setTemporaryLabel('btn-save', 'Saved!', 2000, '✓');
   announce('Snowflake saved as PNG');
 }

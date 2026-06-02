@@ -523,6 +523,31 @@ kbd {
   mix-blend-mode: overlay;
 }
 
+.shutter {
+  position: fixed;
+  inset: 0;
+  background: white;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.shutter--active {
+  animation: shutter-flash 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes shutter-flash {
+  0% { opacity: 0; }
+  10% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shutter--active {
+    animation: none;
+  }
+}
+
 /* --- utility --- */
 .skip-link {
   position: absolute;
