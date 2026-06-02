@@ -202,15 +202,17 @@ export function buildSnowflake(
     const m28 = h12 - r13;
     const m29 = r12 + h13;
 
-    // Intermediate terms for Arm 2 (120°)
-    const m32 = -h0 - r1;
-    const m33 = r0 - h1;
-    const m36 = -h4 - r5;
-    const m37 = r4 - h5;
-    const m40 = -h8 - r9;
-    const m41 = r8 - h9;
-    const m44 = -h12 - r13;
-    const m45 = r12 - h13;
+    // Performance Optimization: Leverage hexagonal rotation identity R(120°) = R(60°) - I
+    // to compute Arm 2 directly from Arm 1 and Arm 0. This replaces complex derivations
+    // with simple subtractions, saving 8 negations and 8 lookups.
+    const m32 = m16 - m0;
+    const m33 = m17 - m1;
+    const m36 = m20 - m4;
+    const m37 = m21 - m5;
+    const m40 = m24 - m8;
+    const m41 = m25 - m9;
+    const m44 = m28 - m12;
+    const m45 = m29 - m13;
 
     // Arm 1 (60°)
     matrices[offset + 16] = m16;

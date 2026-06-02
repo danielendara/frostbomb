@@ -617,9 +617,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             }
 
             maxIndex = j;
-            // Performance Optimization: Clamp progress to [0, 1] before calling unchecked easing
-            // to prevent out-of-bounds access if threshold calculations vary.
-            const s = easeOutExpoUnchecked(progress < 0 ? 0 : progress);
+            // Performance Optimization: The preceding 'progress >= 1' and 'delay > threshold2'
+            // guards guarantee progress is in [0, 1). We can call the unchecked easing directly.
+            const s = easeOutExpoUnchecked(progress);
 
             // Optimization: Unroll symmetry loop and leverage hexagonal symmetry to
             // reduce floating-point multiplications by ~50% (saving 18 per segment).
@@ -641,13 +641,15 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const m24s = source[idx + 24] * s;
             const m25s = source[idx + 25] * s;
 
-            // Arm 2 components
-            const m32s = source[idx + 32] * s;
-            const m33s = source[idx + 33] * s;
-            const m36s = source[idx + 36] * s;
-            const m37s = source[idx + 37] * s;
-            const m40s = source[idx + 40] * s;
-            const m41s = source[idx + 41] * s;
+            // Performance Optimization: Leverage hexagonal rotation identity R(120°) = R(60°) - I
+            // to compute Arm 2 components directly from Arm 1 and Arm 0. This eliminates
+            // 6 multiplications and 6 array lookups per active segment per frame.
+            const m32s = m16s - m0s;
+            const m33s = m17s - m1s;
+            const m36s = m20s - m4s;
+            const m37s = m21s - m5s;
+            const m40s = m24s - m8s;
+            const m41s = m25s - m9s;
 
             // Hoist invariant Z-basis components (identical for all arms)
             const m6s = source[idx + 6] * s;
