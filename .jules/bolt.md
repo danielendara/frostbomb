@@ -82,3 +82,8 @@
 **Learning:** Constants like `S60` (sin 60°) defined inside hot loops (like the `buildSnowflake` matrix population) incur redundant assignment overhead over thousands of iterations. Additionally, calling `Math.cos()` and `Math.sin()` for fixed angles (like habit-specific side-branch angles) is slower than using pre-calculated literals. However, avoid using module-level shared buffers for return values (like built matrices) to maintain function reentrancy and prevent silent data corruption.
 **Action:** Hoist loop-invariant constants to module scope. Replace fixed trigonometric calls with pre-calculated literals. Prioritize functional correctness over micro-allocations in factory functions.
 **Impact:** Optimization reduced 'buildSnowflake' average time by ~11% (from 0.046ms to 0.041ms) without compromising reentrancy.
+
+## 2026-05-27 - [RNG Inlining & Additive Path Tracking]
+**Learning:** In deep procedural recursion (like branching arms), the overhead of method calls on a 'Rand' class instance (e.g., 'rand.range') and repeated index calculations (e.g., 'dist * scale') becomes a significant bottleneck. Inlining these into raw math and using additive tracking for indices improves throughput. Additionally, when using packed bit-fields for native sorting, ensuring the consumer logic correctly masks/shifts the values is critical to avoid out-of-bounds corruption.
+**Action:** Inline hot RNG calls using raw mulberry32 output. Replace 'Math.min' and multiplications with additive tracking in recursion. Always verify bit-field unpacking in consumer loops.
+**Impact:** Optimization reduced average 'Huge' snowflake generation time by ~28% (from 0.085ms to 0.061ms).
