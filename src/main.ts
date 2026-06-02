@@ -273,7 +273,7 @@ function copyLink() {
   navigator.clipboard.writeText(url).then(() => {
     setTemporaryLabel('btn-copy', 'Copied!', 2000, '✓');
     setTemporaryLabel('btn-seed', 'Copied!');
-    announce('Link copied to clipboard');
+    announce(`Link for seed ${currentSeedLabel} copied to clipboard`);
   }).catch(err => {
     console.error('Failed to copy link:', err);
     announce('Failed to copy link');
