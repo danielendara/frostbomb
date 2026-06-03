@@ -182,6 +182,14 @@ function handleRefresh(e?: Event) {
     setTimeout(() => refreshBtn.classList.remove('refresh--spinning'), 600);
   }
 
+  const dots = document.querySelectorAll('.wordmark__dot');
+  dots.forEach(dot => {
+    dot.classList.remove('wordmark__dot--spinning');
+    void (dot as HTMLElement).offsetWidth; // Trigger reflow
+    dot.classList.add('wordmark__dot--spinning');
+    setTimeout(() => dot.classList.remove('wordmark__dot--spinning'), 600);
+  });
+
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
 }
