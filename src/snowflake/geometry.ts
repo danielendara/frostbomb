@@ -91,18 +91,6 @@ export function buildSnowflake(
   const delays = new Float32Array(armLen);
   const matrices = new Float32Array(armLen * 6 * 16);
 
-  // Performance Optimization: Additive tracking for segment buffer index.
-  let segPtr7 = 7;
-  for (let i = 0; i < armLen; i++) {
-    const delay = SEGMENT_BUFFER[segPtr7];
-    // Performance Optimization: Pack delay (high bits) and index (low bits) into a single 32-bit
-    // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
-    // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
-    // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
-    SORT_BUFFER[i] = ((delay * 5000) | 0) << 14 | (i & 0x3FFF);
-    segPtr7 += SEGMENT_STRIDE;
-  }
-
   // Sort the first armLen elements of SORT_BUFFER
   const sortedIndices = SORT_BUFFER.subarray(0, armLen);
   sortedIndices.sort();
@@ -137,9 +125,6 @@ export function buildSnowflake(
     const sax = ax;
     const cax = 1 - 0.5 * ax * ax;
 
-    const cbz = -dirY; // cos(angle + PI/2)
-    const sbz = dirX;  // sin(angle + PI/2)
-
     const sx = finalThickness;
     const sy = length;
 
@@ -160,10 +145,10 @@ export function buildSnowflake(
     let offset = j * 96;
 
     // Arm 0 components
-    const m0 = cbz * sx;
-    const m1 = sbz * sx;
-    const m4 = -sbz * caxsy;
-    const m5 = cbz * caxsy;
+    const m0 = -dirY * sx;
+    const m1 = dirX * sx;
+    const m4 = -dirX * caxsy;
+    const m5 = -dirY * caxsy;
     const m8 = m1 * sax;
     const m9 = -m0 * sax;
 
@@ -497,7 +482,14 @@ function buildArm(
   SEGMENT_BUFFER[bIdx + 5] = midX;
   SEGMENT_BUFFER[bIdx + 6] = midY;
   // Performance Optimization: Pre-multiply delay by 2 to hoist multiplication out of the render loop.
-  SEGMENT_BUFFER[bIdx + 7] = dist * 0.3 + depth * 0.2; // delay
+  const delay = dist * 0.3 + depth * 0.2;
+  SEGMENT_BUFFER[bIdx + 7] = delay;
+
+  // Performance Optimization: Pack delay (high bits) and index (low bits) into a single 32-bit
+  // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
+  // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
+  // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
+  SORT_BUFFER[currentSegmentCount] = ((delay * 5000) | 0) << 14 | (currentSegmentCount & 0x3FFF);
 
   currentSegmentCount++;
 
@@ -626,7 +618,14 @@ function buildArm(
     SEGMENT_BUFFER[tIdx + 5] = tipMidX;
     SEGMENT_BUFFER[tIdx + 6] = tipMidY;
     // Performance Optimization: Pre-multiply delay by 2 to hoist multiplication out of the render loop.
-    SEGMENT_BUFFER[tIdx + 7] = tipDist * 0.3 + (depth + 1) * 0.2;
+    const tipDelay = tipDist * 0.3 + (depth + 1) * 0.2;
+    SEGMENT_BUFFER[tIdx + 7] = tipDelay;
+
+    // Performance Optimization: Pack delay (high bits) and index (low bits) into a single 32-bit
+    // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
+    // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
+    // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
+    SORT_BUFFER[currentSegmentCount] = ((tipDelay * 5000) | 0) << 14 | (currentSegmentCount & 0x3FFF);
 
     currentSegmentCount++;
   }
