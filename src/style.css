@@ -465,7 +465,13 @@ kbd {
   display: inline-block;
 }
 
-.wordmark-link:hover .wordmark__dot {
+#btn-rotate.active .action-btn__icon {
+  animation: spinning 4s linear infinite;
+  display: inline-block;
+}
+
+.wordmark-link:hover .wordmark__dot,
+.wordmark__dot--spinning {
   animation: spinning 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-block;
 }
@@ -643,7 +649,9 @@ kbd {
   .prism-mode #btn-prism.active,
   #btn-pink.active .action-btn__icon,
   #btn-prism.active .action-btn__icon,
-  .wordmark-link:hover .wordmark__dot {
+  #btn-rotate.active .action-btn__icon,
+  .wordmark-link:hover .wordmark__dot,
+  .wordmark__dot--spinning {
     animation: none !important;
     transform: none !important;
     filter: none !important;
