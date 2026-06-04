@@ -504,6 +504,8 @@ function buildArm(
   const stepX = dirX * stepDist;
   const stepY = dirY * stepDist;
   const sideLenBase = length * params.sideBranchDecay;
+  const sideLenMin = sideLenBase * 0.4;
+  const sideLenRange = sideLenBase * 0.6;
   let pointX = startX;
   let pointY = startY;
   let currentDist = dist;
@@ -530,7 +532,7 @@ function buildArm(
     if (rng() < currentLocalProb) {
       // Performance Optimization: Inline rand.range calls to eliminate function overhead and
       // redundant arithmetic in the hot recursive loop.
-      const sideLen = sideLenBase * (0.4 + 0.6 * rng()) * currentLenFactor;
+      const sideLen = (sideLenMin + sideLenRange * rng()) * currentLenFactor;
 
       // Real snowflakes: side branches grow at 60° (hexagonal lattice)
       // Optimization: Additive tracking for noise coordinates px2/py2.
@@ -551,7 +553,8 @@ function buildArm(
 
       // Performance Optimization: Pre-calculate path index for recursive calls to save
       // redundant Math.min and floor operations at the start of every function call.
-      const nextPathIdx = Math.min(maxPathIdx, currentPathIdxFloat | 0);
+      let nextPathIdx = currentPathIdxFloat | 0;
+      if (nextPathIdx > maxPathIdx) nextPathIdx = maxPathIdx;
 
       // Right side branch (sign = 1)
       buildArm(
