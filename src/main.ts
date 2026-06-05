@@ -110,13 +110,34 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
 
 function setText(id: string, value: string) {
   const el = document.getElementById(id);
-  if (el) el.textContent = value;
+  if (!el) return;
+
+  // If a temporary label is currently being shown for this element (or its parent button),
+  // update the stored original value instead of the live text so it restores correctly.
+  const parentBtn = el.closest('button');
+  const trackedId = (parentBtn && originalLabels.has(parentBtn.id)) ? parentBtn.id : (originalLabels.has(id) ? id : null);
+
+  if (trackedId) {
+    originalLabels.set(trackedId, value);
+    return;
+  }
+
+  el.textContent = value;
 }
 
 function announce(message: string) {
   const announcer = document.getElementById('a11y-announcer');
   if (announcer) {
-    announcer.textContent = message;
+    // Clear and reset to ensure screen readers announce identical successive messages.
+    // Some screen readers need a small delay or a text change to trigger an announcement
+    // if the region already contains the same text.
+    announcer.textContent = '';
+    announcer.setAttribute('aria-hidden', 'true');
+
+    setTimeout(() => {
+      announcer.removeAttribute('aria-hidden');
+      announcer.textContent = message;
+    }, 50);
   }
 }
 
@@ -192,6 +213,7 @@ function handleRefresh(e?: Event) {
 
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
+  announce('New snowflake grown');
 }
 
 document.getElementById('refresh')?.addEventListener('click', handleRefresh);
@@ -276,16 +298,53 @@ function updateFromPane() {
   grow(conditions, true, false);
 }
 
-function copyLink() {
+/**
+ * Robustly copies text to clipboard with fallbacks.
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  // 1. Try Navigator API
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      console.warn('Navigator clipboard failed, trying fallback', e);
+    }
+  }
+
+  // 2. Try execCommand fallback
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    if (successful) return true;
+  } catch (e) {
+    console.warn('execCommand copy failed', e);
+  }
+
+  // 3. Last resort: prompt the user to copy manually
+  const result = window.prompt('Copy this link:', text);
+  return result !== null;
+}
+
+async function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
-  navigator.clipboard.writeText(url).then(() => {
+  const success = await copyToClipboard(url);
+
+  if (success) {
     setTemporaryLabel('btn-copy', 'Copied!', 2000, '✓');
     setTemporaryLabel('btn-seed', 'Copied!');
     announce(`Link for seed ${currentSeedLabel} copied to clipboard`);
-  }).catch(err => {
-    console.error('Failed to copy link:', err);
+  } else {
     announce('Failed to copy link');
-  });
+  }
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
