@@ -87,9 +87,12 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   scene.updateFlake(result, animate);
   nakayaDiagram?.update(conditions.path);
 
-  // Update canvas ARIA label for screen readers
+  // Update canvas ARIA labels for screen readers
   if (canvas) {
-    canvas.setAttribute('aria-label', `3D procedural snowflake visualization showing a ${habitLabel[conditions.habit]}`);
+    canvas.setAttribute('aria-label', `3D procedural snowflake visualization of a ${habitLabel[conditions.habit]} (seed ${label})`);
+  }
+  if (nakayaCanvas) {
+    nakayaCanvas.setAttribute('aria-label', `Nakaya morphology diagram showing atmospheric growth path for a ${habitLabel[conditions.habit]}`);
   }
 
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
@@ -213,7 +216,7 @@ function handleRefresh(e?: Event) {
 
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
-  announce('New snowflake grown');
+  announce(`New snowflake grown: a ${habitLabel[currentConditions.habit]}`);
 }
 
 document.getElementById('refresh')?.addEventListener('click', handleRefresh);
@@ -281,6 +284,7 @@ function toggleFieldGuide() {
 
 labToggle?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
+document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
 
 function updateFromPane() {
   const t = labParams.temperature;
@@ -341,7 +345,7 @@ async function copyLink() {
   if (success) {
     setTemporaryLabel('btn-copy', 'Copied!', 2000, '✓');
     setTemporaryLabel('btn-seed', 'Copied!');
-    announce(`Link for seed ${currentSeedLabel} copied to clipboard`);
+    announce(`Link for ${habitLabel[currentConditions.habit]} (seed ${currentSeedLabel}) copied to clipboard`);
   } else {
     announce('Failed to copy link');
   }
