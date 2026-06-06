@@ -87,3 +87,8 @@
 **Learning:** In deep procedural recursion (like branching arms), the overhead of method calls on a 'Rand' class instance (e.g., 'rand.range') and repeated index calculations (e.g., 'dist * scale') becomes a significant bottleneck. Inlining these into raw math and using additive tracking for indices improves throughput. Additionally, when using packed bit-fields for native sorting, ensuring the consumer logic correctly masks/shifts the values is critical to avoid out-of-bounds corruption.
 **Action:** Inline hot RNG calls using raw mulberry32 output. Replace 'Math.min' and multiplications with additive tracking in recursion. Always verify bit-field unpacking in consumer loops.
 **Impact:** Optimization reduced average 'Huge' snowflake generation time by ~28% (from 0.085ms to 0.061ms).
+
+## 2026-05-28 - [TypedArray Batching & GPU Update Range Sync]
+**Learning:** Performing thousands of individual `TypedArray.set` calls per frame as segments finish growth creates significant function call overhead and GC pressure. Batching these into bulk operations for contiguous segments is much more efficient. Additionally, `addUpdateRange` (or `updateRange`) is highly sensitive to state shifts; if the animation baseline (e.g., `minAnimatedIndex`) shifts mid-update without being cached, the GPU may miss segments or receive corrupted ranges.
+**Action:** Batch contiguous segment updates in the animation loop. Cache frame-start state variables (`frameStartMinAnimatedIndex`) to ensure all GPU update ranges are calculated against a consistent baseline for that frame.
+**Impact:** Reduced animation overhead and improved GPU synchronization stability, ensuring smooth growth transitions even for the most complex flakes.
