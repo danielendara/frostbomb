@@ -25,3 +25,8 @@
 ## 2025-01-24 - Progressive Enhancement for Clipboard Operations
 **Learning:** `navigator.clipboard` is only available in secure contexts (HTTPS) and newer browsers. Relying on it exclusively can break core features like "Copy Link" in some environments.
 **Action:** Use a cascading fallback for clipboard operations: `navigator.clipboard` -> `document.execCommand('copy')` -> `window.prompt`. This ensures users always have a way to retrieve the content, even if the automatic copy fails.
+
+## 2025-05-15 - [Consistency in ARIA State and Visual Feedback]
+**Learning:** Inconsistent ARIA attribute usage between JavaScript and CSS (e.g., `aria-expanded` vs `aria-pressed`) silently breaks active-state styling. Additionally, keyboard shortcuts often bypass micro-animations that are only implemented within click handlers, leading to a less "delightful" experience for power users.
+**Action:** Always verify that CSS selectors match the specific ARIA attributes being toggled in the logic. Ensure all interaction entry points (click, keyboard) share a unified handler that includes visual feedback animations.
+
