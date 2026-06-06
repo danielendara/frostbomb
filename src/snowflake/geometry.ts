@@ -111,7 +111,8 @@ export function buildSnowflake(
     delays[j] = delay;
 
     // Inline transformation logic from segmentsToInstanceData
-    const finalThickness = thickness * thicknessVariation;
+    const sx = thickness * thicknessVariation;
+    const sy = length;
 
     // Add subtle jitter for organic feel
     const jitter = 0.015;
@@ -124,9 +125,6 @@ export function buildSnowflake(
     // sin(x) ≈ x, cos(x) ≈ 1 - x^2/2. Avoids expensive Math.sin/cos calls.
     const sax = ax;
     const cax = 1 - 0.5 * ax * ax;
-
-    const sx = finalThickness;
-    const sy = length;
 
     // Performance Optimization: Pre-calculate scaled terms to eliminate divisions and
     // redundant multiplications within the symmetry loop.
@@ -144,6 +142,16 @@ export function buildSnowflake(
     // This reduces multiplications by ~65% and avoids 5 loop iterations per segment.
     let offset = j * 96;
 
+    // Performance Optimization: Hoist 60° rotation components for the base direction
+    // to eliminate 15 redundant multiplications and 5 additions per segment.
+    const hX = dirX * 0.5;
+    const hY = dirY * 0.5;
+    const rX = dirX * S60;
+    const rY = dirY * S60;
+
+    const dx60 = hX - rY;
+    const dy60 = rX + hY;
+
     // Arm 0 components
     const m0 = -dirY * sx;
     const m1 = dirX * sx;
@@ -151,25 +159,6 @@ export function buildSnowflake(
     const m5 = -dirY * caxsy;
     const m8 = m1 * sax;
     const m9 = -m0 * sax;
-
-    // Intermediate terms for fast rotation logic
-    const h0 = m0 * 0.5;
-    const h1 = m1 * 0.5;
-    const h4 = m4 * 0.5;
-    const h5 = m5 * 0.5;
-    const h8 = m8 * 0.5;
-    const h9 = m9 * 0.5;
-    const h12 = m12 * 0.5;
-    const h13 = m13 * 0.5;
-
-    const r0 = m0 * S60;
-    const r1 = m1 * S60;
-    const r4 = m4 * S60;
-    const r5 = m5 * S60;
-    const r8 = m8 * S60;
-    const r9 = m9 * S60;
-    const r12 = m12 * S60;
-    const r13 = m13 * S60;
 
     // Arm 0 (0°)
     matrices[offset + 0] = m0;
@@ -185,15 +174,15 @@ export function buildSnowflake(
     matrices[offset + 14] = m14;
     matrices[offset + 15] = 1;
 
-    // Intermediate terms for Arm 1 (60°)
-    const m16 = h0 - r1;
-    const m17 = r0 + h1;
-    const m20 = h4 - r5;
-    const m21 = r4 + h5;
-    const m24 = h8 - r9;
-    const m25 = r8 + h9;
-    const m28 = h12 - r13;
-    const m29 = r12 + h13;
+    // Arm 1 (60°) components derived from pre-calculated rotated direction
+    const m16 = -dy60 * sx;
+    const m17 = dx60 * sx;
+    const m20 = -dx60 * caxsy;
+    const m21 = -dy60 * caxsy;
+    const m24 = m17 * sax;
+    const m25 = -m16 * sax;
+    const m28 = m12 * 0.5 - m13 * S60;
+    const m29 = m13 * 0.5 + m12 * S60;
 
     // Performance Optimization: Leverage hexagonal rotation identity R(120°) = R(60°) - I
     // to compute Arm 2 directly from Arm 1 and Arm 0. This replaces complex derivations
