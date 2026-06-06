@@ -277,6 +277,12 @@ body.pink-mode {
   font-style: italic;
 }
 
+.field-guide__close {
+  width: 100%;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
 .shortcuts-list {
   display: flex;
   flex-direction: column;
