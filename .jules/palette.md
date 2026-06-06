@@ -13,3 +13,15 @@
 ## 2025-01-24 - Enhancing Clipboard Feedback with ARIA Live Regions
 **Learning:** For background actions like "Copy to Clipboard", visual-only feedback (like a button text change) is insufficient for screen reader users. Using an `aria-live="polite"` region to announce the action completion provides much better accessibility. Additionally, including the specific content being copied (e.g., the seed value) in the announcement provides extra context and reassurance.
 **Action:** Use an ARIA live region (e.g., `#a11y-announcer`) for transient feedback. Ensure the announcement includes specific context (like "Seed [value] copied") rather than just a generic "Copied".
+
+## 2025-01-24 - Reliable ARIA Live Region Updates
+**Learning:** Screen readers often ignore successive identical announcements in a live region. To ensure every action is announced (e.g., clicking 'Refresh' multiple times), the region's content must be cleared and potentially toggled with `aria-hidden` before setting the new message.
+**Action:** In the `announce` helper, clear `textContent`, set `aria-hidden="true"`, and use a short `setTimeout` (e.g., 50ms) to restore `aria-hidden` and set the new message.
+
+## 2025-01-24 - State Persistence during Temporary UI Messages
+**Learning:** When a button shows a temporary "Success!" message, background data updates (like a new seed being generated) can be lost if the UI simply restores to the *old* state it captured when the message started.
+**Action:** Update the `setText` utility to check if an element is currently in a "temporary" state. If so, update the *stored* original value instead of the live DOM text, ensuring the correct data is shown when the temporary message expires.
+
+## 2025-01-24 - Progressive Enhancement for Clipboard Operations
+**Learning:** `navigator.clipboard` is only available in secure contexts (HTTPS) and newer browsers. Relying on it exclusively can break core features like "Copy Link" in some environments.
+**Action:** Use a cascading fallback for clipboard operations: `navigator.clipboard` -> `document.execCommand('copy')` -> `window.prompt`. This ensures users always have a way to retrieve the content, even if the automatic copy fails.
