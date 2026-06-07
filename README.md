@@ -59,6 +59,10 @@ Built with a focus on 60fps performance, even during complex geometry generation
 - **Geometry Reuse:** Reuses a single `InstancedMesh` and `CylinderGeometry` to prevent GPU buffer churn and memory fragmentation.
 - **Offscreen Caching:** The Nakaya diagram's static background is cached on an offscreen canvas, improving its redraw performance by ~36x.
 
+See [Algorithms and performance](docs/ALGORITHMS_AND_PERFORMANCE.md) for the
+full pipeline, complexity analysis, benchmark evidence, and historical
+comparison.
+
 ---
 
 ## 🛠️ Tech Stack

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { Rand } from './random.ts';
-import { getHabit, GrowthConditions, Habit } from './nakaya.ts';
+import { GrowthConditions } from './nakaya.ts';
+import { getZDepthScale, GrowthParams, paramsFor } from './morphology.ts';
 
 /**
  * Generates a single arm of the snowflake (a 2D branching pattern in the
@@ -292,150 +293,6 @@ export function buildSnowflake(
   };
 }
 
-function getZDepthScale(habit: Habit): number {
-  return habit === 'column' || habit === 'needle'
-    ? 2.5
-    : habit === 'capped_column'
-      ? 1.8
-      : 1.0;
-}
-
-interface Params {
-  primaryLength: number;
-  primaryThickness: number;
-  sideBranchProb: number;
-  sideBranchDecay: number;
-  sideBranchAngle: number;
-  cosAngle: number;
-  sinAngle: number;
-  maxDepth: number;
-  habit: Habit;
-  hasRidges: boolean;
-  hasTip: boolean;
-}
-
-function paramsFor(temp: number, ss: number): Params {
-  const habit = getHabit(temp, ss);
-  let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
-  let cAng = 0.5; // Default for PI/3
-  let sAng = 0.8660254037844386;
-
-  switch (habit) {
-    case 'fernlike_dendrite':
-      p = {
-        primaryLength: 3.04,
-        primaryThickness: 0.036,
-        sideBranchProb: 0.85,
-        sideBranchDecay: 0.68,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 4,
-        habit,
-        hasRidges: true,
-        hasTip: true,
-      };
-      break;
-    case 'stellar_dendrite':
-      p = {
-        primaryLength: 2.8,
-        primaryThickness: 0.048,
-        sideBranchProb: 0.55 + ss * 0.25,
-        sideBranchDecay: 0.6,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 3,
-        habit,
-        hasRidges: true,
-        hasTip: true,
-      };
-      break;
-    case 'sector_plate':
-      p = {
-        primaryLength: 2.08,
-        primaryThickness: 0.176,
-        sideBranchProb: 0.15,
-        sideBranchDecay: 0.4,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 2,
-        habit,
-        hasRidges: true,
-        hasTip: false,
-      };
-      break;
-    case 'plate':
-      p = {
-        primaryLength: 1.76,
-        primaryThickness: 0.28,
-        sideBranchProb: 0.05,
-        sideBranchDecay: 0.3,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 1,
-        habit,
-        hasRidges: false,
-        hasTip: false,
-      };
-      break;
-    case 'needle':
-      p = {
-        primaryLength: 3.36,
-        primaryThickness: 0.04,
-        sideBranchProb: 0.05,
-        sideBranchDecay: 0.3,
-        sideBranchAngle: Math.PI / 4,
-        maxDepth: 1,
-        habit,
-        hasRidges: false,
-        hasTip: true,
-      };
-      cAng = 0.7071067811865476; // PI/4
-      sAng = 0.7071067811865475;
-      break;
-    case 'column':
-      p = {
-        primaryLength: 1.92,
-        primaryThickness: 0.4,
-        sideBranchProb: 0,
-        sideBranchDecay: 0,
-        sideBranchAngle: 0,
-        maxDepth: 0,
-        habit,
-        hasRidges: false,
-        hasTip: false,
-      };
-      cAng = 1;
-      sAng = 0;
-      break;
-    case 'capped_column':
-      p = {
-        primaryLength: 2.24,
-        primaryThickness: 0.144,
-        sideBranchProb: 0.3,
-        sideBranchDecay: 0.5,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 2,
-        habit,
-        hasRidges: true,
-        hasTip: true,
-      };
-      break;
-    default:
-      p = {
-        primaryLength: 1.76,
-        primaryThickness: 0.28,
-        sideBranchProb: 0.05,
-        sideBranchDecay: 0.3,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 1,
-        habit: 'plate',
-        hasRidges: false,
-        hasTip: false,
-      };
-  }
-  return {
-    ...p,
-    cosAngle: cAng,
-    sinAngle: sAng,
-  };
-}
-
 function buildArm(
   startX: number,
   startY: number,
@@ -444,7 +301,7 @@ function buildArm(
   dist: number,
   length: number,
   depth: number,
-  pathParams: Params[],
+  pathParams: GrowthParams[],
   maxPathIdx: number,
   pathScale: number,
   rng: () => number,

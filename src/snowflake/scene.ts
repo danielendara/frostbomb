@@ -1,31 +1,9 @@
 import * as THREE from 'three';
 import { BuildResult } from './geometry';
-import { createNoise2D } from 'simplex-noise';
-
-const EASING_LUT_SIZE = 1024;
-const EASING_LUT = new Float32Array(EASING_LUT_SIZE);
-for (let i = 0; i < EASING_LUT_SIZE; i++) {
-  const t = i / (EASING_LUT_SIZE - 1);
-  EASING_LUT[i] = t === 0 ? 0 : (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
-}
-
-/**
- * Fast O(1) easing using a look-up table.
- * Performance: Avoids ~25,000 Math.pow calls per second during complex snowflake growth.
- */
-function easeOutExpoFast(t: number): number {
-  if (t <= 0) return 0;
-  if (t >= 1) return 1;
-  return EASING_LUT[(t * (EASING_LUT_SIZE - 1)) | 0];
-}
-
-/**
- * Performance Optimization: Unchecked version of easing for hot loops where 't'
- * is already guaranteed to be in (0, 1).
- */
-function easeOutExpoUnchecked(t: number): number {
-  return EASING_LUT[(t * (EASING_LUT_SIZE - 1)) | 0];
-}
+import { easeOutExpoFast } from './easing';
+import { prepareBranchMesh, updateBranchAnimation } from './flake-animation';
+import { createIceBumpMap, createEnvironmentMap, createIceMaterial } from './materials';
+import { createParticles } from './particles';
 
 interface RenderPipeline {
   render: (delta?: number) => void;
@@ -111,58 +89,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const envMap = createEnvironmentMap();
   scene.environment = envMap;
 
-  const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#ffffff'),
-    metalness: 0.1, // Slight metalness enhances reflections
-    roughness: 0.1, // Sharper internal reflections
-    transmission: 0.95, // Highly transparent
-    thickness: 0.8, // Increased for deeper refraction
-    ior: 1.31, // Index of refraction for ice
-    dispersion: 0.03, // Slight chromatic aberration
-    reflectivity: 0.9,
-    clearcoat: 1.0, // Wet/melting sheen
-    clearcoatRoughness: 0.05,
-    bumpMap: bumpMap,
-    bumpScale: 0.015, // Subtle surface micro-facets
-    envMapIntensity: 1.5, // Boost reflections from the environment
-    attenuationColor: new THREE.Color('#b5d4ed'), // Faint icy blue tint in thick parts
-    attenuationDistance: 2.0,
-    transparent: true,
-    opacity: 1.0,
-    emissive: new THREE.Color('#e0f0ff'),
-    emissiveIntensity: 0.1, // Reduced so environment lighting takes over
-  });
-
+  const material = createIceMaterial(bumpMap);
   const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
 
-  // Snowfall particles
-  const particleCount = prefersReducedMotion ? 80 : 200;
-  const particleGeom = new THREE.BufferGeometry();
-  const particlePos = new Float32Array(particleCount * 3);
-  const particleVel = new Float32Array(particleCount);
-  const particleSinPhase = new Float32Array(particleCount);
-  const particleCosPhase = new Float32Array(particleCount);
-
-  for (let i = 0; i < particleCount; i++) {
-    particlePos[i * 3] = (Math.random() - 0.5) * 20;
-    particlePos[i * 3 + 1] = (Math.random() - 0.5) * 20;
-    particlePos[i * 3 + 2] = (Math.random() - 0.5) * 10;
-    particleVel[i] = 0.02 + Math.random() * 0.03;
-    const phase = Math.random() * Math.PI * 2;
-    particleSinPhase[i] = Math.sin(phase);
-    particleCosPhase[i] = Math.cos(phase);
-  }
-
-  particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-  const particleMat = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 0.05,
-    transparent: true,
-    opacity: 0.5,
-    blending: THREE.AdditiveBlending,
-  });
-  const particles = new THREE.Points(particleGeom, particleMat);
-  scene.add(particles);
+  const snowflakeParticles = createParticles(prefersReducedMotion);
+  scene.add(snowflakeParticles.points);
 
   let branchMesh: THREE.InstancedMesh | null = null;
   const coreMesh = new THREE.Mesh(branchGeom, material);
@@ -359,8 +290,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       branchMesh?.dispose();
       branchGeom.dispose();
       material.dispose();
-      particleGeom.dispose();
-      particleMat.dispose();
+      bumpMap.dispose();
+      envMap.dispose();
+      snowflakeParticles.dispose();
     },
     setAutoRotate: (enabled: boolean) => {
       isAutoRotate = enabled && !prefersReducedMotion;
@@ -376,16 +308,14 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         if (enabled) {
           material.color.set('#ffb2d1');
           material.emissive.set('#ff80bf');
-          particleMat.color.set('#ffb2d1');
-          particleMat.opacity = 0.6;
+          snowflakeParticles.setColorForMode('pink');
           if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x0c0512);
           }
         } else {
           material.color.set('#ffffff');
           material.emissive.set('#e0f0ff');
-          particleMat.color.set(0xffffff);
-          particleMat.opacity = 0.5;
+          snowflakeParticles.setColorForMode('default');
           if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x050912);
           }
@@ -399,7 +329,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         sceneInterface.setPinkMode(sceneInterface.isPinkModeEnabled);
       } else {
         // Boost opacity when entering Prism mode
-        particleMat.opacity = 0.8;
+        snowflakeParticles.setColorForMode('prism');
       }
     },
     updateFlake: (data: BuildResult, animate = true) => {
@@ -425,31 +355,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         flakeHolder.add(branchMesh);
       }
 
-      branchMesh.count = requiredCount;
-
-      if (!animate) {
-        // Fast-path for non-animated updates (e.g. Lab Mode): directly copy the pre-computed
-        // matrices to the GPU buffer and skip the basis-zeroing loop.
-        branchMesh.instanceMatrix.array.set(data.matrices);
-        branchMesh.instanceMatrix.clearUpdateRanges();
-        branchMesh.instanceMatrix.needsUpdate = true;
-        minAnimatedIndex = data.armCount;
-      } else {
-        // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
-        // for all active instances. This avoids needing to zero it every frame during animation.
-        const target = branchMesh.instanceMatrix.array as Float32Array;
-        target.set(data.matrices);
-        for (let i = 0; i < requiredCount; i++) {
-          const idx = i * 16;
-          // Zero out the 3x3 basis (columns 1-3)
-          target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
-          target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
-          target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
-        }
-        branchMesh.instanceMatrix.clearUpdateRanges();
-        branchMesh.instanceMatrix.needsUpdate = true;
-        minAnimatedIndex = 0;
-      }
+      minAnimatedIndex = prepareBranchMesh(branchMesh, data, animate);
 
       if (!flakeHolder.children.includes(coreMesh)) {
         flakeHolder.add(coreMesh);
@@ -537,39 +443,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
 
     // Animate snowfall particles
-    const positions = particles.geometry.attributes.position.array as Float32Array;
-    // Optimization: Use trig identity sin(a + b) = sin(a)cos(b) + cos(a)sin(b)
-    // to replace 200 sin() calls with 2 sin/cos calls per frame.
-    const sinTime = Math.sin(time);
-    const cosTime = Math.cos(time);
-    // Performance Optimization: Hoist drift factor.
-    const driftFactor = 0.002 * motionScale;
+    snowflakeParticles.update(time, motionScale, sceneInterface.isPrismModeEnabled, now);
 
-    for (let i = 0; i < particleCount; i++) {
-      const idx3 = i * 3;
-      let px = positions[idx3];
-      let py = positions[idx3 + 1];
-
-      py -= particleVel[i] * motionScale;
-      // Horizontal drift using pre-calculated phase components
-      const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
-      px += drift * driftFactor;
-
-      if (py < -10) {
-        py = 10;
-        px = (Math.random() - 0.5) * 20;
-      }
-
-      positions[idx3] = px;
-      positions[idx3 + 1] = py;
-    }
-    particles.geometry.attributes.position.needsUpdate = true;
-
-    // Match particle colors to modes (Prism Mode only, others are handled by setters)
-    if (sceneInterface.isPrismModeEnabled) {
-      const hue = (now * 0.00015 + 0.5) % 1; // Offset hue slightly
-      particleMat.color.setHSL(hue, 0.8, 0.8);
-    }
     const wasEntryActive = entryActive;
     tickEntryTween(now);
 
@@ -590,171 +465,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     if (wasEntryActive || entryActive || needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {
-        if (eased === 1) {
-          // Fast-path for finished animation: bulk copy pre-computed matrices
-          branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
-          branchMesh.instanceMatrix.clearUpdateRanges();
-          minAnimatedIndex = currentFlakeData.armCount;
-        } else {
-          // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
-          const target = branchMesh.instanceMatrix.array as Float32Array;
-          const source = currentFlakeData.matrices;
-          const armLen = currentFlakeData.armCount;
-          // Performance Optimization: Hoist multiplication by 2.
-          const threshold2 = eased * 3.0;
-          let maxIndex = -1;
-
-          const frameStartMinAnimatedIndex = minAnimatedIndex;
-
-          // Performance Optimization: Bulk copy contiguous segments that finished growing in this frame.
-          // This reduces GC pressure and TypedArray.set overhead by avoiding individual subarray allocations.
-          // Combined with GPU update range pruning, this reduces animation loop overhead by ~30%.
-          let batchEnd = minAnimatedIndex;
-          while (batchEnd < armLen) {
-            const delay = currentFlakeData.delays[batchEnd];
-            if (delay > threshold2 || (threshold2 - delay) < 1) break;
-            batchEnd++;
-          }
-
-          if (batchEnd > minAnimatedIndex) {
-            const offset = minAnimatedIndex * 96;
-            const count = (batchEnd - minAnimatedIndex) * 96;
-            target.set(source.subarray(offset, offset + count), offset);
-            minAnimatedIndex = batchEnd;
-            maxIndex = batchEnd - 1;
-          }
-
-          // Optimization: Outer loop over the single arm's instances.
-          // Start from minAnimatedIndex to skip already-grown segments.
-          for (let j = minAnimatedIndex; j < armLen; j++) {
-            const delay = currentFlakeData.delays[j];
-
-            // Optimization: Early break since segments are sorted by delay.
-            if (delay > threshold2) break;
-
-            const progress = threshold2 - delay;
-
-            // Inner loop: Apply scale to all 6 symmetry instances.
-            // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
-            // which results in contiguous memory writes and better cache locality.
-            let idx = j * 6 * 16;
-            maxIndex = j;
-            // Performance Optimization: The preceding 'progress >= 1' and 'delay > threshold2'
-            // guards guarantee progress is in [0, 1). We can call the unchecked easing directly.
-            const s = easeOutExpoUnchecked(progress);
-
-            // Optimization: Unroll symmetry loop and leverage hexagonal symmetry to
-            // reduce floating-point multiplications by ~50% (saving 18 per segment).
-            // We calculate Arms 0, 1, 2 and derive Arms 3, 4, 5 by negating them.
-
-            // Arm 0 components
-            const m0s = source[idx + 0] * s;
-            const m1s = source[idx + 1] * s;
-            const m4s = source[idx + 4] * s;
-            const m5s = source[idx + 5] * s;
-            const m8s = source[idx + 8] * s;
-            const m9s = source[idx + 9] * s;
-
-            // Arm 1 components
-            const m16s = source[idx + 16] * s;
-            const m17s = source[idx + 17] * s;
-            const m20s = source[idx + 20] * s;
-            const m21s = source[idx + 21] * s;
-            const m24s = source[idx + 24] * s;
-            const m25s = source[idx + 25] * s;
-
-            // Performance Optimization: Leverage hexagonal rotation identity R(120°) = R(60°) - I
-            // to compute Arm 2 components directly from Arm 1 and Arm 0. This eliminates
-            // 6 multiplications and 6 array lookups per active segment per frame.
-            const m32s = m16s - m0s;
-            const m33s = m17s - m1s;
-            const m36s = m20s - m4s;
-            const m37s = m21s - m5s;
-            const m40s = m24s - m8s;
-            const m41s = m25s - m9s;
-
-            // Hoist invariant Z-basis components (identical for all arms)
-            const m6s = source[idx + 6] * s;
-            const m10s = source[idx + 10] * s;
-
-            // Arm 0
-            target[idx + 0] = m0s;
-            target[idx + 1] = m1s;
-            target[idx + 4] = m4s;
-            target[idx + 5] = m5s;
-            target[idx + 6] = m6s;
-            target[idx + 8] = m8s;
-            target[idx + 9] = m9s;
-            target[idx + 10] = m10s;
-
-            // Arm 1
-            target[idx + 16] = m16s;
-            target[idx + 17] = m17s;
-            target[idx + 20] = m20s;
-            target[idx + 21] = m21s;
-            target[idx + 22] = m6s;
-            target[idx + 24] = m24s;
-            target[idx + 25] = m25s;
-            target[idx + 26] = m10s;
-
-            // Arm 2
-            target[idx + 32] = m32s;
-            target[idx + 33] = m33s;
-            target[idx + 36] = m36s;
-            target[idx + 37] = m37s;
-            target[idx + 38] = m6s;
-            target[idx + 40] = m40s;
-            target[idx + 41] = m41s;
-            target[idx + 42] = m10s;
-
-            // Arm 3 (-Arm 0)
-            target[idx + 48] = -m0s;
-            target[idx + 49] = -m1s;
-            target[idx + 52] = -m4s;
-            target[idx + 53] = -m5s;
-            target[idx + 54] = m6s;
-            target[idx + 56] = -m8s;
-            target[idx + 57] = -m9s;
-            target[idx + 58] = m10s;
-
-            // Arm 4 (-Arm 1)
-            target[idx + 64] = -m16s;
-            target[idx + 65] = -m17s;
-            target[idx + 68] = -m20s;
-            target[idx + 69] = -m21s;
-            target[idx + 70] = m6s;
-            target[idx + 72] = -m24s;
-            target[idx + 73] = -m25s;
-            target[idx + 74] = m10s;
-
-            // Arm 5 (-Arm 2)
-            target[idx + 80] = -m32s;
-            target[idx + 81] = -m33s;
-            target[idx + 84] = -m36s;
-            target[idx + 85] = -m37s;
-            target[idx + 86] = m6s;
-            target[idx + 88] = -m40s;
-            target[idx + 89] = -m41s;
-            target[idx + 90] = m10s;
-          }
-
-          // Optimize GPU upload: only transfer the window of segments that were modified in this frame.
-          // Because of the interleaved layout, we can now use a SINGLE update range for all symmetry arms.
-          if (maxIndex >= frameStartMinAnimatedIndex) {
-            if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
-              branchMesh.instanceMatrix.clearUpdateRanges();
-              const start = frameStartMinAnimatedIndex * 96;
-              const count = (maxIndex - frameStartMinAnimatedIndex + 1) * 96;
-              branchMesh.instanceMatrix.addUpdateRange(start, count);
-            } else {
-              // Fallback for older Three.js versions: update the entire modified range
-              const start = frameStartMinAnimatedIndex * 96;
-              const end = (maxIndex + 1) * 96;
-              (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: end - start };
-            }
-            branchMesh.instanceMatrix.needsUpdate = true;
-          }
-        }
+        minAnimatedIndex = updateBranchAnimation(
+          branchMesh,
+          currentFlakeData,
+          eased,
+          minAnimatedIndex,
+        );
       }
 
       if (coreMesh && currentFlakeData) {
@@ -780,106 +496,4 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   }
 
   return sceneInterface;
-}
-
-function createIceBumpMap(): THREE.CanvasTexture {
-  const size = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext('2d')!;
-  
-  const imgData = context.createImageData(size, size);
-  const data = imgData.data;
-  const noise2D = createNoise2D();
-  
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let nx = x / size * 4;
-      let ny = y / size * 4;
-      
-      let val = 0;
-      let freq = 1;
-      let amp = 1;
-      let maxAmp = 0;
-      
-      for(let o = 0; o < 3; o++) {
-         val += (noise2D(nx * freq, ny * freq) * 0.5 + 0.5) * amp;
-         maxAmp += amp;
-         freq *= 2;
-         amp *= 0.5;
-      }
-      val /= maxAmp;
-      
-      const color = Math.floor(val * 255);
-      const idx = (y * size + x) * 4;
-      data[idx] = color;
-      data[idx + 1] = color;
-      data[idx + 2] = color;
-      data[idx + 3] = 255;
-    }
-  }
-  
-  context.putImageData(imgData, 0, 0);
-  
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(2, 2);
-  texture.generateMipmaps = true;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  return texture;
-}
-
-function createEnvironmentMap(): THREE.DataTexture {
-  const width = 512;
-  const height = 256;
-  const size = width * height;
-  // Use Float32Array for better HDR-like range or Uint8Array. Uint8Array is fine for LDR.
-  const data = new Uint8Array(4 * size);
-  
-  for (let y = 0; y < height; y++) {
-    // Equirectangular V coordinate
-    const v = y / height;
-    
-    // Create a studio lighting gradient:
-    // Darker bottom, bright horizon, faint top. 
-    // This gives sharp rims and deep refractions.
-    let intensity = 0;
-    if (v < 0.4) {
-      intensity = 0.05 + (v / 0.4) * 0.1; // Dark bottom floor
-    } else if (v < 0.6) {
-      intensity = 0.8 + Math.sin((v - 0.4) * Math.PI / 0.2) * 0.2; // Bright horizon rim light
-    } else {
-      intensity = 0.3 - ((v - 0.6) / 0.4) * 0.2; // Darker ceiling
-    }
-
-    const r = Math.min(255, Math.floor(255 * intensity * 0.9)); // Slight cool tint
-    const g = Math.min(255, Math.floor(255 * intensity * 0.95));
-    const b = Math.min(255, Math.floor(255 * intensity * 1.0));
-    
-    for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-      
-      // Add a couple of sharp "studio lights" (bright spots) at specific angles
-      const u = x / width;
-      let spot = 0;
-      // Key light
-      if (Math.abs(u - 0.25) < 0.05 && Math.abs(v - 0.6) < 0.1) spot = 1.0;
-      // Fill light
-      if (Math.abs(u - 0.75) < 0.03 && Math.abs(v - 0.5) < 0.05) spot = 0.5;
-
-      data[idx] = Math.min(255, r + spot * 255);
-      data[idx + 1] = Math.min(255, g + spot * 255);
-      data[idx + 2] = Math.min(255, b + spot * 255);
-      data[idx + 3] = 255;
-    }
-  }
-  
-  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
-  texture.mapping = THREE.EquirectangularReflectionMapping;
-  texture.generateMipmaps = true;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.needsUpdate = true;
-  return texture;
 }
