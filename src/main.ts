@@ -112,6 +112,10 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
     labParams.supersaturation = conditions.supersaturation * 100;
     pane?.refresh();
   }
+
+  if (animate) {
+    announce(`New snowflake grown: a ${habitLabel[conditions.habit]} at ${conditions.temperatureC.toFixed(1)}°C (${tempF.toFixed(1)}°F) and ${(conditions.supersaturation * 100).toFixed(0)}% humidity.`);
+  }
 }
 
 function setText(id: string, value: string) {
@@ -219,7 +223,6 @@ function handleRefresh(e?: Event) {
 
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
-  announce(`New snowflake grown: a ${habitLabel[currentConditions.habit]}`);
 }
 
 document.getElementById('refresh')?.addEventListener('click', handleRefresh);
@@ -286,6 +289,7 @@ function toggleFieldGuide() {
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
+document.getElementById('lab-close')?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
 document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
 
