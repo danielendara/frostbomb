@@ -8,15 +8,16 @@ export function prepareBranchMesh(
   animate: boolean,
 ): number {
   const requiredCount = data.matrices.length / 16;
-  branchMesh.count = requiredCount;
   branchMesh.instanceMatrix.array.set(data.matrices);
 
   if (!animate) {
+    branchMesh.count = requiredCount;
     branchMesh.instanceMatrix.clearUpdateRanges();
     branchMesh.instanceMatrix.needsUpdate = true;
     return data.armCount;
   }
 
+  branchMesh.count = 0;
   const target = branchMesh.instanceMatrix.array as Float32Array;
   for (let i = 0; i < requiredCount; i++) {
     const idx = i * 16;
@@ -37,6 +38,7 @@ export function updateBranchAnimation(
 ): number {
   if (eased === 1) {
     branchMesh.instanceMatrix.array.set(data.matrices);
+    branchMesh.count = data.armCount * 6;
     branchMesh.instanceMatrix.clearUpdateRanges();
     return data.armCount;
   }
@@ -151,6 +153,7 @@ export function updateBranchAnimation(
   }
 
   if (maxIndex >= frameStartMinAnimatedIndex) {
+    branchMesh.count = (maxIndex + 1) * 6;
     const start = frameStartMinAnimatedIndex * 96;
     const count = (maxIndex - frameStartMinAnimatedIndex + 1) * 96;
     if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {

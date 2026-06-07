@@ -4,11 +4,12 @@ import { buildSnowflake } from './snowflake/geometry.ts';
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from './snowflake/nakaya.ts';
 import { mulberry32, resolveSeed, Rand } from './snowflake/random.ts';
 import { initNakayaDiagram } from './snowflake/diagram.ts';
+import { createOneTimeMark, measurePerformance } from './performance.ts';
 
 type TweakpanePane = import('tweakpane').Pane;
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
-const scene = createScene(canvas);
+const scene = measurePerformance('scene-create', () => createScene(canvas));
 
 const nakayaCanvas = document.getElementById('nakaya-diagram') as HTMLCanvasElement;
 const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
@@ -19,6 +20,7 @@ let lastActiveElement: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
+const markFirstFlakeBuilt = createOneTimeMark('first-flake-built');
 
 const labParams = {
   temperature: -15,
@@ -83,6 +85,7 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   const conditions = manualConditions || sampleConditions(rand);
   currentConditions = conditions;
   const result = buildSnowflake(conditions, rand);
+  markFirstFlakeBuilt();
 
   scene.updateFlake(result, animate);
   nakayaDiagram?.update(conditions.path);

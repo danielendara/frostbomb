@@ -3,6 +3,8 @@ import { createNoise2D } from 'simplex-noise';
 
 export function createIceBumpMap(): THREE.CanvasTexture {
   const size = 512;
+  const coordinateStep = 4 / size;
+  const octaveNormalization = 1 / 1.75;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -12,23 +14,15 @@ export function createIceBumpMap(): THREE.CanvasTexture {
   const data = imgData.data;
   const noise2D = createNoise2D();
 
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let nx = x / size * 4;
-      let ny = y / size * 4;
-
-      let val = 0;
-      let freq = 1;
-      let amp = 1;
-      let maxAmp = 0;
-
-      for(let o = 0; o < 3; o++) {
-         val += (noise2D(nx * freq, ny * freq) * 0.5 + 0.5) * amp;
-         maxAmp += amp;
-         freq *= 2;
-         amp *= 0.5;
-      }
-      val /= maxAmp;
+  let ny = 0;
+  for (let y = 0; y < size; y++, ny += coordinateStep) {
+    let nx = 0;
+    for (let x = 0; x < size; x++, nx += coordinateStep) {
+      const val = (
+        (noise2D(nx, ny) * 0.5 + 0.5)
+        + (noise2D(nx * 2, ny * 2) * 0.5 + 0.5) * 0.5
+        + (noise2D(nx * 4, ny * 4) * 0.5 + 0.5) * 0.25
+      ) * octaveNormalization;
 
       const color = Math.floor(val * 255);
       const idx = (y * size + x) * 4;
@@ -55,9 +49,15 @@ export function createEnvironmentMap(): THREE.DataTexture {
   const height = 256;
   const size = width * height;
   const data = new Uint8Array(4 * size);
+  const keyMinX = width * 0.2;
+  const keyMaxX = width * 0.3;
+  const fillMinX = width * 0.72;
+  const fillMaxX = width * 0.78;
 
   for (let y = 0; y < height; y++) {
     const v = y / height;
+    const isKeyRow = Math.abs(v - 0.6) < 0.1;
+    const isFillRow = Math.abs(v - 0.5) < 0.05;
 
     let intensity = 0;
     if (v < 0.4) {
@@ -75,10 +75,9 @@ export function createEnvironmentMap(): THREE.DataTexture {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
 
-      const u = x / width;
       let spot = 0;
-      if (Math.abs(u - 0.25) < 0.05 && Math.abs(v - 0.6) < 0.1) spot = 1.0;
-      if (Math.abs(u - 0.75) < 0.03 && Math.abs(v - 0.5) < 0.05) spot = 0.5;
+      if (isKeyRow && x > keyMinX && x < keyMaxX) spot = 1.0;
+      if (isFillRow && x > fillMinX && x < fillMaxX) spot = 0.5;
 
       data[idx] = Math.min(255, r + spot * 255);
       data[idx + 1] = Math.min(255, g + spot * 255);

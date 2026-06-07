@@ -4,6 +4,7 @@ import { easeOutExpoFast } from './easing';
 import { prepareBranchMesh, updateBranchAnimation } from './flake-animation';
 import { createIceBumpMap, createEnvironmentMap, createIceMaterial } from './materials';
 import { createParticles } from './particles';
+import { createOneTimeMark, markPerformance } from '../performance';
 
 interface RenderPipeline {
   render: (delta?: number) => void;
@@ -107,6 +108,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let postprocessingLoaded = false;
   let postprocessingLoading = false;
   let postprocessingRequested = false;
+  const markFirstFrameRendered = createOneTimeMark('first-frame-rendered');
 
   async function loadPostprocessing() {
     if (postprocessingLoaded || postprocessingLoading || prefersReducedMotion) return;
@@ -145,12 +147,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       composer = nextComposer;
       sceneInterface.composer = composer;
       postprocessingLoaded = true;
+      markPerformance('postprocessing-ready');
     } finally {
       postprocessingLoading = false;
     }
   }
 
-  // Interaction
   let isAutoRotate = !prefersReducedMotion;
   let isDragging = false;
   const rotation = { x: 0, y: 0 };
@@ -430,7 +432,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     time += delta * 0.3 * motionScale;
     adaptQuality(delta);
 
-    // Update snowflake material colors for Prism Mode
     if (sceneInterface.isPrismModeEnabled) {
       const hue = (now * 0.0001) % 1;
       material.color.setHSL(hue, 0.6, 0.8);
@@ -442,7 +443,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       }
     }
 
-    // Animate snowfall particles
     snowflakeParticles.update(time, motionScale, sceneInterface.isPrismModeEnabled, now);
 
     const wasEntryActive = entryActive;
@@ -486,6 +486,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
 
     composer.render(delta);
+    markFirstFrameRendered();
 
     if (!postprocessingRequested && !prefersReducedMotion) {
       postprocessingRequested = true;

@@ -189,6 +189,8 @@ During each frame:
 3. Future segments are skipped because delays are sorted.
 4. All six symmetric instances reuse one easing result.
 5. One contiguous GPU update range describes the changed window.
+6. `InstancedMesh.count` exposes only segments that have started growing, so
+   future branches do not consume vertex-shader work.
 
 Complexity:
 
@@ -247,6 +249,8 @@ File: `src/snowflake/scene.ts`
 - Rendering pauses while the document is hidden.
 - Postprocessing is dynamically imported after the lightweight first render.
 - Postprocessing is skipped for reduced-motion users.
+- Performance marks record scene creation, first-flake generation, first frame,
+  and postprocessing readiness for browser-level measurement.
 - Pixel ratio is capped and drops to a 0.75 quality scale after sustained slow
   frames.
 - Reduced motion disables auto-rotation and entry growth, lowers particle count,
@@ -282,12 +286,19 @@ The ice bump map computes three octaves of simplex noise for each pixel of a
 512x512 canvas. The environment map fills a 512x256 RGBA typed array with a
 studio-lighting gradient and two bright regions.
 
+The bump-map loop has its three fixed octaves unrolled and advances normalized
+coordinates additively. The environment-map loop hoists row tests and replaces
+per-pixel normalized-coordinate and absolute-value work with pixel bounds.
+
 - Bump-map initialization: `O(512 * 512 * 3)`.
 - Environment-map initialization: `O(512 * 256)`.
 - Runtime per-frame cost: texture sampling occurs on the GPU; CPU generation is
   paid once when the scene is created.
 - Memory before GPU-side representation: about 1 MiB for the bump-map pixels and
   512 KiB for the environment-map array.
+- Focused Node arithmetic benchmarks measured the optimized bump-map loop about
+  22% faster and the environment-map loop about 1.87x faster, with identical
+  output checksums/bytes.
 
 These textures improve visual quality but add startup CPU work. They were added
 in commit `5893c58`, after the existing performance audit, and should be
@@ -392,14 +403,12 @@ generation, or device GPU capability than by `buildSnowflake`.
 
 ## Recommended measurement work
 
-The next performance work should improve observability rather than add more hot
-path arithmetic:
+The app now records `scene-create`, `first-flake-built`, `first-frame-rendered`,
+and `postprocessing-ready` performance entries. The next measurement work
+should use those marks and expand browser-level coverage:
 
-- mark `first-flake-built`, `first-frame-rendered`, and
-  `postprocessing-ready`;
 - add a browser benchmark for Lab Mode update latency and growth-frame CPU time;
 - record GPU/render timings on a representative mobile device;
 - measure scene creation before and after procedural texture generation;
 - turn the current geometry benchmark into a repeatable script with fixed
   profiles, independent seeds, runtime metadata, and percentile reporting.
-
