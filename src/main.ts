@@ -20,6 +20,7 @@ let lastActiveElement: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
+let lastAnnouncedHabit = '';
 const markFirstFlakeBuilt = createOneTimeMark('first-flake-built');
 
 const labParams = {
@@ -114,8 +115,9 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   }
 
   if (animate) {
-    announce(`New snowflake grown: a ${habitLabel[conditions.habit]} at ${conditions.temperatureC.toFixed(1)}°C (${tempF.toFixed(1)}°F) and ${(conditions.supersaturation * 100).toFixed(0)}% humidity.`);
+    announce(`New snowflake grown: a ${habitLabel[conditions.habit]} (seed ${label}) at ${conditions.temperatureC.toFixed(1)}°C (${tempF.toFixed(1)}°F) and ${(conditions.supersaturation * 100).toFixed(0)}% humidity.`);
   }
+  lastAnnouncedHabit = conditions.habit;
 }
 
 function setText(id: string, value: string) {
@@ -303,6 +305,11 @@ function updateFromPane() {
     habit: getHabit(t, ss),
     path: [{ temp: t, ss: ss }], // Manual path is just the point
   };
+  if (conditions.habit !== lastAnnouncedHabit) {
+    announce(`Crystal habit changed to: ${habitLabel[conditions.habit]}`);
+    lastAnnouncedHabit = conditions.habit;
+  }
+
   labParams.habit = habitLabel[conditions.habit];
   pane?.refresh();
 

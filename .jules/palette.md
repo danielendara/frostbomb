@@ -30,3 +30,6 @@
 **Learning:** Inconsistent ARIA attribute usage between JavaScript and CSS (e.g., `aria-expanded` vs `aria-pressed`) silently breaks active-state styling. Additionally, keyboard shortcuts often bypass micro-animations that are only implemented within click handlers, leading to a less "delightful" experience for power users.
 **Action:** Always verify that CSS selectors match the specific ARIA attributes being toggled in the logic. Ensure all interaction entry points (click, keyboard) share a unified handler that includes visual feedback animations.
 
+## 2025-05-16 - [Context-Rich Procedural Announcements]
+**Learning:** In procedural generation tools, announcing both the *result* (e.g., crystal habit) and the *intent* (e.g., the seed) provides a superior screen reader experience compared to generic success messages. Using state-tracking (e.g., `lastAnnouncedHabit`) prevents "announcement spam" during rapid slider interactions in "Lab Mode", ensuring users only hear feedback when a meaningful threshold is crossed.
+**Action:** Centralize announcements for procedural updates and include contextual metadata (like seeds). Use thresholds or state comparisons to filter announcements during continuous input (like sliders).
