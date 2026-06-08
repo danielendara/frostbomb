@@ -182,6 +182,9 @@ export function buildSnowflake(
     const m21 = -dy60 * caxsy;
     const m24 = m17 * sax;
     const m25 = -m16 * sax;
+
+    // Performance Optimization: Hoist Arm 1 and Arm 2 translation components to the
+    // segment level. These are used to populate 4 symmetry instances per segment.
     const m28 = m12 * 0.5 - m13 * S60;
     const m29 = m13 * 0.5 + m12 * S60;
 
@@ -349,24 +352,34 @@ function buildArm(
   const stepDist = length * invNumSteps;
   const stepX = dirX * stepDist;
   const stepY = dirY * stepDist;
-  const sideLenBase = length * params.sideBranchDecay;
-  const sideLenMin = sideLenBase * 0.4;
-  const sideLenRange = sideLenBase * 0.6;
+  const sideLenMin = length * params.sideLenMinFactor;
+  const sideLenRange = length * params.sideLenRangeFactor;
   let pointX = startX;
   let pointY = startY;
   let currentDist = dist;
 
   // Pre-calculate additive steps for local probability, side length decay, noise coordinates, and path index.
-  const probStep = params.sideBranchProb * (invNumSteps * 0.4);
-  const lenStep = invNumSteps * 0.5;
+  const invNumSteps04 = invNumSteps * 0.4;
+  const invNumSteps05 = invNumSteps * 0.5;
+  const probStep = params.sideBranchProb * invNumSteps04;
+  const lenStep = invNumSteps05;
   const stepX2 = stepX * 2;
   const stepY2 = stepY * 2;
   const pathStep = stepDist * pathScale;
-  let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
-  let currentLenFactor = 1 - invNumSteps * 0.5;
+  let currentLocalProb = params.sideBranchProb * (1 - invNumSteps04);
+  let currentLenFactor = 1 - invNumSteps05;
   let px2 = (startX + stepX) * 2;
   let py2 = (startY + stepY) * 2;
   let currentPathIdxFloat = (dist + stepDist) * pathScale;
+
+  const { cosAngle, sinAngle } = params;
+
+  // Performance Optimization: Hoist base-rotated directions outside the branching loop
+  // to eliminate redundant trigonometric multiplications per side-branch pair.
+  const rdxR = dirX * cosAngle - dirY * sinAngle;
+  const rdyR = dirX * sinAngle + dirY * cosAngle;
+  const rdxL = dirX * cosAngle + dirY * sinAngle;
+  const rdyL = -dirX * sinAngle + dirY * cosAngle;
 
   for (let i = 1; i < numSteps; i++) {
     pointX += stepX;
@@ -384,18 +397,18 @@ function buildArm(
       // Optimization: Additive tracking for noise coordinates px2/py2.
       const noiseVal = noise2D(px2, py2);
 
-      const angleVariation = noiseVal * 0.1;
-      // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
-      const v = angleVariation + (-0.04 + 0.08 * rng());
-      const v2 = 0.5 * v * v;
-      const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
-      const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
-      const sideDist = currentDist;
+      // Performance Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
+      const v = noiseVal * 0.1 + (-0.04 + 0.08 * rng());
+      const v2inv = 1 - 0.5 * v * v;
 
-      const dxca = dirX * cosA;
-      const dysa = dirY * sinA;
-      const dxsa = dirX * sinA;
-      const dyca = dirY * cosA;
+      // Performance Optimization: Derive branch directions using pre-rotated base vectors
+      // and Taylor expansion results, saving 4 multiplications per symmetry pair.
+      const nxR = rdxR * v2inv - v * rdyR;
+      const nyR = rdyR * v2inv + v * rdxR;
+      const nxL = rdxL * v2inv + v * rdyL;
+      const nyL = rdyL * v2inv - v * rdxL;
+
+      const sideDist = currentDist;
 
       // Performance Optimization: Pre-calculate path index for recursive calls to save
       // redundant Math.min and floor operations at the start of every function call.
@@ -406,8 +419,8 @@ function buildArm(
       buildArm(
         pointX,
         pointY,
-        dxca - dysa,
-        dxsa + dyca,
+        nxR,
+        nyR,
         sideDist,
         sideLen,
         depth + 1,
@@ -420,12 +433,11 @@ function buildArm(
       );
 
       // Left side branch (sign = -1)
-      // cos(-a) = cos(a), sin(-a) = -sin(a)
       buildArm(
         pointX,
         pointY,
-        dxca + dysa,
-        -dxsa + dyca,
+        nxL,
+        nyL,
         sideDist,
         sideLen,
         depth + 1,
