@@ -241,7 +241,7 @@ async function toggleLabMode() {
 
   if (isLabMode) {
     lastActiveElement = document.activeElement as HTMLElement;
-    if (isGuideOpen) toggleFieldGuide();
+    if (isGuideOpen) await toggleFieldGuide();
   }
 
   if (labToggle) labToggle.setAttribute('aria-expanded', isLabMode.toString());
@@ -268,12 +268,12 @@ async function toggleLabMode() {
   }
 }
 
-function toggleFieldGuide() {
+async function toggleFieldGuide() {
   isGuideOpen = !isGuideOpen;
 
   if (isGuideOpen) {
     lastActiveElement = document.activeElement as HTMLElement;
-    if (isLabMode) toggleLabMode();
+    if (isLabMode) await toggleLabMode();
   }
 
   if (guideToggle) guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
