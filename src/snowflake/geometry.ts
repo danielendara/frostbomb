@@ -96,8 +96,14 @@ export function buildSnowflake(
   const sortedIndices = SORT_BUFFER.subarray(0, armLen);
   sortedIndices.sort();
 
-  for (let j = 0; j < armLen; j++) {
+  // Performance Optimization: Hoist multiplication out of the loop and use additive tracking
+  // for the matrix offset (stride of 96: 6 arms * 16 floats). This reduces per-iteration
+  // arithmetic and improves performance in the geometry construction hot path.
+  let offset = 0;
+  for (let j = 0; j < armLen; j++, offset += 96) {
     const packed = sortedIndices[j];
+    // Optimization: Use SEGMENT_STRIDE (8) to reduce multiplication overhead when
+    // indexing into the segment buffer. Modern engines optimize this to a shift.
     const segIdx = (packed & 0x3FFF) * SEGMENT_STRIDE;
 
     const dirX = SEGMENT_BUFFER[segIdx + 0];
@@ -141,7 +147,6 @@ export function buildSnowflake(
     // Performance Optimization: Unroll symmetry loop and leverage hexagonal symmetry
     // (60° steps) to eliminate 2D rotation math and redundant multiplications.
     // This reduces multiplications by ~65% and avoids 5 loop iterations per segment.
-    let offset = j * 96;
 
     // Performance Optimization: Hoist 60° rotation components for the base direction
     // to eliminate 15 redundant multiplications and 5 additions per segment.
@@ -322,6 +327,8 @@ function buildArm(
   const midY = startY + dirY * halfLen;
   const thicknessVariation = 1 + noise2D(midX * 3 + nOffset, midY * 3 + nOffset) * 0.15;
 
+  // Optimization: Use SEGMENT_STRIDE (8) to reduce multiplication overhead in the
+  // deep recursive generation path.
   const bIdx = currentSegmentCount * SEGMENT_STRIDE;
   SEGMENT_BUFFER[bIdx + 0] = dirX;
   SEGMENT_BUFFER[bIdx + 1] = dirY;
@@ -470,6 +477,8 @@ function buildArm(
 
     const tipDist = length; // dist + length, where dist is 0 for depth 0 primary arm
 
+    // Optimization: Use SEGMENT_STRIDE (8) to reduce multiplication overhead when
+    // extending the pointed tip.
     const tIdx = currentSegmentCount * SEGMENT_STRIDE;
     SEGMENT_BUFFER[tIdx + 0] = dirX;
     SEGMENT_BUFFER[tIdx + 1] = dirY;

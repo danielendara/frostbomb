@@ -65,12 +65,15 @@ export function updateBranchAnimation(
     maxIndex = batchEnd - 1;
   }
 
-  for (let j = minAnimatedIndex; j < armLen; j++) {
+  // Performance Optimization: Hoist multiplication out of the loop and use additive tracking
+  // for the matrix index (stride of 96: 6 arms * 16 floats). This reduces per-frame
+  // arithmetic in the growth animation hot path.
+  let idx = minAnimatedIndex * 96;
+  for (let j = minAnimatedIndex; j < armLen; j++, idx += 96) {
     const delay = data.delays[j];
     if (delay > threshold2) break;
 
     const s = easeOutExpoUnchecked(threshold2 - delay);
-    const idx = j * 96;
     maxIndex = j;
 
     const m0s = source[idx + 0] * s;
