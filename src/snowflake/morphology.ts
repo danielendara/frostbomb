@@ -8,6 +8,8 @@ export interface GrowthParams {
   sideBranchAngle: number;
   cosAngle: number;
   sinAngle: number;
+  sideLenMinFactor: number;
+  sideLenRangeFactor: number;
   maxDepth: number;
   habit: Habit;
   hasRidges: boolean;
@@ -24,7 +26,7 @@ export function getZDepthScale(habit: Habit): number {
 
 export function paramsFor(temp: number, ss: number): GrowthParams {
   const habit = getHabit(temp, ss);
-  let params: Omit<GrowthParams, 'cosAngle' | 'sinAngle'>;
+  let params: Omit<GrowthParams, 'cosAngle' | 'sinAngle' | 'sideLenMinFactor' | 'sideLenRangeFactor'>;
   let cosAngle = 0.5;
   let sinAngle = 0.8660254037844386;
 
@@ -138,5 +140,8 @@ export function paramsFor(temp: number, ss: number): GrowthParams {
       };
   }
 
-  return { ...params, cosAngle, sinAngle };
+  const sideLenMinFactor = params.sideBranchDecay * 0.4;
+  const sideLenRangeFactor = params.sideBranchDecay * 0.6;
+
+  return { ...params, cosAngle, sinAngle, sideLenMinFactor, sideLenRangeFactor };
 }
