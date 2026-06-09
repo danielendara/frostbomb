@@ -59,8 +59,11 @@ export function createParticles(prefersReducedMotion: boolean): SnowflakeParticl
       const cosTime = Math.cos(time);
       const driftFactor = 0.002 * motionScale;
 
-      for (let i = 0; i < particleCount; i++) {
-        const idx3 = i * 3;
+      // Performance Optimization: Hoist multiplication out of the loop and use additive
+      // tracking for the position index (stride of 3: X, Y, Z). This reduces per-particle
+      // arithmetic in the frame-start animation update.
+      let idx3 = 0;
+      for (let i = 0; i < particleCount; i++, idx3 += 3) {
         let px = positions[idx3];
         let py = positions[idx3 + 1];
 
