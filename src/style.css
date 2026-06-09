@@ -453,6 +453,8 @@ kbd {
   border-color: var(--accent);
   color: var(--ink);
   background: rgba(230, 237, 245, 0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(158, 201, 255, 0.1);
 }
 
 .action-btn:active {
