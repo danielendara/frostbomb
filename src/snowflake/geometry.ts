@@ -151,8 +151,6 @@ export function buildSnowflake(
     const caxsy = cax * sy;
     const sxcax = sx * cax;
     const m6 = sax * sy;
-    // Optimization: Hoist the sx * sax product used across 4 symmetry instances.
-    const sxax = sx * sax;
 
     const vJitter = vVar * jitter;
     const m12 = midX + vJitter;
