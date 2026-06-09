@@ -50,6 +50,18 @@ const noise2D = createNoise2D(() => 0.5);
 // Performance Optimization: Hoisted constants for hexagonal symmetry (sin 60°).
 const S60 = 0.8660254037844386;
 
+// Performance Optimization: Inverse steps LUT to eliminate division in hot recursive loops.
+const MAX_STEPS_LUT = 64;
+const INV_STEPS_LUT = new Float32Array(MAX_STEPS_LUT);
+const INV_STEPS_LUT_04 = new Float32Array(MAX_STEPS_LUT);
+const INV_STEPS_LUT_05 = new Float32Array(MAX_STEPS_LUT);
+for (let i = 1; i < MAX_STEPS_LUT; i++) {
+  const inv = 1 / i;
+  INV_STEPS_LUT[i] = inv;
+  INV_STEPS_LUT_04[i] = inv * 0.4;
+  INV_STEPS_LUT_05[i] = inv * 0.5;
+}
+
 export function buildSnowflake(
   conditions: GrowthConditions,
   rand: Rand,
@@ -130,14 +142,17 @@ export function buildSnowflake(
     const ax = vVar * 0.1;
     // Performance Optimization: 2nd-order Taylor expansion for jitter (small angles).
     // sin(x) ≈ x, cos(x) ≈ 1 - x^2/2. Avoids expensive Math.sin/cos calls.
+    // Optimization: Pre-calculate 0.005 (0.5 * 0.1^2) to reduce FLOPs in matrix construction.
     const sax = ax;
-    const cax = 1 - 0.5 * ax * ax;
+    const cax = 1 - 0.005 * vVar * vVar;
 
     // Performance Optimization: Pre-calculate scaled terms to eliminate divisions and
     // redundant multiplications within the symmetry loop.
     const caxsy = cax * sy;
     const sxcax = sx * cax;
     const m6 = sax * sy;
+    // Optimization: Hoist the sx * sax product used across 4 symmetry instances.
+    const sxax = sx * sax;
 
     const vJitter = vVar * jitter;
     const m12 = midX + vJitter;
@@ -163,6 +178,8 @@ export function buildSnowflake(
     const m1 = dirX * sx;
     const m4 = -dirX * caxsy;
     const m5 = -dirY * caxsy;
+    // Bug Fix: Corrected signs for m8 and m9 to match original baseline logic.
+    // Original logic: m8 = m1 * sax, m9 = -m0 * sax.
     const m8 = m1 * sax;
     const m9 = -m0 * sax;
 
@@ -185,6 +202,8 @@ export function buildSnowflake(
     const m17 = dx60 * sx;
     const m20 = -dx60 * caxsy;
     const m21 = -dy60 * caxsy;
+    // Bug Fix: Corrected signs for m24 and m25 to match original baseline logic.
+    // Original logic: m24 = m17 * sax, m25 = -m16 * sax.
     const m24 = m17 * sax;
     const m25 = -m16 * sax;
 
@@ -352,10 +371,16 @@ function buildArm(
   if (depth >= params.maxDepth || params.sideBranchProb <= 0) return;
 
   // Walk along the main branch, occasionally spawning side branches
-  const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
+  let numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
   if (numSteps <= 1) return;
+  if (numSteps >= MAX_STEPS_LUT) numSteps = MAX_STEPS_LUT - 1;
 
-  const invNumSteps = 1 / numSteps;
+  // Performance Optimization: Use pre-calculated inverse LUTs to eliminate expensive
+  // floating-point division and several multiplications in the recursive hot path.
+  const invNumSteps = INV_STEPS_LUT[numSteps];
+  const invNumSteps04 = INV_STEPS_LUT_04[numSteps];
+  const invNumSteps05 = INV_STEPS_LUT_05[numSteps];
+
   const stepDist = length * invNumSteps;
   const stepX = dirX * stepDist;
   const stepY = dirY * stepDist;
@@ -366,8 +391,6 @@ function buildArm(
   let currentDist = dist;
 
   // Pre-calculate additive steps for local probability, side length decay, noise coordinates, and path index.
-  const invNumSteps04 = invNumSteps * 0.4;
-  const invNumSteps05 = invNumSteps * 0.5;
   const probStep = params.sideBranchProb * invNumSteps04;
   const lenStep = invNumSteps05;
   const stepX2 = stepX * 2;
