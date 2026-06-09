@@ -165,7 +165,7 @@ function setTemporaryLabel(btnId: string, tempText: string, duration = 2000, tem
   if (!btn) return;
 
   const labelEl = btn.querySelector('.action-btn__label') || btn.querySelector('#seed-display') || btn;
-  const iconEl = btn.querySelector('.action-btn__icon') || btn.querySelector('.refresh__icon');
+  const iconEl = btn.querySelector('.action-btn__icon') || btn.querySelector('.refresh__icon') || btn.querySelector('.edition-btn__icon');
 
   if (!labelEl) return;
 
@@ -358,7 +358,7 @@ async function copyLink() {
 
   if (success) {
     setTemporaryLabel('btn-copy', 'Copied!', 2000, '✓');
-    setTemporaryLabel('btn-seed', 'Copied!');
+    setTemporaryLabel('btn-seed', 'Copied!', 2000, '✓');
     announce(`Link for ${habitLabel[currentConditions.habit]} (seed ${currentSeedLabel}) copied to clipboard`);
   } else {
     announce('Failed to copy link');
