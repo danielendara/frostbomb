@@ -379,7 +379,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
-  if (k === 'escape') (isGuideOpen ? toggleFieldGuide : isLabMode ? toggleLabMode : () => {})();
+  if (k === 'escape') {
+    if (isGuideOpen) {
+      toggleFieldGuide();
+    } else if (isLabMode) {
+      toggleLabMode();
+    }
+  }
+
   if (isEditableTarget(e.target)) return;
   const actions: Record<string, () => void> = {
     'r': () => (handleRefresh(), visualPress('refresh')),
