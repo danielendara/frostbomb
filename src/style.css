@@ -449,6 +449,10 @@ kbd {
   background: rgba(230, 237, 245, 0.05);
 }
 
+.action-btn:active {
+  transform: scale(0.97);
+}
+
 .action-btn--toggle.active {
   border-color: var(--accent);
   color: var(--accent);
@@ -514,6 +518,10 @@ kbd {
   box-shadow: 0 4px 12px rgba(158, 201, 255, 0.15);
 }
 
+.refresh:active {
+  transform: translateY(0) scale(0.97);
+}
+
 .refresh__icon {
   display: inline-block;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -541,6 +549,9 @@ kbd {
   60% { transform: scale(1); }
   100% { transform: scale(1); }
 }
+
+@keyframes button-pop { 50% { transform: scale(1.08); } }
+.btn-press { animation: button-pop 0.15s ease-out; }
 
 @keyframes prism-shimmer {
   0% { filter: hue-rotate(0deg) brightness(1); }
@@ -645,13 +656,8 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .prism-mode .wordmark__accent,
-  .prism-mode #btn-prism.active,
-  #btn-pink.active .action-btn__icon,
-  #btn-prism.active .action-btn__icon,
-  #btn-rotate.active .action-btn__icon,
-  .wordmark-link:hover .wordmark__dot,
-  .wordmark__dot--spinning {
+  .prism-mode .wordmark__accent, .prism-mode #btn-prism.active,
+  .action-btn__icon, .wordmark__dot, .btn-press {
     animation: none !important;
     transform: none !important;
     filter: none !important;

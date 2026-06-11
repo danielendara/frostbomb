@@ -113,6 +113,14 @@ function setText(id: string, value: string) {
   if (el) el.textContent = value;
 }
 
+function visualPress(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('btn-press');
+  void el.offsetWidth; // Trigger reflow
+  el.classList.add('btn-press');
+}
+
 function announce(message: string) {
   const announcer = document.getElementById('a11y-announcer');
   if (announcer) {
@@ -370,38 +378,23 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 window.addEventListener('keydown', (e) => {
-  const key = e.key.toLowerCase();
-
-  if (key === 'escape') {
-    if (isGuideOpen) {
-      toggleFieldGuide();
-      return;
-    }
-    if (isLabMode) {
-      toggleLabMode();
-      return;
-    }
-  }
-
+  const k = e.key.toLowerCase();
+  if (k === 'escape') (isGuideOpen ? toggleFieldGuide : isLabMode ? toggleLabMode : () => {})();
   if (isEditableTarget(e.target)) return;
-
-  if (key === 'r') {
-    handleRefresh();
-  } else if (key === 'g' || key === '?') {
-    toggleFieldGuide();
-  } else if (key === 'l') {
-    toggleLabMode();
-  } else if (key === 'p') {
-    togglePinkMode();
-  } else if (key === 'm') {
-    togglePrismMode();
-  } else if (key === 's') {
-    saveSnowflake();
-  } else if (key === 'a') {
-    toggleAutoRotate();
-  } else if (key === 'c') {
-    copyLink();
-  }
+  const actions: Record<string, () => void> = {
+    'r': () => (handleRefresh(), visualPress('refresh')),
+    ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
+    'v': () => scene.resetView(),
+    'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
+    '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
+    'l': () => (toggleLabMode(), visualPress('lab-toggle')),
+    'p': () => (togglePinkMode(), visualPress('btn-pink')),
+    'm': () => (togglePrismMode(), visualPress('btn-prism')),
+    's': () => (saveSnowflake(), visualPress('btn-save')),
+    'a': () => (toggleAutoRotate(), visualPress('btn-rotate')),
+    'c': () => (copyLink(), visualPress('btn-copy'), visualPress('btn-seed')),
+  };
+  actions[k]?.();
 });
 
 grow();

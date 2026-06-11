@@ -13,3 +13,7 @@
 ## 2025-01-24 - Enhancing Clipboard Feedback with ARIA Live Regions
 **Learning:** For background actions like "Copy to Clipboard", visual-only feedback (like a button text change) is insufficient for screen reader users. Using an `aria-live="polite"` region to announce the action completion provides much better accessibility. Additionally, including the specific content being copied (e.g., the seed value) in the announcement provides extra context and reassurance.
 **Action:** Use an ARIA live region (e.g., `#a11y-announcer`) for transient feedback. Ensure the announcement includes specific context (like "Seed [value] copied") rather than just a generic "Copied".
+
+## 2026-06-11 - Bridging the Keyboard Feedback Gap
+**Learning:** Keyboard shortcuts often feel "disconnected" because they lack the tactile visual feedback (active states, scale changes) of mouse clicks. Bridging this gap by programmatically triggering "press" animations for keyboard actions creates a more unified and responsive-feeling interface.
+**Action:** Route both keyboard and mouse events through unified handlers that trigger the same visual feedback logic. Use a dedicated CSS class (e.g., .btn-press) and a JS helper that forces a reflow to allow immediate re-triggering of one-shot animations.
