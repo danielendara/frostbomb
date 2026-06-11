@@ -15,7 +15,7 @@ test('Escape key closes the Field Guide', async ({ page }) => {
   // Press Escape
   await page.keyboard.press('Escape');
   await expect(fieldGuide).not.toBeVisible();
-  await expect(guideToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('Escape key closes Lab Mode', async ({ page }) => {
@@ -29,7 +29,7 @@ test('Escape key closes Lab Mode', async ({ page }) => {
   // Press Escape
   await page.keyboard.press('Escape');
   await expect(labControls).not.toBeVisible();
-  await expect(labToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('Escape key closes Lab Mode even when a control is focused', async ({ page }) => {
@@ -49,5 +49,5 @@ test('Escape key closes Lab Mode even when a control is focused', async ({ page 
   // Press Escape
   await page.keyboard.press('Escape');
   await expect(labControls).not.toBeVisible();
-  await expect(labToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
 });
