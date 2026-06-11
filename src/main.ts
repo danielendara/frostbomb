@@ -481,5 +481,54 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+nakayaCanvas?.addEventListener('click', (e) => {
+  const rect = nakayaCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  const temp = (x / rect.width) * 40 - 40;
+  const ss = (rect.height - y) / rect.height;
+
+  labParams.temperature = Math.max(-40, Math.min(0, temp));
+  labParams.supersaturation = Math.max(0, Math.min(1, ss)) * 100;
+
+  if (!isLabMode) {
+    toggleLabMode();
+  } else {
+    updateFromPane();
+  }
+});
+
+nakayaCanvas?.addEventListener('keydown', (e) => {
+  const step = e.shiftKey ? 5 : 1;
+  let changed = false;
+
+  if (e.key === 'ArrowLeft') {
+    labParams.temperature = Math.max(-40, labParams.temperature - (40/300) * step * 10);
+    changed = true;
+  } else if (e.key === 'ArrowRight') {
+    labParams.temperature = Math.min(0, labParams.temperature + (40/300) * step * 10);
+    changed = true;
+  } else if (e.key === 'ArrowUp') {
+    labParams.supersaturation = Math.min(100, labParams.supersaturation + (100/200) * step * 10);
+    changed = true;
+  } else if (e.key === 'ArrowDown') {
+    labParams.supersaturation = Math.max(0, labParams.supersaturation - (100/200) * step * 10);
+    changed = true;
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    if (!isLabMode) toggleLabMode();
+    e.preventDefault();
+  }
+
+  if (changed) {
+    e.preventDefault();
+    if (!isLabMode) {
+      toggleLabMode();
+    } else {
+      updateFromPane();
+    }
+  }
+});
+
 grow();
 scene.start();
