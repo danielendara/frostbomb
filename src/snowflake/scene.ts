@@ -1,22 +1,10 @@
 import * as THREE from 'three';
 import { BuildResult } from './geometry';
-
-const EASING_LUT_SIZE = 1024;
-const EASING_LUT = new Float32Array(EASING_LUT_SIZE);
-for (let i = 0; i < EASING_LUT_SIZE; i++) {
-  const t = i / (EASING_LUT_SIZE - 1);
-  EASING_LUT[i] = t === 0 ? 0 : (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
-}
-
-/**
- * Fast O(1) easing using a look-up table.
- * Performance: Avoids ~25,000 Math.pow calls per second during complex snowflake growth.
- */
-function easeOutExpoFast(t: number): number {
-  if (t <= 0) return 0;
-  if (t >= 1) return 1;
-  return EASING_LUT[(t * (EASING_LUT_SIZE - 1)) | 0];
-}
+import { easeOutExpoFast } from './easing';
+import { prepareBranchMesh, updateBranchAnimation } from './flake-animation';
+import { createIceBumpMap, createEnvironmentMap, createIceMaterial } from './materials';
+import { createParticles } from './particles';
+import { createOneTimeMark, markPerformance } from '../performance';
 
 interface RenderPipeline {
   render: (delta?: number) => void;
@@ -98,51 +86,15 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
 
-  const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#ffffff'),
-    metalness: 0,
-    roughness: 0.15,
-    transmission: 0.85,
-    thickness: 0.5,
-    ior: 1.31,
-    dispersion: 0.02,
-    reflectivity: 0.5,
-    transparent: true,
-    opacity: 0.9,
-    emissive: new THREE.Color('#e0f0ff'),
-    emissiveIntensity: 0.25,
-  });
+  const bumpMap = createIceBumpMap();
+  const envMap = createEnvironmentMap();
+  scene.environment = envMap;
 
+  const material = createIceMaterial(bumpMap);
   const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
 
-  // Snowfall particles
-  const particleCount = prefersReducedMotion ? 80 : 200;
-  const particleGeom = new THREE.BufferGeometry();
-  const particlePos = new Float32Array(particleCount * 3);
-  const particleVel = new Float32Array(particleCount);
-  const particleSinPhase = new Float32Array(particleCount);
-  const particleCosPhase = new Float32Array(particleCount);
-
-  for (let i = 0; i < particleCount; i++) {
-    particlePos[i * 3] = (Math.random() - 0.5) * 20;
-    particlePos[i * 3 + 1] = (Math.random() - 0.5) * 20;
-    particlePos[i * 3 + 2] = (Math.random() - 0.5) * 10;
-    particleVel[i] = 0.02 + Math.random() * 0.03;
-    const phase = Math.random() * Math.PI * 2;
-    particleSinPhase[i] = Math.sin(phase);
-    particleCosPhase[i] = Math.cos(phase);
-  }
-
-  particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-  const particleMat = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 0.05,
-    transparent: true,
-    opacity: 0.5,
-    blending: THREE.AdditiveBlending,
-  });
-  const particles = new THREE.Points(particleGeom, particleMat);
-  scene.add(particles);
+  const snowflakeParticles = createParticles(prefersReducedMotion);
+  scene.add(snowflakeParticles.points);
 
   let branchMesh: THREE.InstancedMesh | null = null;
   const coreMesh = new THREE.Mesh(branchGeom, material);
@@ -156,6 +108,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let postprocessingLoaded = false;
   let postprocessingLoading = false;
   let postprocessingRequested = false;
+  const markFirstFrameRendered = createOneTimeMark('first-frame-rendered');
 
   async function loadPostprocessing() {
     if (postprocessingLoaded || postprocessingLoading || prefersReducedMotion) return;
@@ -194,12 +147,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       composer = nextComposer;
       sceneInterface.composer = composer;
       postprocessingLoaded = true;
+      markPerformance('postprocessing-ready');
     } finally {
       postprocessingLoading = false;
     }
   }
 
-  // Interaction
   let isAutoRotate = !prefersReducedMotion;
   let isDragging = false;
   const rotation = { x: 0, y: 0 };
@@ -339,8 +292,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       branchMesh?.dispose();
       branchGeom.dispose();
       material.dispose();
-      particleGeom.dispose();
-      particleMat.dispose();
+      bumpMap.dispose();
+      envMap.dispose();
+      snowflakeParticles.dispose();
     },
     setAutoRotate: (enabled: boolean) => {
       isAutoRotate = enabled && !prefersReducedMotion;
@@ -356,16 +310,14 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         if (enabled) {
           material.color.set('#ffb2d1');
           material.emissive.set('#ff80bf');
-          particleMat.color.set('#ffb2d1');
-          particleMat.opacity = 0.6;
+          snowflakeParticles.setColorForMode('pink');
           if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x0c0512);
           }
         } else {
           material.color.set('#ffffff');
           material.emissive.set('#e0f0ff');
-          particleMat.color.set(0xffffff);
-          particleMat.opacity = 0.5;
+          snowflakeParticles.setColorForMode('default');
           if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x050912);
           }
@@ -379,7 +331,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         sceneInterface.setPinkMode(sceneInterface.isPinkModeEnabled);
       } else {
         // Boost opacity when entering Prism mode
-        particleMat.opacity = 0.8;
+        snowflakeParticles.setColorForMode('prism');
       }
     },
     updateFlake: (data: BuildResult, animate = true) => {
@@ -405,31 +357,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         flakeHolder.add(branchMesh);
       }
 
-      branchMesh.count = requiredCount;
-
-      if (!animate) {
-        // Fast-path for non-animated updates (e.g. Lab Mode): directly copy the pre-computed
-        // matrices to the GPU buffer and skip the basis-zeroing loop.
-        branchMesh.instanceMatrix.array.set(data.matrices);
-        branchMesh.instanceMatrix.clearUpdateRanges();
-        branchMesh.instanceMatrix.needsUpdate = true;
-        minAnimatedIndex = data.armCount;
-      } else {
-        // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
-        // for all active instances. This avoids needing to zero it every frame during animation.
-        const target = branchMesh.instanceMatrix.array as Float32Array;
-        target.set(data.matrices);
-        for (let i = 0; i < requiredCount; i++) {
-          const idx = i * 16;
-          // Zero out the 3x3 basis (columns 1-3)
-          target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
-          target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
-          target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
-        }
-        branchMesh.instanceMatrix.clearUpdateRanges();
-        branchMesh.instanceMatrix.needsUpdate = true;
-        minAnimatedIndex = 0;
-      }
+      minAnimatedIndex = prepareBranchMesh(branchMesh, data, animate);
 
       if (!flakeHolder.children.includes(coreMesh)) {
         flakeHolder.add(coreMesh);
@@ -504,7 +432,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     time += delta * 0.3 * motionScale;
     adaptQuality(delta);
 
-    // Update snowflake material colors for Prism Mode
     if (sceneInterface.isPrismModeEnabled) {
       const hue = (now * 0.0001) % 1;
       material.color.setHSL(hue, 0.6, 0.8);
@@ -516,38 +443,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       }
     }
 
-    // Animate snowfall particles
-    const positions = particles.geometry.attributes.position.array as Float32Array;
-    // Optimization: Use trig identity sin(a + b) = sin(a)cos(b) + cos(a)sin(b)
-    // to replace 200 sin() calls with 2 sin/cos calls per frame.
-    const sinTime = Math.sin(time);
-    const cosTime = Math.cos(time);
+    snowflakeParticles.update(time, motionScale, sceneInterface.isPrismModeEnabled, now);
 
-    for (let i = 0; i < particleCount; i++) {
-      const idx3 = i * 3;
-      let px = positions[idx3];
-      let py = positions[idx3 + 1];
-
-      py -= particleVel[i] * motionScale;
-      // Horizontal drift using pre-calculated phase components
-      const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
-      px += drift * 0.002 * motionScale;
-
-      if (py < -10) {
-        py = 10;
-        px = (Math.random() - 0.5) * 20;
-      }
-
-      positions[idx3] = px;
-      positions[idx3 + 1] = py;
-    }
-    particles.geometry.attributes.position.needsUpdate = true;
-
-    // Match particle colors to modes (Prism Mode only, others are handled by setters)
-    if (sceneInterface.isPrismModeEnabled) {
-      const hue = (now * 0.00015 + 0.5) % 1; // Offset hue slightly
-      particleMat.color.setHSL(hue, 0.8, 0.8);
-    }
     const wasEntryActive = entryActive;
     tickEntryTween(now);
 
@@ -568,85 +465,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
     if (wasEntryActive || entryActive || needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {
-        if (eased === 1) {
-          // Fast-path for finished animation: bulk copy pre-computed matrices
-          branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
-          branchMesh.instanceMatrix.clearUpdateRanges();
-          minAnimatedIndex = currentFlakeData.armCount;
-        } else {
-          // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
-          const target = branchMesh.instanceMatrix.array as Float32Array;
-          const source = currentFlakeData.matrices;
-          const armLen = currentFlakeData.armCount;
-          const threshold = eased * 1.5;
-          let maxIndex = -1;
-
-          // Optimization: Outer loop over the single arm's instances.
-          // Start from minAnimatedIndex to skip already-grown segments.
-          for (let j = minAnimatedIndex; j < armLen; j++) {
-            const delay = currentFlakeData.delays[j];
-
-            // Optimization: Early break since segments are sorted by delay.
-            if (delay > threshold) break;
-
-            const progress = Math.min(1, (threshold - delay) * 2);
-
-            // Inner loop: Apply scale to all 6 symmetry instances.
-            // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
-            // which results in contiguous memory writes and better cache locality.
-            let idx = j * 6 * 16;
-
-            // If this segment is fully grown, use a fast bulk copy and advance the
-            // minimum animation pointer to skip it in the next frame.
-            if (progress >= 1) {
-              target.set(source.subarray(idx, idx + 96), idx);
-              if (j === minAnimatedIndex) minAnimatedIndex++;
-              maxIndex = j;
-              continue;
-            }
-
-            maxIndex = j;
-            const s = easeOutExpoFast(progress);
-
-            // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
-            // These are identical for all 6 arms as they represent Z-tilt and thickness.
-            const m6s = source[idx + 6] * s;
-            const m10s = source[idx + 10] * s;
-
-            for (let i = 0; i < 6; i++) {
-              // Column 1
-              target[idx + 0] = source[idx + 0] * s;
-              target[idx + 1] = source[idx + 1] * s;
-              // Optimization: Skip target[idx+2] as it is always 0 for snowflake segments.
-              // Column 2
-              target[idx + 4] = source[idx + 4] * s;
-              target[idx + 5] = source[idx + 5] * s;
-              target[idx + 6] = m6s;
-              // Column 3
-              target[idx + 8] = source[idx + 8] * s;
-              target[idx + 9] = source[idx + 9] * s;
-              target[idx + 10] = m10s;
-              idx += 16;
-            }
-          }
-
-          // Optimize GPU upload: only transfer the window of segments that are currently growing.
-          // Because of the interleaved layout, we can now use a SINGLE update range for all symmetry arms.
-          if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
-            branchMesh.instanceMatrix.clearUpdateRanges();
-            if (maxIndex >= minAnimatedIndex) {
-              const start = minAnimatedIndex * 6 * 16;
-              const count = (maxIndex - minAnimatedIndex + 1) * 6 * 16;
-              branchMesh.instanceMatrix.addUpdateRange(start, count);
-            }
-          } else {
-            // Fallback for older Three.js versions: update the entire modified range
-            const start = minAnimatedIndex * 16;
-            const end = (5 * armLen + maxIndex + 1) * 16;
-            (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: end - start };
-          }
-        }
-        branchMesh.instanceMatrix.needsUpdate = true;
+        minAnimatedIndex = updateBranchAnimation(
+          branchMesh,
+          currentFlakeData,
+          eased,
+          minAnimatedIndex,
+        );
       }
 
       if (coreMesh && currentFlakeData) {
@@ -662,6 +486,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
 
     composer.render(delta);
+    markFirstFrameRendered();
 
     if (!postprocessingRequested && !prefersReducedMotion) {
       postprocessingRequested = true;
@@ -673,4 +498,3 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   return sceneInterface;
 }
-

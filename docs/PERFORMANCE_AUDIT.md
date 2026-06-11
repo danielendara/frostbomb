@@ -84,6 +84,8 @@ Done means: we can answer whether mobile users are seeing a fast first render wi
 
 ### P1: Add a custom first-flake-ready mark
 
+Status: completed on 2026-06-07.
+
 Instrument the app with `performance.mark()` when the first snowflake is generated and when the first render finishes. This gives us a project-specific metric that Lighthouse cannot infer from canvas content.
 
 Suggested marks:
