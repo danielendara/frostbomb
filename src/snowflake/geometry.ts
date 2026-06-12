@@ -36,9 +36,10 @@ const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 // Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
 const MAX_SEGMENTS_PER_ARM = 10000;
-const SEGMENT_STRIDE = 8;
+const SEGMENT_STRIDE = 16;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
-const SORT_BUFFER = new Uint32Array(MAX_SEGMENTS_PER_ARM);
+const DELAY_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
+const SEGMENT_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
 let currentSegmentCount = 0;
 
 // Performance Optimization: Global noise instance avoids building a permutation table every time.
@@ -46,8 +47,8 @@ let currentSegmentCount = 0;
 // variation remains deterministic across different sessions.
 const noise2D = createNoise2D(() => 0.5);
 
-// Performance Optimization: Hoisted constants for hexagonal symmetry (sin 60°).
-const S60 = 0.8660254037844386;
+// Pre-calculate symmetry constants.
+const SIN60 = 0.86602540378;
 
 export function buildSnowflake(
   conditions: GrowthConditions,
@@ -66,7 +67,6 @@ export function buildSnowflake(
 
   // Build one primary arm along +X
   const maxPathIdx = pathParams.length - 1;
-  const rng = rand.next.bind(rand);
   buildArm(
     0, 0, // startX, startY
     1, 0, // dirX, dirY
@@ -76,204 +76,164 @@ export function buildSnowflake(
     pathParams,
     maxPathIdx,
     pathScale,
-    rng,
+    rand,
     nOffset,
-    0, // Initial pathIdx
   );
 
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
   const armLen = currentSegmentCount;
+  const sortedIndices = SEGMENT_INDICES.subarray(0, armLen);
+  // Correctness fix: Always reset indices to ensure we only sort the current arm's data.
+  for (let i = 0; i < armLen; i++) sortedIndices[i] = i;
+  // Performance Optimization: Use a dedicated flat buffer for delay sorting to improve cache locality.
+  sortedIndices.sort((a, b) => DELAY_BUFFER[a] - DELAY_BUFFER[b]);
 
   // Performance Optimization: Use shared scratchpad buffers during calculation to avoid O(N)
   // intermediate allocations. We return a slice (copy) to ensure that the returned data
   // is owned by the caller and not overwritten by subsequent buildSnowflake calls.
   const delays = new Float32Array(armLen);
-  const matrices = new Float32Array(armLen * 6 * 16);
-
-  // Sort the first armLen elements of SORT_BUFFER
-  const sortedIndices = SORT_BUFFER.subarray(0, armLen);
-  sortedIndices.sort();
+  // Float32Array is pre-filled with zeros, allowing us to skip multiple writes in the hot loop.
+  const matrices = new Float32Array(armLen * 96); // 6 * 16 = 96
 
   for (let j = 0; j < armLen; j++) {
-    const packed = sortedIndices[j];
-    const segIdx = (packed & 0x3FFF) * SEGMENT_STRIDE;
-
-    const dirX = SEGMENT_BUFFER[segIdx + 0];
-    const dirY = SEGMENT_BUFFER[segIdx + 1];
-    const length = SEGMENT_BUFFER[segIdx + 2];
-    const thickness = SEGMENT_BUFFER[segIdx + 3];
-    const thicknessVariation = SEGMENT_BUFFER[segIdx + 4];
-    const midX = SEGMENT_BUFFER[segIdx + 5];
-    const midY = SEGMENT_BUFFER[segIdx + 6];
-    const delay = SEGMENT_BUFFER[segIdx + 7];
-
+    const idx = sortedIndices[j];
+    const delay = DELAY_BUFFER[idx];
     delays[j] = delay;
 
-    // Inline transformation logic from segmentsToInstanceData
-    const finalThickness = thickness * thicknessVariation;
+    // Performance Optimization: All matrix components and jitter are pre-calculated during the
+    // recursive buildArm pass and stored in SEGMENT_BUFFER. This avoids O(N) redundant calculations
+    // and memory loads in the final population phase.
+    const bIdx = idx << 4; // STRIDE 16
+    const m0 = SEGMENT_BUFFER[bIdx + 0];
+    const m1 = SEGMENT_BUFFER[bIdx + 1];
+    const K = SEGMENT_BUFFER[bIdx + 2];
+    const sax = SEGMENT_BUFFER[bIdx + 3];
+    const m6 = SEGMENT_BUFFER[bIdx + 4];
+    const m10 = SEGMENT_BUFFER[bIdx + 5];
+    const m12 = SEGMENT_BUFFER[bIdx + 6];
+    const m13 = SEGMENT_BUFFER[bIdx + 7];
+    const m14 = SEGMENT_BUFFER[bIdx + 8];
 
-    // Add subtle jitter for organic feel
-    const jitter = 0.015;
-    const vVar = thicknessVariation - 1;
+    // Apply rotation for each of the 6 symmetry instances
+    // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5, seg1_arm0, ...]
+    // to improve cache locality and consolidate GPU update ranges.
+    // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
+    // and eliminate multiplications.
+    // R(60) = [0.5, -sin60; sin60, 0.5]
+    // R(120) = R(60) - I = [-0.5, -sin60; sin60, -0.5]
+    // R(180) = -I
+    // R(240) = -R(60)
+    // R(300) = -R(120)
 
-    // Manual matrix construction for base arm (i=0) incorporating jitter and rotation.
-    // Optimization: Avoids THREE.Object3D.updateMatrix() overhead and redundant trig.
-    const ax = vVar * 0.1;
-    // Performance Optimization: 2nd-order Taylor expansion for jitter (small angles).
-    // sin(x) ≈ x, cos(x) ≈ 1 - x^2/2. Avoids expensive Math.sin/cos calls.
-    const sax = ax;
-    const cax = 1 - 0.5 * ax * ax;
+    const offset = j * 96;
 
-    const sx = finalThickness;
-    const sy = length;
-
-    // Performance Optimization: Pre-calculate scaled terms to eliminate divisions and
-    // redundant multiplications within the symmetry loop.
-    const caxsy = cax * sy;
-    const sxcax = sx * cax;
-    const m6 = sax * sy;
-
-    const vJitter = vVar * jitter;
-    const m12 = midX + vJitter;
-    const m13 = midY + vJitter;
-    const m14 = vJitter;
-
-    // Performance Optimization: Unroll symmetry loop and leverage hexagonal symmetry
-    // (60° steps) to eliminate 2D rotation math and redundant multiplications.
-    // This reduces multiplications by ~65% and avoids 5 loop iterations per segment.
-    let offset = j * 96;
-
-    // Arm 0 components
-    const m0 = -dirY * sx;
-    const m1 = dirX * sx;
-    const m4 = -dirX * caxsy;
-    const m5 = -dirY * caxsy;
-    const m8 = m1 * sax;
-    const m9 = -m0 * sax;
-
-    // Intermediate terms for fast rotation logic
-    const h0 = m0 * 0.5;
-    const h1 = m1 * 0.5;
-    const h4 = m4 * 0.5;
-    const h5 = m5 * 0.5;
-    const h8 = m8 * 0.5;
-    const h9 = m9 * 0.5;
-    const h12 = m12 * 0.5;
-    const h13 = m13 * 0.5;
-
-    const r0 = m0 * S60;
-    const r1 = m1 * S60;
-    const r4 = m4 * S60;
-    const r5 = m5 * S60;
-    const r8 = m8 * S60;
-    const r9 = m9 * S60;
-    const r12 = m12 * S60;
-    const r13 = m13 * S60;
-
-    // Arm 0 (0°)
+    // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
     matrices[offset + 1] = m1;
-    matrices[offset + 4] = m4;
-    matrices[offset + 5] = m5;
+    matrices[offset + 4] = -m1 * K;
+    matrices[offset + 5] = m0 * K;
     matrices[offset + 6] = m6;
-    matrices[offset + 8] = m8;
-    matrices[offset + 9] = m9;
-    matrices[offset + 10] = sxcax;
+    matrices[offset + 8] = m1 * sax;
+    matrices[offset + 9] = -m0 * sax;
+    matrices[offset + 10] = m10;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
     matrices[offset + 14] = m14;
     matrices[offset + 15] = 1;
 
-    // Intermediate terms for Arm 1 (60°)
-    const m16 = h0 - r1;
-    const m17 = r0 + h1;
-    const m20 = h4 - r5;
-    const m21 = r4 + h5;
-    const m24 = h8 - r9;
-    const m25 = r8 + h9;
-    const m28 = h12 - r13;
-    const m29 = r12 + h13;
-
-    // Performance Optimization: Leverage hexagonal rotation identity R(120°) = R(60°) - I
-    // to compute Arm 2 directly from Arm 1 and Arm 0. This replaces complex derivations
-    // with simple subtractions, saving 8 negations and 8 lookups.
-    const m32 = m16 - m0;
-    const m33 = m17 - m1;
-    const m36 = m20 - m4;
-    const m37 = m21 - m5;
-    const m40 = m24 - m8;
-    const m41 = m25 - m9;
-    const m44 = m28 - m12;
-    const m45 = m29 - m13;
-
     // Arm 1 (60°)
-    matrices[offset + 16] = m16;
-    matrices[offset + 17] = m17;
-    matrices[offset + 20] = m20;
-    matrices[offset + 21] = m21;
+    const m0_1 = 0.5 * m0 - SIN60 * m1;
+    const m1_1 = SIN60 * m0 + 0.5 * m1;
+    const m12_1 = 0.5 * m12 - SIN60 * m13;
+    const m13_1 = SIN60 * m12 + 0.5 * m13;
+
+    matrices[offset + 16] = m0_1;
+    matrices[offset + 17] = m1_1;
+    matrices[offset + 20] = -m1_1 * K;
+    matrices[offset + 21] = m0_1 * K;
     matrices[offset + 22] = m6;
-    matrices[offset + 24] = m24;
-    matrices[offset + 25] = m25;
-    matrices[offset + 26] = sxcax;
-    matrices[offset + 28] = m28;
-    matrices[offset + 29] = m29;
+    matrices[offset + 24] = m1_1 * sax;
+    matrices[offset + 25] = -m0_1 * sax;
+    matrices[offset + 26] = m10;
+    matrices[offset + 28] = m12_1;
+    matrices[offset + 29] = m13_1;
     matrices[offset + 30] = m14;
     matrices[offset + 31] = 1;
 
-    // Arm 2 (120°)
-    matrices[offset + 32] = m32;
-    matrices[offset + 33] = m33;
-    matrices[offset + 36] = m36;
-    matrices[offset + 37] = m37;
+    // Arm 2 (120°) = Arm 1 - Arm 0
+    const m0_2 = m0_1 - m0;
+    const m1_2 = m1_1 - m1;
+    const m12_2 = m12_1 - m12;
+    const m13_2 = m13_1 - m13;
+
+    matrices[offset + 32] = m0_2;
+    matrices[offset + 33] = m1_2;
+    matrices[offset + 36] = -m1_2 * K;
+    matrices[offset + 37] = m0_2 * K;
     matrices[offset + 38] = m6;
-    matrices[offset + 40] = m40;
-    matrices[offset + 41] = m41;
-    matrices[offset + 42] = sxcax;
-    matrices[offset + 44] = m44;
-    matrices[offset + 45] = m45;
+    matrices[offset + 40] = m1_2 * sax;
+    matrices[offset + 41] = -m0_2 * sax;
+    matrices[offset + 42] = m10;
+    matrices[offset + 44] = m12_2;
+    matrices[offset + 45] = m13_2;
     matrices[offset + 46] = m14;
     matrices[offset + 47] = 1;
 
     // Arm 3 (180°) = -Arm 0
-    matrices[offset + 48] = -m0;
-    matrices[offset + 49] = -m1;
-    matrices[offset + 52] = -m4;
-    matrices[offset + 53] = -m5;
+    const m0_3 = -m0;
+    const m1_3 = -m1;
+    const m12_3 = -m12;
+    const m13_3 = -m13;
+
+    matrices[offset + 48] = m0_3;
+    matrices[offset + 49] = m1_3;
+    matrices[offset + 52] = -m1_3 * K;
+    matrices[offset + 53] = m0_3 * K;
     matrices[offset + 54] = m6;
-    matrices[offset + 56] = -m8;
-    matrices[offset + 57] = -m9;
-    matrices[offset + 58] = sxcax;
-    matrices[offset + 60] = -m12;
-    matrices[offset + 61] = -m13;
+    matrices[offset + 56] = m1_3 * sax;
+    matrices[offset + 57] = -m0_3 * sax;
+    matrices[offset + 58] = m10;
+    matrices[offset + 60] = m12_3;
+    matrices[offset + 61] = m13_3;
     matrices[offset + 62] = m14;
     matrices[offset + 63] = 1;
 
     // Arm 4 (240°) = -Arm 1
-    matrices[offset + 64] = -m16;
-    matrices[offset + 65] = -m17;
-    matrices[offset + 68] = -m20;
-    matrices[offset + 69] = -m21;
+    const m0_4 = -m0_1;
+    const m1_4 = -m1_1;
+    const m12_4 = -m12_1;
+    const m13_4 = -m13_1;
+
+    matrices[offset + 64] = m0_4;
+    matrices[offset + 65] = m1_4;
+    matrices[offset + 68] = -m1_4 * K;
+    matrices[offset + 69] = m0_4 * K;
     matrices[offset + 70] = m6;
-    matrices[offset + 72] = -m24;
-    matrices[offset + 73] = -m25;
-    matrices[offset + 74] = sxcax;
-    matrices[offset + 76] = -m28;
-    matrices[offset + 77] = -m29;
+    matrices[offset + 72] = m1_4 * sax;
+    matrices[offset + 73] = -m0_4 * sax;
+    matrices[offset + 74] = m10;
+    matrices[offset + 76] = m12_4;
+    matrices[offset + 77] = m13_4;
     matrices[offset + 78] = m14;
     matrices[offset + 79] = 1;
 
     // Arm 5 (300°) = -Arm 2
-    matrices[offset + 80] = -m32;
-    matrices[offset + 81] = -m33;
-    matrices[offset + 84] = -m36;
-    matrices[offset + 85] = -m37;
+    const m0_5 = -m0_2;
+    const m1_5 = -m1_2;
+    const m12_5 = -m12_2;
+    const m13_5 = -m13_2;
+
+    matrices[offset + 80] = m0_5;
+    matrices[offset + 81] = m1_5;
+    matrices[offset + 84] = -m1_5 * K;
+    matrices[offset + 85] = m0_5 * K;
     matrices[offset + 86] = m6;
-    matrices[offset + 88] = -m40;
-    matrices[offset + 89] = -m41;
-    matrices[offset + 90] = sxcax;
-    matrices[offset + 92] = -m44;
-    matrices[offset + 93] = -m45;
+    matrices[offset + 88] = m1_5 * sax;
+    matrices[offset + 89] = -m0_5 * sax;
+    matrices[offset + 90] = m10;
+    matrices[offset + 92] = m12_5;
+    matrices[offset + 93] = m13_5;
     matrices[offset + 94] = m14;
     matrices[offset + 95] = 1;
   }
@@ -328,9 +288,6 @@ interface Params {
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
   let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
-  let cAng = 0.5; // Default for PI/3
-  let sAng = 0.8660254037844386;
-
   switch (habit) {
     case 'fernlike_dendrite':
       p = {
@@ -396,8 +353,6 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: true,
       };
-      cAng = 0.7071067811865476; // PI/4
-      sAng = 0.7071067811865475;
       break;
     case 'column':
       p = {
@@ -411,8 +366,6 @@ function paramsFor(temp: number, ss: number): Params {
         hasRidges: false,
         hasTip: false,
       };
-      cAng = 1;
-      sAng = 0;
       break;
     case 'capped_column':
       p = {
@@ -442,8 +395,8 @@ function paramsFor(temp: number, ss: number): Params {
   }
   return {
     ...p,
-    cosAngle: cAng,
-    sinAngle: sAng,
+    cosAngle: Math.cos(p.sideBranchAngle),
+    sinAngle: Math.sin(p.sideBranchAngle),
   };
 }
 
@@ -458,38 +411,53 @@ function buildArm(
   pathParams: Params[],
   maxPathIdx: number,
   pathScale: number,
-  rng: () => number,
+  rand: Rand,
   nOffset: number,
-  pathIdx: number,
 ) {
   // Sample parameters from the pre-calculated path based on distance from core
+  // Optimization: use pre-calculated pathScale and maxPathIdx.
+  const pIdx = (dist * pathScale) | 0;
+  const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
   const params = pathParams[pathIdx];
 
   if (depth > params.maxDepth || length < 0.08) return;
   if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
-  const halfLen = length * 0.5;
-  const midX = startX + dirX * halfLen;
-  const midY = startY + dirY * halfLen;
+  const midX = startX + dirX * length * 0.5;
+  const midY = startY + dirY * length * 0.5;
   const thicknessVariation = 1 + noise2D(midX * 3 + nOffset, midY * 3 + nOffset) * 0.15;
+  const finalThickness = params.primaryThickness * thicknessVariation;
+  const vVar = thicknessVariation - 1;
 
-  const bIdx = currentSegmentCount * SEGMENT_STRIDE;
-  SEGMENT_BUFFER[bIdx + 0] = dirX;
-  SEGMENT_BUFFER[bIdx + 1] = dirY;
-  SEGMENT_BUFFER[bIdx + 2] = length;
-  SEGMENT_BUFFER[bIdx + 3] = params.primaryThickness;
-  SEGMENT_BUFFER[bIdx + 4] = thicknessVariation;
-  SEGMENT_BUFFER[bIdx + 5] = midX;
-  SEGMENT_BUFFER[bIdx + 6] = midY;
-  // Performance Optimization: Pre-multiply delay by 2 to hoist multiplication out of the render loop.
-  const delay = dist * 0.3 + depth * 0.2;
-  SEGMENT_BUFFER[bIdx + 7] = delay;
+  // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
+  // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
+  const ax = vVar * 0.1;
+  const sax = ax; // sin(ax) approx
+  const cax = 1 - 0.5 * ax * ax; // cos(ax) approx
+  const sx = finalThickness;
+  const sy = length;
+  // Use pre-calculated sx, sy, and cax to derive matrix columns.
+  const m0 = -dirY * sx;
+  const m1 = dirX * sx;
+  const K = (cax * sy) / (sx || 0.0001);
+  const m6 = sax * sy;
+  const m10 = cax * sx; // cax * sz, where sz = sx
+  const vJitter = vVar * 0.015; // jitter constant
+  const m12 = midX + vJitter;
+  const m13 = midY + vJitter;
+  const m14 = vJitter;
 
-  // Performance Optimization: Pack delay (high bits) and index (low bits) into a single 32-bit
-  // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
-  // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
-  // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
-  SORT_BUFFER[currentSegmentCount] = ((delay * 5000) | 0) << 14 | (currentSegmentCount & 0x3FFF);
+  const bIdx = currentSegmentCount << 4; // STRIDE 16
+  SEGMENT_BUFFER[bIdx + 0] = m0;
+  SEGMENT_BUFFER[bIdx + 1] = m1;
+  SEGMENT_BUFFER[bIdx + 2] = K;
+  SEGMENT_BUFFER[bIdx + 3] = sax;
+  SEGMENT_BUFFER[bIdx + 4] = m6;
+  SEGMENT_BUFFER[bIdx + 5] = m10;
+  SEGMENT_BUFFER[bIdx + 6] = m12;
+  SEGMENT_BUFFER[bIdx + 7] = m13;
+  SEGMENT_BUFFER[bIdx + 8] = m14;
+  DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
 
   currentSegmentCount++;
 
@@ -508,17 +476,15 @@ function buildArm(
   let pointY = startY;
   let currentDist = dist;
 
-  // Pre-calculate additive steps for local probability, side length decay, noise coordinates, and path index.
+  // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
   const probStep = params.sideBranchProb * (invNumSteps * 0.4);
   const lenStep = invNumSteps * 0.5;
   const stepX2 = stepX * 2;
   const stepY2 = stepY * 2;
-  const pathStep = stepDist * pathScale;
   let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
   let currentLenFactor = 1 - invNumSteps * 0.5;
   let px2 = (startX + stepX) * 2;
   let py2 = (startY + stepY) * 2;
-  let currentPathIdxFloat = (dist + stepDist) * pathScale;
 
   for (let i = 1; i < numSteps; i++) {
     pointX += stepX;
@@ -526,74 +492,67 @@ function buildArm(
     currentDist += stepDist;
 
     // Side branches get less likely near the tip
-    // Optimization: Inline rand.chance and additive tracking for localProb decay.
-    if (rng() < currentLocalProb) {
-      // Performance Optimization: Inline rand.range calls to eliminate function overhead and
-      // redundant arithmetic in the hot recursive loop.
-      const sideLen = sideLenBase * (0.4 + 0.6 * rng()) * currentLenFactor;
+    // Optimization: Additive tracking for localProb decay.
+    if (rand.chance(currentLocalProb)) {
+      const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
 
       // Real snowflakes: side branches grow at 60° (hexagonal lattice)
       // Optimization: Additive tracking for noise coordinates px2/py2.
       const noiseVal = noise2D(px2, py2);
 
       const angleVariation = noiseVal * 0.1;
-      // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
-      const v = angleVariation + (-0.04 + 0.08 * rng());
-      const v2 = 0.5 * v * v;
-      const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
-      const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
-      const sideDist = currentDist;
+    // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
+    // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
+    //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
+    const v = angleVariation + rand.range(-0.04, 0.04);
+    const v2 = 0.5 * v * v;
+    const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
+    const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
+    const sideDist = currentDist;
 
-      const dxca = dirX * cosA;
-      const dysa = dirY * sinA;
-      const dxsa = dirX * sinA;
-      const dyca = dirY * cosA;
+    const dxca = dirX * cosA;
+    const dysa = dirY * sinA;
+    const dxsa = dirX * sinA;
+    const dyca = dirY * cosA;
 
-      // Performance Optimization: Pre-calculate path index for recursive calls to save
-      // redundant Math.min and floor operations at the start of every function call.
-      const nextPathIdx = Math.min(maxPathIdx, currentPathIdxFloat | 0);
+    // Right side branch (sign = 1)
+    buildArm(
+      pointX,
+      pointY,
+      dxca - dysa,
+      dxsa + dyca,
+      sideDist,
+      sideLen,
+      depth + 1,
+      pathParams,
+      maxPathIdx,
+      pathScale,
+      rand,
+      nOffset,
+    );
 
-      // Right side branch (sign = 1)
-      buildArm(
-        pointX,
-        pointY,
-        dxca - dysa,
-        dxsa + dyca,
-        sideDist,
-        sideLen,
-        depth + 1,
-        pathParams,
-        maxPathIdx,
-        pathScale,
-        rng,
-        nOffset,
-        nextPathIdx,
-      );
-
-      // Left side branch (sign = -1)
-      // cos(-a) = cos(a), sin(-a) = -sin(a)
-      buildArm(
-        pointX,
-        pointY,
-        dxca + dysa,
-        -dxsa + dyca,
-        sideDist,
-        sideLen,
-        depth + 1,
-        pathParams,
-        maxPathIdx,
-        pathScale,
-        rng,
-        nOffset,
-        nextPathIdx,
-      );
+    // Left side branch (sign = -1)
+    // cos(-a) = cos(a), sin(-a) = -sin(a)
+    buildArm(
+      pointX,
+      pointY,
+      dxca + dysa,
+      -dxsa + dyca,
+      sideDist,
+      sideLen,
+      depth + 1,
+      pathParams,
+      maxPathIdx,
+      pathScale,
+      rand,
+      nOffset,
+    );
     }
 
     currentLocalProb -= probStep;
     currentLenFactor -= lenStep;
     px2 += stepX2;
     py2 += stepY2;
-    currentPathIdxFloat += pathStep;
   }
 
   // Optional pointed tip extension
@@ -606,26 +565,27 @@ function buildArm(
     const tipMidX = endX + dirX * tipLen * 0.5;
     const tipMidY = endY + dirY * tipLen * 0.5;
     const tipThicknessVariation = 1 + noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset) * 0.15;
+    const tipFinalThickness = params.primaryThickness * 0.4 * tipThicknessVariation;
+    const tipVVar = tipThicknessVariation - 1;
 
-    const tipDist = length; // dist + length, where dist is 0 for depth 0 primary arm
+    const tax = tipVVar * 0.1;
+    const tsax = tax;
+    const tcax = 1 - 0.5 * tax * tax;
+    const tsx = tipFinalThickness;
+    const tsy = tipLen;
 
-    const tIdx = currentSegmentCount * SEGMENT_STRIDE;
-    SEGMENT_BUFFER[tIdx + 0] = dirX;
-    SEGMENT_BUFFER[tIdx + 1] = dirY;
-    SEGMENT_BUFFER[tIdx + 2] = tipLen;
-    SEGMENT_BUFFER[tIdx + 3] = params.primaryThickness * 0.4;
-    SEGMENT_BUFFER[tIdx + 4] = tipThicknessVariation;
-    SEGMENT_BUFFER[tIdx + 5] = tipMidX;
-    SEGMENT_BUFFER[tIdx + 6] = tipMidY;
-    // Performance Optimization: Pre-multiply delay by 2 to hoist multiplication out of the render loop.
-    const tipDelay = tipDist * 0.3 + (depth + 1) * 0.2;
-    SEGMENT_BUFFER[tIdx + 7] = tipDelay;
-
-    // Performance Optimization: Pack delay (high bits) and index (low bits) into a single 32-bit
-    // integer. This enables the use of TypedArray.prototype.sort()'s default numeric sort,
-    // which is ~6x faster than a custom comparator by avoiding JIT-to-JS transitions.
-    // 14 bits for index (up to 16,384) and 18 bits for delay (up to 26.2 at 10,000x scale).
-    SORT_BUFFER[currentSegmentCount] = ((tipDelay * 5000) | 0) << 14 | (currentSegmentCount & 0x3FFF);
+    const tIdx = currentSegmentCount << 4;
+    SEGMENT_BUFFER[tIdx + 0] = -dirY * tsx;
+    SEGMENT_BUFFER[tIdx + 1] = dirX * tsx;
+    SEGMENT_BUFFER[tIdx + 2] = (tcax * tsy) / (tsx || 0.0001);
+    SEGMENT_BUFFER[tIdx + 3] = tsax;
+    SEGMENT_BUFFER[tIdx + 4] = tsax * tsy;
+    SEGMENT_BUFFER[tIdx + 5] = tcax * tsx;
+    const tvJitter = tipVVar * 0.015;
+    SEGMENT_BUFFER[tIdx + 6] = tipMidX + tvJitter;
+    SEGMENT_BUFFER[tIdx + 7] = tipMidY + tvJitter;
+    SEGMENT_BUFFER[tIdx + 8] = tvJitter;
+    DELAY_BUFFER[currentSegmentCount] = length * 0.15 + (depth + 1) * 0.1;
 
     currentSegmentCount++;
   }

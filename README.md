@@ -59,6 +59,11 @@ Built with a focus on 60fps performance, even during complex geometry generation
 - **Geometry Reuse:** Reuses a single `InstancedMesh` and `CylinderGeometry` to prevent GPU buffer churn and memory fragmentation.
 - **Offscreen Caching:** The Nakaya diagram's static background is cached on an offscreen canvas, improving its redraw performance by ~36x.
 
+The current snowflake generator benchmarks approximately **173-179x faster**
+than the initial implementation. See the
+[snowflake generation performance history](docs/GENERATION_PERFORMANCE_HISTORY.md)
+for methodology, results, caveats, and future review guidance.
+
 ---
 
 ## 🛠️ Tech Stack

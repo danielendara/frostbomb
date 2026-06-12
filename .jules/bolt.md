@@ -73,17 +73,7 @@
 **Action:** Hoist index calculations (`i * stride`) into local variables within animation loops. Replace redundant matrix multiplications with pre-calculated ratios in the symmetry population phase. Deduplicate state update logic in recursive paths.
 **Impact:** Reduced average generation time for "Standard" snowflakes to ~0.050ms and improved snowfall particle animation efficiency.
 
-## 2026-05-24 - [Hoisted Delay Multiplication & Unchecked Easing Safety]
-**Learning:** Hoisting constant multipliers from the per-frame render loop into the one-time geometry generation phase (e.g., doubling animation `delays`) yields a "free" performance win. However, using unchecked Look-Up Table (LUT) access in the hot loop for performance requires strict input clamping at the call-site to prevent `NaN` results from out-of-bounds indices, which can break rendering.
-**Action:** Pre-calculate render-loop constants during geometry generation whenever possible. Always wrap unchecked LUT access with lightweight local clamps (e.g., `progress < 0 ? 0 : progress`) to maintain both speed and stability.
-**Impact:** Optimization reduced growth animation loop execution time by ~30% (~0.008ms to ~0.0057ms) and overall generation time by ~10% via hoisted pre-calculations.
-
-## 2026-05-26 - [Module-Scope Constant Hoisting & Trig Literal Replacement]
-**Learning:** Constants like `S60` (sin 60°) defined inside hot loops (like the `buildSnowflake` matrix population) incur redundant assignment overhead over thousands of iterations. Additionally, calling `Math.cos()` and `Math.sin()` for fixed angles (like habit-specific side-branch angles) is slower than using pre-calculated literals. However, avoid using module-level shared buffers for return values (like built matrices) to maintain function reentrancy and prevent silent data corruption.
-**Action:** Hoist loop-invariant constants to module scope. Replace fixed trigonometric calls with pre-calculated literals. Prioritize functional correctness over micro-allocations in factory functions.
-**Impact:** Optimization reduced 'buildSnowflake' average time by ~11% (from 0.046ms to 0.041ms) without compromising reentrancy.
-
-## 2026-05-27 - [RNG Inlining & Additive Path Tracking]
-**Learning:** In deep procedural recursion (like branching arms), the overhead of method calls on a 'Rand' class instance (e.g., 'rand.range') and repeated index calculations (e.g., 'dist * scale') becomes a significant bottleneck. Inlining these into raw math and using additive tracking for indices improves throughput. Additionally, when using packed bit-fields for native sorting, ensuring the consumer logic correctly masks/shifts the values is critical to avoid out-of-bounds corruption.
-**Action:** Inline hot RNG calls using raw mulberry32 output. Replace 'Math.min' and multiplications with additive tracking in recursion. Always verify bit-field unpacking in consumer loops.
-**Impact:** Optimization reduced average 'Huge' snowflake generation time by ~28% (from 0.085ms to 0.061ms).
+## 2026-05-24 - [Hoisting Matrix Basis to Geometry Phase]
+**Learning:** In 6-fold symmetrical structures, the $O(6N)$ symmetry loop in the matrix population phase is often the hottest part of the generation pipeline. Calculating rotation basis components (m0, m1, sax, m6, m10, etc.) once during the $O(N)$ geometry generation phase and storing them in a wider-stride `SEGMENT_BUFFER` (e.g., stride 16) is significantly more efficient than re-calculating them 6 times per segment. Additionally, a dedicated `DELAY_BUFFER` for sorting avoids stride-based indexing math in the comparison function, further speeding up the generation.
+**Action:** Hoist all invariant matrix basis and organic jitter components into the `buildArm` recursive phase. Increase `SEGMENT_STRIDE` to store these values. Use a dedicated `Float32Array` for growth delays to optimize sorting.
+**Impact:** Reduced `buildSnowflake` time by ~44% (from 0.080ms to 0.0448ms), effectively making the symmetry loop a set of simple assignments and basic rotations.

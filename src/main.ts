@@ -15,7 +15,6 @@ const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
 let isLabMode = false;
 let isGuideOpen = false;
-let lastActiveElement: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
@@ -87,11 +86,6 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   scene.updateFlake(result, animate);
   nakayaDiagram?.update(conditions.path);
 
-  // Update canvas ARIA label for screen readers
-  if (canvas) {
-    canvas.setAttribute('aria-label', `3D procedural snowflake visualization showing a ${habitLabel[conditions.habit]}`);
-  }
-
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
   setText('seed-display', label);
   setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
@@ -128,76 +122,11 @@ function announce(message: string) {
   }
 }
 
-const originalLabels = new Map<string, string>();
-const originalIcons = new Map<string, string>();
-const labelTimeouts = new Map<string, number>();
-
-/**
- * Sets a temporary label and optionally an icon for a button, handling restoration robustly.
- */
-function setTemporaryLabel(btnId: string, tempText: string, duration = 2000, tempIcon?: string) {
-  const btn = document.getElementById(btnId);
-  if (!btn) return;
-
-  const labelEl = btn.querySelector('.action-btn__label') || btn.querySelector('#seed-display') || btn;
-  const iconEl = btn.querySelector('.action-btn__icon') || btn.querySelector('.refresh__icon');
-
-  if (!labelEl) return;
-
-  // Clear existing timeout if any
-  if (labelTimeouts.has(btnId)) {
-    window.clearTimeout(labelTimeouts.get(btnId));
-  }
-
-  // Capture original state only once
-  if (!originalLabels.has(btnId)) {
-    originalLabels.set(btnId, labelEl.textContent || '');
-  }
-  if (iconEl && !originalIcons.has(btnId)) {
-    originalIcons.set(btnId, iconEl.textContent || '');
-  }
-
-  labelEl.textContent = tempText;
-  if (iconEl && tempIcon) {
-    iconEl.textContent = tempIcon;
-  }
-
-  const timeout = window.setTimeout(() => {
-    labelEl.textContent = originalLabels.get(btnId) || '';
-    originalLabels.delete(btnId);
-
-    if (iconEl && originalIcons.has(btnId)) {
-      iconEl.textContent = originalIcons.get(btnId) || '';
-      originalIcons.delete(btnId);
-    }
-    labelTimeouts.delete(btnId);
-  }, duration);
-
-  labelTimeouts.set(btnId, timeout);
-}
-
 function handleRefresh(e?: Event) {
   if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
     return;
   }
   if (e) e.preventDefault();
-
-  const refreshBtn = document.getElementById('refresh');
-  if (refreshBtn) {
-    refreshBtn.classList.remove('refresh--spinning');
-    void refreshBtn.offsetWidth; // Trigger reflow
-    refreshBtn.classList.add('refresh--spinning');
-    setTimeout(() => refreshBtn.classList.remove('refresh--spinning'), 600);
-  }
-
-  const dots = document.querySelectorAll('.wordmark__dot');
-  dots.forEach(dot => {
-    dot.classList.remove('wordmark__dot--spinning');
-    void (dot as HTMLElement).offsetWidth; // Trigger reflow
-    dot.classList.add('wordmark__dot--spinning');
-    setTimeout(() => dot.classList.remove('wordmark__dot--spinning'), 600);
-  });
-
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
 }
@@ -216,12 +145,11 @@ async function toggleLabMode() {
   isLabMode = !isLabMode;
   const toggleGeneration = ++labToggleGeneration;
 
-  if (isLabMode) {
-    lastActiveElement = document.activeElement as HTMLElement;
-    if (isGuideOpen) toggleFieldGuide();
+  if (isLabMode && isGuideOpen) {
+    toggleFieldGuide();
   }
 
-  if (labToggle) labToggle.setAttribute('aria-expanded', isLabMode.toString());
+  if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
@@ -233,36 +161,21 @@ async function toggleLabMode() {
     await ensurePane();
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
     updateFromPane();
-    // Focus the first input in the pane
-    const firstInput = labControls?.querySelector('input, select, button');
-    if (firstInput instanceof HTMLElement) firstInput.focus();
   } else {
     grow(undefined, true);
-    if (lastActiveElement) {
-      lastActiveElement.focus();
-      lastActiveElement = null;
-    }
   }
 }
 
 function toggleFieldGuide() {
   isGuideOpen = !isGuideOpen;
 
-  if (isGuideOpen) {
-    lastActiveElement = document.activeElement as HTMLElement;
-    if (isLabMode) toggleLabMode();
+  if (isGuideOpen && isLabMode) {
+    toggleLabMode();
   }
 
-  if (guideToggle) guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
+  if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
   if (fieldGuide) fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
-
-  if (isGuideOpen) {
-    fieldGuide?.focus();
-  } else if (lastActiveElement) {
-    lastActiveElement.focus();
-    lastActiveElement = null;
-  }
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
@@ -287,9 +200,18 @@ function updateFromPane() {
 function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
   navigator.clipboard.writeText(url).then(() => {
-    setTemporaryLabel('btn-copy', 'Copied!', 2000, '✓');
-    setTemporaryLabel('btn-seed', 'Copied!');
-    announce(`Link for seed ${currentSeedLabel} copied to clipboard`);
+    const btn = document.getElementById('btn-copy');
+    if (btn) {
+      const labelEl = btn.querySelector('.action-btn__label');
+      if (labelEl) {
+        const originalLabel = labelEl.textContent;
+        labelEl.textContent = 'Copied!';
+        announce('Link copied to clipboard');
+        setTimeout(() => {
+          labelEl.textContent = originalLabel;
+        }, 2000);
+      }
+    }
   }).catch(err => {
     console.error('Failed to copy link:', err);
     announce('Failed to copy link');
@@ -297,15 +219,6 @@ function copyLink() {
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
-document.getElementById('btn-seed')?.addEventListener('click', copyLink);
-
-function triggerShutter() {
-  const shutter = document.getElementById('shutter');
-  if (!shutter) return;
-  shutter.classList.remove('shutter--active');
-  void shutter.offsetWidth; // Trigger reflow
-  shutter.classList.add('shutter--active');
-}
 
 function saveSnowflake() {
   scene.composer.render();
@@ -317,9 +230,18 @@ function saveSnowflake() {
   link.href = dataUrl;
   link.click();
 
-  triggerShutter();
-  setTemporaryLabel('btn-save', 'Saved!', 2000, '✓');
-  announce('Snowflake saved as PNG');
+  const btn = document.getElementById('btn-save');
+  if (btn) {
+    const labelEl = btn.querySelector('.action-btn__label');
+    if (labelEl) {
+      const originalLabel = labelEl.textContent;
+      labelEl.textContent = 'Saved!';
+      announce('Snowflake saved as PNG');
+      setTimeout(() => {
+        labelEl.textContent = originalLabel;
+      }, 2000);
+    }
+  }
 }
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
@@ -334,7 +256,6 @@ function togglePinkMode() {
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle('pink-mode', enabled);
-  announce(enabled ? 'Pink mode enabled' : 'Pink mode disabled');
 }
 
 btnPink?.addEventListener('click', togglePinkMode);
@@ -348,8 +269,6 @@ function togglePrismMode() {
     btnPrism.classList.toggle('active', enabled);
   }
   scene.setPrismMode(enabled);
-  document.body.classList.toggle('prism-mode', enabled);
-  announce(enabled ? 'Prism mode enabled' : 'Prism mode disabled');
 }
 
 btnPrism?.addEventListener('click', togglePrismMode);
@@ -367,7 +286,6 @@ function toggleAutoRotate() {
     btnRotate.classList.toggle('active', enabled);
   }
   scene.setAutoRotate(enabled);
-  announce(enabled ? 'Auto-rotation enabled' : 'Auto-rotation disabled');
 }
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
