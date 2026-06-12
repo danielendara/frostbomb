@@ -412,6 +412,10 @@ body.pink-mode {
   background: rgba(230, 237, 245, 0.05);
 }
 
+.action-btn:active {
+  transform: scale(0.97);
+}
+
 .action-btn--toggle.active {
   border-color: var(--accent);
   color: var(--accent);
@@ -454,6 +458,10 @@ body.pink-mode {
   color: var(--accent);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(158, 201, 255, 0.15);
+}
+
+.refresh:active {
+  transform: scale(0.97) translateY(0);
 }
 
 .refresh__icon {
@@ -499,6 +507,34 @@ body.pink-mode {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes button-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+@keyframes dot-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-pop {
+  animation: button-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.animate-spin-once {
+  animation: dot-spin 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop, .animate-spin-once {
+    animation: none !important;
+  }
+  .action-btn:active, .refresh:active {
+    transform: none !important;
   }
 }
 

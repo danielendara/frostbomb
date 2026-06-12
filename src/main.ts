@@ -107,6 +107,15 @@ function setText(id: string, value: string) {
   if (el) el.textContent = value;
 }
 
+function visualPress(id: string) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.remove('animate-pop');
+    void (el as HTMLElement).offsetWidth;
+    el.classList.add('animate-pop');
+  }
+}
+
 function announce(message: string) {
   const announcer = document.getElementById('a11y-announcer');
   if (announcer) {
@@ -115,10 +124,14 @@ function announce(message: string) {
 }
 
 function handleRefresh(e?: Event) {
-  if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
-    return;
-  }
+  if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return;
   if (e) e.preventDefault();
+  const dot = document.querySelector('.wordmark__accent');
+  if (dot) {
+    dot.classList.remove('animate-spin-once');
+    void (dot as HTMLElement).offsetWidth;
+    dot.classList.add('animate-spin-once');
+  }
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
 }
@@ -281,45 +294,37 @@ function toggleAutoRotate() {
 }
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
+document.getElementById('btn-reset')?.addEventListener('click', () => scene.resetView());
 
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+function isEditableTarget(t: any): boolean {
+  return t instanceof HTMLElement && (t.isContentEditable || !!t.closest('input, textarea, select, [contenteditable="true"]'));
 }
 
 window.addEventListener('keydown', (e) => {
-  const key = e.key.toLowerCase();
-
-  if (key === 'escape') {
-    if (isGuideOpen) {
-      toggleFieldGuide();
-      return;
-    }
-    if (isLabMode) {
-      toggleLabMode();
-      return;
-    }
+  const k = e.key.toLowerCase();
+  if (k === 'escape') {
+    if (isGuideOpen) toggleFieldGuide();
+    else if (isLabMode) toggleLabMode();
+    return;
   }
-
-  if (isEditableTarget(e.target)) return;
-
-  if (key === 'r') {
-    window.history.replaceState(null, '', window.location.pathname);
-    grow(isLabMode ? currentConditions : undefined);
-  } else if (key === 'g' || key === '?') {
-    toggleFieldGuide();
-  } else if (key === 'l') {
-    toggleLabMode();
-  } else if (key === 'p') {
-    togglePinkMode();
-  } else if (key === 'm') {
-    togglePrismMode();
-  } else if (key === 's') {
-    saveSnowflake();
-  } else if (key === 'a') {
-    toggleAutoRotate();
-  } else if (key === 'c') {
-    copyLink();
+  if (isEditableTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const map: Record<string, { a: () => void; b?: string }> = {
+    r: { a: handleRefresh, b: 'refresh' },
+    g: { a: toggleFieldGuide, b: 'guide-toggle' },
+    '?': { a: toggleFieldGuide, b: 'guide-toggle' },
+    l: { a: toggleLabMode, b: 'lab-toggle' },
+    p: { a: togglePinkMode, b: 'btn-pink' },
+    m: { a: togglePrismMode, b: 'btn-prism' },
+    s: { a: saveSnowflake, b: 'btn-save' },
+    a: { a: toggleAutoRotate, b: 'btn-rotate' },
+    c: { a: copyLink, b: 'btn-copy' },
+    v: { a: () => scene.resetView(), b: 'btn-reset' },
+  };
+  const s = map[k];
+  if (s) {
+    e.preventDefault();
+    s.a();
+    if (s.b) visualPress(s.b);
   }
 });
 
