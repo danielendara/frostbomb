@@ -33,6 +33,11 @@ export interface BuildResult {
 const INV_MAX_DIST = 1 / 3.5;
 const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 
+// Performance Optimization: Pre-calculated inverse steps to avoid division in the recursion loop.
+const INV_STEPS_LUT = new Float32Array([
+  0, 1, 0.5, 0.33333334, 0.25, 0.2, 0.16666667, 0.14285715, 0.125, 0.11111111, 0.1,
+]);
+
 // Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
 const MAX_SEGMENTS_PER_ARM = 10000;
@@ -107,13 +112,15 @@ export function buildSnowflake(
     const bIdx = idx << 4; // STRIDE 16
     const m0 = SEGMENT_BUFFER[bIdx + 0];
     const m1 = SEGMENT_BUFFER[bIdx + 1];
-    const K = SEGMENT_BUFFER[bIdx + 2];
-    const sax = SEGMENT_BUFFER[bIdx + 3];
-    const m6 = SEGMENT_BUFFER[bIdx + 4];
-    const m10 = SEGMENT_BUFFER[bIdx + 5];
-    const m12 = SEGMENT_BUFFER[bIdx + 6];
-    const m13 = SEGMENT_BUFFER[bIdx + 7];
-    const m14 = SEGMENT_BUFFER[bIdx + 8];
+    const m4 = SEGMENT_BUFFER[bIdx + 2];
+    const m5 = SEGMENT_BUFFER[bIdx + 3];
+    const m8 = SEGMENT_BUFFER[bIdx + 4];
+    const m9 = SEGMENT_BUFFER[bIdx + 5];
+    const m6 = SEGMENT_BUFFER[bIdx + 6];
+    const m10 = SEGMENT_BUFFER[bIdx + 7];
+    const m12 = SEGMENT_BUFFER[bIdx + 8];
+    const m13 = SEGMENT_BUFFER[bIdx + 9];
+    const m14 = SEGMENT_BUFFER[bIdx + 10];
 
     // Apply rotation for each of the 6 symmetry instances
     // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5, seg1_arm0, ...]
@@ -131,11 +138,11 @@ export function buildSnowflake(
     // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
     matrices[offset + 1] = m1;
-    matrices[offset + 4] = -m1 * K;
-    matrices[offset + 5] = m0 * K;
+    matrices[offset + 4] = m4;
+    matrices[offset + 5] = m5;
     matrices[offset + 6] = m6;
-    matrices[offset + 8] = m1 * sax;
-    matrices[offset + 9] = -m0 * sax;
+    matrices[offset + 8] = m8;
+    matrices[offset + 9] = m9;
     matrices[offset + 10] = m10;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
@@ -145,16 +152,20 @@ export function buildSnowflake(
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
     const m1_1 = SIN60 * m0 + 0.5 * m1;
+    const m4_1 = 0.5 * m4 - SIN60 * m5;
+    const m5_1 = SIN60 * m4 + 0.5 * m5;
+    const m8_1 = 0.5 * m8 - SIN60 * m9;
+    const m9_1 = SIN60 * m8 + 0.5 * m9;
     const m12_1 = 0.5 * m12 - SIN60 * m13;
     const m13_1 = SIN60 * m12 + 0.5 * m13;
 
     matrices[offset + 16] = m0_1;
     matrices[offset + 17] = m1_1;
-    matrices[offset + 20] = -m1_1 * K;
-    matrices[offset + 21] = m0_1 * K;
+    matrices[offset + 20] = m4_1;
+    matrices[offset + 21] = m5_1;
     matrices[offset + 22] = m6;
-    matrices[offset + 24] = m1_1 * sax;
-    matrices[offset + 25] = -m0_1 * sax;
+    matrices[offset + 24] = m8_1;
+    matrices[offset + 25] = m9_1;
     matrices[offset + 26] = m10;
     matrices[offset + 28] = m12_1;
     matrices[offset + 29] = m13_1;
@@ -164,16 +175,20 @@ export function buildSnowflake(
     // Arm 2 (120°) = Arm 1 - Arm 0
     const m0_2 = m0_1 - m0;
     const m1_2 = m1_1 - m1;
+    const m4_2 = m4_1 - m4;
+    const m5_2 = m5_1 - m5;
+    const m8_2 = m8_1 - m8;
+    const m9_2 = m9_1 - m9;
     const m12_2 = m12_1 - m12;
     const m13_2 = m13_1 - m13;
 
     matrices[offset + 32] = m0_2;
     matrices[offset + 33] = m1_2;
-    matrices[offset + 36] = -m1_2 * K;
-    matrices[offset + 37] = m0_2 * K;
+    matrices[offset + 36] = m4_2;
+    matrices[offset + 37] = m5_2;
     matrices[offset + 38] = m6;
-    matrices[offset + 40] = m1_2 * sax;
-    matrices[offset + 41] = -m0_2 * sax;
+    matrices[offset + 40] = m8_2;
+    matrices[offset + 41] = m9_2;
     matrices[offset + 42] = m10;
     matrices[offset + 44] = m12_2;
     matrices[offset + 45] = m13_2;
@@ -183,16 +198,20 @@ export function buildSnowflake(
     // Arm 3 (180°) = -Arm 0
     const m0_3 = -m0;
     const m1_3 = -m1;
+    const m4_3 = -m4;
+    const m5_3 = -m5;
+    const m8_3 = -m8;
+    const m9_3 = -m9;
     const m12_3 = -m12;
     const m13_3 = -m13;
 
     matrices[offset + 48] = m0_3;
     matrices[offset + 49] = m1_3;
-    matrices[offset + 52] = -m1_3 * K;
-    matrices[offset + 53] = m0_3 * K;
+    matrices[offset + 52] = m4_3;
+    matrices[offset + 53] = m5_3;
     matrices[offset + 54] = m6;
-    matrices[offset + 56] = m1_3 * sax;
-    matrices[offset + 57] = -m0_3 * sax;
+    matrices[offset + 56] = m8_3;
+    matrices[offset + 57] = m9_3;
     matrices[offset + 58] = m10;
     matrices[offset + 60] = m12_3;
     matrices[offset + 61] = m13_3;
@@ -202,16 +221,20 @@ export function buildSnowflake(
     // Arm 4 (240°) = -Arm 1
     const m0_4 = -m0_1;
     const m1_4 = -m1_1;
+    const m4_4 = -m4_1;
+    const m5_4 = -m5_1;
+    const m8_4 = -m8_1;
+    const m9_4 = -m9_1;
     const m12_4 = -m12_1;
     const m13_4 = -m13_1;
 
     matrices[offset + 64] = m0_4;
     matrices[offset + 65] = m1_4;
-    matrices[offset + 68] = -m1_4 * K;
-    matrices[offset + 69] = m0_4 * K;
+    matrices[offset + 68] = m4_4;
+    matrices[offset + 69] = m5_4;
     matrices[offset + 70] = m6;
-    matrices[offset + 72] = m1_4 * sax;
-    matrices[offset + 73] = -m0_4 * sax;
+    matrices[offset + 72] = m8_4;
+    matrices[offset + 73] = m9_4;
     matrices[offset + 74] = m10;
     matrices[offset + 76] = m12_4;
     matrices[offset + 77] = m13_4;
@@ -221,16 +244,20 @@ export function buildSnowflake(
     // Arm 5 (300°) = -Arm 2
     const m0_5 = -m0_2;
     const m1_5 = -m1_2;
+    const m4_5 = -m4_2;
+    const m5_5 = -m5_2;
+    const m8_5 = -m8_2;
+    const m9_5 = -m9_2;
     const m12_5 = -m12_2;
     const m13_5 = -m13_2;
 
     matrices[offset + 80] = m0_5;
     matrices[offset + 81] = m1_5;
-    matrices[offset + 84] = -m1_5 * K;
-    matrices[offset + 85] = m0_5 * K;
+    matrices[offset + 84] = m4_5;
+    matrices[offset + 85] = m5_5;
     matrices[offset + 86] = m6;
-    matrices[offset + 88] = m1_5 * sax;
-    matrices[offset + 89] = -m0_5 * sax;
+    matrices[offset + 88] = m8_5;
+    matrices[offset + 89] = m9_5;
     matrices[offset + 90] = m10;
     matrices[offset + 92] = m12_5;
     matrices[offset + 93] = m13_5;
@@ -439,7 +466,12 @@ function buildArm(
   // Use pre-calculated sx, sy, and cax to derive matrix columns.
   const m0 = -dirY * sx;
   const m1 = dirX * sx;
-  const K = (cax * sy) / (sx || 0.0001);
+  const caxy = cax * sy;
+  const m4 = -dirX * caxy;
+  const m5 = -dirY * caxy;
+  const sxax = sx * sax;
+  const m8 = dirX * sxax;
+  const m9 = dirY * sxax;
   const m6 = sax * sy;
   const m10 = cax * sx; // cax * sz, where sz = sx
   const vJitter = vVar * 0.015; // jitter constant
@@ -450,13 +482,15 @@ function buildArm(
   const bIdx = currentSegmentCount << 4; // STRIDE 16
   SEGMENT_BUFFER[bIdx + 0] = m0;
   SEGMENT_BUFFER[bIdx + 1] = m1;
-  SEGMENT_BUFFER[bIdx + 2] = K;
-  SEGMENT_BUFFER[bIdx + 3] = sax;
-  SEGMENT_BUFFER[bIdx + 4] = m6;
-  SEGMENT_BUFFER[bIdx + 5] = m10;
-  SEGMENT_BUFFER[bIdx + 6] = m12;
-  SEGMENT_BUFFER[bIdx + 7] = m13;
-  SEGMENT_BUFFER[bIdx + 8] = m14;
+  SEGMENT_BUFFER[bIdx + 2] = m4;
+  SEGMENT_BUFFER[bIdx + 3] = m5;
+  SEGMENT_BUFFER[bIdx + 4] = m8;
+  SEGMENT_BUFFER[bIdx + 5] = m9;
+  SEGMENT_BUFFER[bIdx + 6] = m6;
+  SEGMENT_BUFFER[bIdx + 7] = m10;
+  SEGMENT_BUFFER[bIdx + 8] = m12;
+  SEGMENT_BUFFER[bIdx + 9] = m13;
+  SEGMENT_BUFFER[bIdx + 10] = m14;
   DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
 
   currentSegmentCount++;
@@ -467,7 +501,7 @@ function buildArm(
   const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
   if (numSteps <= 1) return;
 
-  const invNumSteps = 1 / numSteps;
+  const invNumSteps = INV_STEPS_LUT[numSteps] || 1 / numSteps;
   const stepDist = length * invNumSteps;
   const stepX = dirX * stepDist;
   const stepY = dirY * stepDist;
@@ -574,17 +608,22 @@ function buildArm(
     const tsx = tipFinalThickness;
     const tsy = tipLen;
 
+    const tcaxy = tcax * tsy;
+    const tsxax = tsx * tsax;
+
     const tIdx = currentSegmentCount << 4;
     SEGMENT_BUFFER[tIdx + 0] = -dirY * tsx;
     SEGMENT_BUFFER[tIdx + 1] = dirX * tsx;
-    SEGMENT_BUFFER[tIdx + 2] = (tcax * tsy) / (tsx || 0.0001);
-    SEGMENT_BUFFER[tIdx + 3] = tsax;
-    SEGMENT_BUFFER[tIdx + 4] = tsax * tsy;
-    SEGMENT_BUFFER[tIdx + 5] = tcax * tsx;
+    SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
+    SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
+    SEGMENT_BUFFER[tIdx + 4] = dirX * tsxax;
+    SEGMENT_BUFFER[tIdx + 5] = dirY * tsxax;
+    SEGMENT_BUFFER[tIdx + 6] = tsax * tsy;
+    SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
     const tvJitter = tipVVar * 0.015;
-    SEGMENT_BUFFER[tIdx + 6] = tipMidX + tvJitter;
-    SEGMENT_BUFFER[tIdx + 7] = tipMidY + tvJitter;
-    SEGMENT_BUFFER[tIdx + 8] = tvJitter;
+    SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
+    SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
+    SEGMENT_BUFFER[tIdx + 10] = tvJitter;
     DELAY_BUFFER[currentSegmentCount] = length * 0.15 + (depth + 1) * 0.1;
 
     currentSegmentCount++;
