@@ -109,11 +109,10 @@ function setText(id: string, value: string) {
 
 function visualPress(id: string) {
   const el = document.getElementById(id);
-  if (el) {
-    el.classList.remove('animate-pop');
-    void (el as HTMLElement).offsetWidth;
-    el.classList.add('animate-pop');
-  }
+  if (!el) return;
+  el.classList.remove('btn-press');
+  void el.offsetWidth; // Trigger reflow
+  el.classList.add('btn-press');
 }
 
 function announce(message: string) {
@@ -296,36 +295,36 @@ function toggleAutoRotate() {
 btnRotate?.addEventListener('click', toggleAutoRotate);
 document.getElementById('btn-reset')?.addEventListener('click', () => scene.resetView());
 
-function isEditableTarget(t: any): boolean {
-  return t instanceof HTMLElement && (t.isContentEditable || !!t.closest('input, textarea, select, [contenteditable="true"]'));
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
 }
 
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'escape') {
-    if (isGuideOpen) toggleFieldGuide();
-    else if (isLabMode) toggleLabMode();
-    return;
+    if (isGuideOpen) {
+      toggleFieldGuide();
+    } else if (isLabMode) {
+      toggleLabMode();
+    }
   }
+
   if (isEditableTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
-  const map: Record<string, { a: () => void; b?: string }> = {
-    r: { a: handleRefresh, b: 'refresh' },
-    g: { a: toggleFieldGuide, b: 'guide-toggle' },
-    '?': { a: toggleFieldGuide, b: 'guide-toggle' },
-    l: { a: toggleLabMode, b: 'lab-toggle' },
-    p: { a: togglePinkMode, b: 'btn-pink' },
-    m: { a: togglePrismMode, b: 'btn-prism' },
-    s: { a: saveSnowflake, b: 'btn-save' },
-    a: { a: toggleAutoRotate, b: 'btn-rotate' },
-    c: { a: copyLink, b: 'btn-copy' },
-    v: { a: () => scene.resetView(), b: 'btn-reset' },
+  const actions: Record<string, () => void> = {
+    'r': () => (handleRefresh(), visualPress('refresh')),
+    ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
+    'v': () => (scene.resetView(), visualPress('btn-reset')),
+    'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
+    '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
+    'l': () => (toggleLabMode(), visualPress('lab-toggle')),
+    'p': () => (togglePinkMode(), visualPress('btn-pink')),
+    'm': () => (togglePrismMode(), visualPress('btn-prism')),
+    's': () => (saveSnowflake(), visualPress('btn-save')),
+    'a': () => (toggleAutoRotate(), visualPress('btn-rotate')),
+    'c': () => (copyLink(), visualPress('btn-copy'), visualPress('btn-seed')),
   };
-  const s = map[k];
-  if (s) {
-    e.preventDefault();
-    s.a();
-    if (s.b) visualPress(s.b);
-  }
+  actions[k]?.();
 });
 
 grow();

@@ -38,8 +38,8 @@ export interface Scene {
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
   setPrismMode: (enabled: boolean) => void;
-  resetView: () => void;
   updateFlake: (data: BuildResult, animate?: boolean) => void;
+  resetView: () => void;
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
@@ -384,8 +384,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       }
     },
     resetView: () => {
+      rotation.x = 0;
+      rotation.y = 0;
       targetRotation.x = 0;
       targetRotation.y = 0;
+      mouse.x = 0;
+      mouse.y = 0;
       mouse.targetX = 0;
       mouse.targetY = 0;
     },

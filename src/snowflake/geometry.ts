@@ -47,14 +47,8 @@ let currentSegmentCount = 0;
 // variation remains deterministic across different sessions.
 const noise2D = createNoise2D(() => 0.5);
 
-// Pre-calculate symmetry angles once to avoid per-snowflake overhead.
-const SYMMETRY_COSINES = new Float32Array(6);
-const SYMMETRY_SINES = new Float32Array(6);
-for (let i = 0; i < 6; i++) {
-  const angle = (i * Math.PI * 2) / 6;
-  SYMMETRY_COSINES[i] = Math.cos(angle);
-  SYMMETRY_SINES[i] = Math.sin(angle);
-}
+// Pre-calculate symmetry constants.
+const SIN60 = 0.86602540378;
 
 export function buildSnowflake(
   conditions: GrowthConditions,
@@ -124,9 +118,17 @@ export function buildSnowflake(
     // Apply rotation for each of the 6 symmetry instances
     // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5, seg1_arm0, ...]
     // to improve cache locality and consolidate GPU update ranges.
-    let offset = j * 96;
+    // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
+    // and eliminate multiplications.
+    // R(60) = [0.5, -sin60; sin60, 0.5]
+    // R(120) = R(60) - I = [-0.5, -sin60; sin60, -0.5]
+    // R(180) = -I
+    // R(240) = -R(60)
+    // R(300) = -R(120)
 
-    // Special case for i=0 (Primary Arm)
+    const offset = j * 96;
+
+    // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
     matrices[offset + 1] = m1;
     matrices[offset + 4] = -m1 * K;
@@ -140,30 +142,100 @@ export function buildSnowflake(
     matrices[offset + 14] = m14;
     matrices[offset + 15] = 1;
 
-    offset += 16;
+    // Arm 1 (60°)
+    const m0_1 = 0.5 * m0 - SIN60 * m1;
+    const m1_1 = SIN60 * m0 + 0.5 * m1;
+    const m12_1 = 0.5 * m12 - SIN60 * m13;
+    const m13_1 = SIN60 * m12 + 0.5 * m13;
 
-    // Symmetry copies (i=1 to 5)
-    for (let i = 1; i < 6; i++) {
-      const ci = SYMMETRY_COSINES[i];
-      const si = SYMMETRY_SINES[i];
+    matrices[offset + 16] = m0_1;
+    matrices[offset + 17] = m1_1;
+    matrices[offset + 20] = -m1_1 * K;
+    matrices[offset + 21] = m0_1 * K;
+    matrices[offset + 22] = m6;
+    matrices[offset + 24] = m1_1 * sax;
+    matrices[offset + 25] = -m0_1 * sax;
+    matrices[offset + 26] = m10;
+    matrices[offset + 28] = m12_1;
+    matrices[offset + 29] = m13_1;
+    matrices[offset + 30] = m14;
+    matrices[offset + 31] = 1;
 
-      const m0_rot = ci * m0 - si * m1;
-      const m1_rot = si * m0 + ci * m1;
+    // Arm 2 (120°) = Arm 1 - Arm 0
+    const m0_2 = m0_1 - m0;
+    const m1_2 = m1_1 - m1;
+    const m12_2 = m12_1 - m12;
+    const m13_2 = m13_1 - m13;
 
-      matrices[offset + 0] = m0_rot;
-      matrices[offset + 1] = m1_rot;
-      matrices[offset + 4] = -m1_rot * K;
-      matrices[offset + 5] = m0_rot * K;
-      matrices[offset + 6] = m6;
-      matrices[offset + 8] = m1_rot * sax;
-      matrices[offset + 9] = -m0_rot * sax;
-      matrices[offset + 10] = m10;
-      matrices[offset + 12] = ci * m12 - si * m13;
-      matrices[offset + 13] = si * m12 + ci * m13;
-      matrices[offset + 14] = m14;
-      matrices[offset + 15] = 1;
-      offset += 16;
-    }
+    matrices[offset + 32] = m0_2;
+    matrices[offset + 33] = m1_2;
+    matrices[offset + 36] = -m1_2 * K;
+    matrices[offset + 37] = m0_2 * K;
+    matrices[offset + 38] = m6;
+    matrices[offset + 40] = m1_2 * sax;
+    matrices[offset + 41] = -m0_2 * sax;
+    matrices[offset + 42] = m10;
+    matrices[offset + 44] = m12_2;
+    matrices[offset + 45] = m13_2;
+    matrices[offset + 46] = m14;
+    matrices[offset + 47] = 1;
+
+    // Arm 3 (180°) = -Arm 0
+    const m0_3 = -m0;
+    const m1_3 = -m1;
+    const m12_3 = -m12;
+    const m13_3 = -m13;
+
+    matrices[offset + 48] = m0_3;
+    matrices[offset + 49] = m1_3;
+    matrices[offset + 52] = -m1_3 * K;
+    matrices[offset + 53] = m0_3 * K;
+    matrices[offset + 54] = m6;
+    matrices[offset + 56] = m1_3 * sax;
+    matrices[offset + 57] = -m0_3 * sax;
+    matrices[offset + 58] = m10;
+    matrices[offset + 60] = m12_3;
+    matrices[offset + 61] = m13_3;
+    matrices[offset + 62] = m14;
+    matrices[offset + 63] = 1;
+
+    // Arm 4 (240°) = -Arm 1
+    const m0_4 = -m0_1;
+    const m1_4 = -m1_1;
+    const m12_4 = -m12_1;
+    const m13_4 = -m13_1;
+
+    matrices[offset + 64] = m0_4;
+    matrices[offset + 65] = m1_4;
+    matrices[offset + 68] = -m1_4 * K;
+    matrices[offset + 69] = m0_4 * K;
+    matrices[offset + 70] = m6;
+    matrices[offset + 72] = m1_4 * sax;
+    matrices[offset + 73] = -m0_4 * sax;
+    matrices[offset + 74] = m10;
+    matrices[offset + 76] = m12_4;
+    matrices[offset + 77] = m13_4;
+    matrices[offset + 78] = m14;
+    matrices[offset + 79] = 1;
+
+    // Arm 5 (300°) = -Arm 2
+    const m0_5 = -m0_2;
+    const m1_5 = -m1_2;
+    const m12_5 = -m12_2;
+    const m13_5 = -m13_2;
+
+    matrices[offset + 80] = m0_5;
+    matrices[offset + 81] = m1_5;
+    matrices[offset + 84] = -m1_5 * K;
+    matrices[offset + 85] = m0_5 * K;
+    matrices[offset + 86] = m6;
+    matrices[offset + 88] = m1_5 * sax;
+    matrices[offset + 89] = -m0_5 * sax;
+    matrices[offset + 90] = m10;
+    matrices[offset + 92] = m12_5;
+    matrices[offset + 93] = m13_5;
+    matrices[offset + 94] = m14;
+    matrices[offset + 95] = 1;
   }
 
   // Core parameters from start of path
