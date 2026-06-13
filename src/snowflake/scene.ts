@@ -39,6 +39,7 @@ export interface Scene {
   setPinkMode: (enabled: boolean) => void;
   setPrismMode: (enabled: boolean) => void;
   updateFlake: (data: BuildResult, animate?: boolean) => void;
+  resetView: () => void;
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
@@ -381,6 +382,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         // Boost opacity when entering Prism mode
         particleMat.opacity = 0.8;
       }
+    },
+    resetView: () => {
+      rotation.x = 0;
+      rotation.y = 0;
+      targetRotation.x = 0;
+      targetRotation.y = 0;
     },
     updateFlake: (data: BuildResult, animate = true) => {
       currentFlakeData = data;

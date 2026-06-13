@@ -9,6 +9,10 @@
 **Learning:** Global key listeners for modal/overlay dismissal should handle focus carefully. Even if an input field within the overlay has focus, the 'Escape' key should still trigger the dismissal of the entire overlay to meet user expectations for standard modal behavior.
 **Action:** Place 'Escape' dismissal logic before checks that block other shortcuts when an editable element is focused.
 
+## 2026-06-11 - Bridging the Keyboard Feedback Gap
+**Learning:** Keyboard shortcuts often feel "disconnected" because they lack the tactile visual feedback (active states, scale changes) of mouse clicks. Bridging this gap by programmatically triggering "press" animations for keyboard actions creates a more unified and responsive-feeling interface.
+**Action:** Route both keyboard and mouse events through unified handlers that trigger the same visual feedback logic. Use a dedicated CSS class (e.g., .btn-press) and a JS helper that forces a reflow to allow immediate re-triggering of one-shot animations.
+
 ## 2025-05-15 - Centralized keyboard shortcut documentation
 **Learning:** While `title` attributes are great for contextual hints, a centralized "Keyboard Shortcuts" list in a help or guide section provides a clear reference for users to learn all capabilities at once, especially for "hidden" shortcuts like `Esc` or `?`.
 **Action:** Always include a dedicated shortcuts section in the primary documentation or help overlay of the application.

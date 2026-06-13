@@ -14,6 +14,21 @@ test('R key regrows the snowflake', async ({ page }) => {
   }).toPass();
 });
 
+test('keyboard shortcuts provide tactile button feedback', async ({ page }) => {
+  const refresh = page.locator('#refresh');
+
+  await page.keyboard.press('r');
+
+  await expect(refresh).toHaveClass(/btn-press/);
+});
+
+test('field guide documents the reset-view shortcut', async ({ page }) => {
+  await page.keyboard.press('g');
+
+  const resetShortcut = page.locator('.shortcut-item').filter({ hasText: 'Reset view' });
+  await expect(resetShortcut.locator('dt')).toHaveText('V');
+});
+
 test('wordmark links back to the root path', async ({ page }) => {
   const wordmark = page.getByRole('link', { name: 'Grow a new frostbomb snowflake' });
 
