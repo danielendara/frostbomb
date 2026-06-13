@@ -180,6 +180,7 @@ function toggleFieldGuide() {
 
 labToggle?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
+document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
 
 function updateFromPane() {
   const t = labParams.temperature;

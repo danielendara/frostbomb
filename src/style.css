@@ -157,7 +157,7 @@ body.pink-mode {
   text-transform: uppercase;
   cursor: pointer;
   letter-spacing: 0.05em;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .lab-toggle:hover {
@@ -520,6 +520,44 @@ body.pink-mode {
 }
 
 .masthead { animation: rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+
+.field-guide__close {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.2s ease;
+}
+
+.field-guide__close:hover {
+  background: rgba(230, 237, 245, 0.2);
+  border-color: var(--accent);
+}
+
+.action-btn:active,
+.refresh:active,
+.lab-toggle:active,
+.field-guide__close:active,
+.wordmark-link:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-btn:active,
+  .refresh:active,
+  .lab-toggle:active,
+  .field-guide__close:active,
+  .wordmark-link:active {
+    transform: none;
+  }
+}
 
 /* --- responsive --- */
 @media (max-width: 640px) {
