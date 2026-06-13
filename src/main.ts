@@ -123,10 +123,14 @@ function announce(message: string) {
 }
 
 function handleRefresh(e?: Event) {
-  if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
-    return;
-  }
+  if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return;
   if (e) e.preventDefault();
+  const dot = document.querySelector('.wordmark__accent');
+  if (dot) {
+    dot.classList.remove('animate-spin-once');
+    void (dot as HTMLElement).offsetWidth;
+    dot.classList.add('animate-spin-once');
+  }
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
 }
@@ -290,6 +294,7 @@ function toggleAutoRotate() {
 }
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
+document.getElementById('btn-reset')?.addEventListener('click', () => scene.resetView());
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -306,11 +311,11 @@ window.addEventListener('keydown', (e) => {
     }
   }
 
-  if (isEditableTarget(e.target)) return;
+  if (isEditableTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
   const actions: Record<string, () => void> = {
     'r': () => (handleRefresh(), visualPress('refresh')),
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
-    'v': () => scene.resetView(),
+    'v': () => (scene.resetView(), visualPress('btn-reset')),
     'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     'l': () => (toggleLabMode(), visualPress('lab-toggle')),

@@ -388,6 +388,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       rotation.y = 0;
       targetRotation.x = 0;
       targetRotation.y = 0;
+      mouse.x = 0;
+      mouse.y = 0;
+      mouse.targetX = 0;
+      mouse.targetY = 0;
     },
     updateFlake: (data: BuildResult, animate = true) => {
       currentFlakeData = data;
