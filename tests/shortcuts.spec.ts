@@ -22,10 +22,34 @@ test('keyboard shortcuts provide tactile button feedback', async ({ page }) => {
   await expect(refresh).toHaveClass(/btn-press/);
 });
 
+test('V key provides feedback on the reset-view button', async ({ page }) => {
+  const reset = page.getByRole('button', { name: 'Reset' });
+
+  await page.keyboard.press('v');
+
+  await expect(reset).toHaveClass(/btn-press/);
+});
+
+test('modified shortcuts do not trigger app actions', async ({ page }) => {
+  const initialSeed = await page.textContent('#seed-display');
+
+  await page.keyboard.press('Control+r');
+
+  await expect(page.locator('#seed-display')).toHaveText(initialSeed ?? '');
+});
+
+test('regrowing spins the wordmark accent once', async ({ page }) => {
+  const accent = page.locator('.wordmark__accent');
+
+  await page.keyboard.press('r');
+
+  await expect(accent).toHaveClass(/animate-spin-once/);
+});
+
 test('field guide documents the reset-view shortcut', async ({ page }) => {
   await page.keyboard.press('g');
 
-  const resetShortcut = page.locator('.shortcut-item').filter({ hasText: 'Reset view' });
+  const resetShortcut = page.locator('.shortcut-item').filter({ hasText: 'Reset 3D view' });
   await expect(resetShortcut.locator('dt')).toHaveText('V');
 });
 
