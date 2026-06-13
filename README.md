@@ -64,6 +64,9 @@ than the initial implementation. See the
 [snowflake generation performance history](docs/GENERATION_PERFORMANCE_HISTORY.md)
 for methodology, results, caveats, and future review guidance.
 
+For the broader story across rendering, animation, GPU updates, startup, and
+generation, read [From hundreds of meshes to 181x faster generation](docs/PERFORMANCE_EVOLUTION.md).
+
 ---
 
 ## 🛠️ Tech Stack

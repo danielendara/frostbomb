@@ -1,0 +1,55 @@
+date,commit,area,milestone,metric,before,after,unit,reported_improvement,evidence_class,comparison_family,source
+2026-04-17,1eb7d38,generation,Initial object-oriented generator,typical buildSnowflake,1.07951,1.07951,ms/build,baseline,controlled,controlled-typical,docs/GENERATION_PERFORMANCE_HISTORY.md
+2026-04-17,1eb7d38,generation,Initial object-oriented generator,fernlike stress buildSnowflake,2.51991,2.51991,ms/build,baseline,controlled,controlled-stress,docs/GENERATION_PERFORMANCE_HISTORY.md
+2026-04-18,7be6070,rendering,Replace branch meshes with InstancedMesh,branch draw submissions,approximately I,constant-sized,draw submissions,draw calls no longer scale with branch count,architectural,render-architecture,git commit 7be6070
+2026-04-18,4d7bae6,startup,Lazy-load Tweakpane and remove GSAP,first-paint bundle,263,206,KiB gzip,22% smaller,recorded-local,startup-bundle,git commit 4d7bae6
+2026-04-25,063bc7e,lifecycle,Pause hidden rendering and defer postprocessing,hidden-page rendering,continuous,paused,state,eliminates hidden-page CPU and GPU work,architectural,lifecycle,git commit 063bc7e
+2026-04-30,7a423ab,animation,Gate idle matrix and DOM updates,idle update time,0.14,0,ms,effectively eliminated,recorded-local,idle-frame,.Jules/bolt.md
+2026-05-01,3061679,diagram,Cache static Nakaya diagram background,100 diagram updates,18.5,0.5,ms,36x faster,recorded-local,diagram-update,git commit 3061679
+2026-05-02,3828de3,generation,Replace recursive Vector3 work with primitives,500 snowflake builds,110,70,ms,35% faster,recorded-local,generation-local-500,git commit 3828de3
+2026-05-03,789dcb3,animation,Precompute matrices and manually scale during growth,per-frame matrix composition,Object3D.updateMatrix,manual component scaling,method,removed general-purpose matrix composition,architectural,animation-architecture,git commit 789dcb3
+2026-05-04,e7bfc02,animation,Store metadata for one arm and reuse across symmetry,easing and metadata work,6N,N,operations,83% reduction or 6x,recorded-local,animation-operation-count,git commit e7bfc02
+2026-05-05,fbf47c8,gpu,Reuse InstancedMesh and restrict update ranges,GPU matrix traffic,full capacity,active instances,bytes,up to 80% less for smaller flakes,recorded-local,gpu-transfer,.Jules/bolt.md
+2026-05-06,dd75bce,particles,Use sin addition identity for snowfall,sine calls per frame,200,2,calls,99% fewer sine calls,operation-count,particle-frame,git commit dd75bce
+2026-05-07,e7b1e26,generation,Manual symmetry matrices and cached segment metadata,buildSnowflake,0.8,0.48,ms/build,40% faster,recorded-local,generation-local,git commit e7b1e26
+2026-05-08,582b945,animation,Write only changing matrix basis,matrix component writes,16,9,writes/instance,44% fewer writes,operation-count,animation-operation-count,git commit 582b945
+2026-05-09,b5bd8aa,animation,Sort delays and stop at active growth window,animation frame complexity,O(N),O(A),complexity,work scales with active segments,architectural,animation-complexity,git commit b5bd8aa
+2026-05-10,7507c21,generation,Generate matrices directly into typed arrays,intermediate objects,many,none,allocations,eliminated thousands of allocations,architectural,generation-architecture,git commit 7507c21
+2026-05-11,cf42080,gpu,Window GPU buffer updates,animation and upload complexity,O(total segments),O(active segments),complexity,pruned CPU work and uploads,architectural,gpu-transfer,git commit cf42080
+2026-05-12,90397e3,generation,Precalculate metadata and streamline symmetry,buildSnowflake,1.14,0.81,ms/build,29% faster,recorded-local,generation-local,git commit 90397e3
+2026-05-14,ef49261,generation,Manual matrix composition,buildSnowflake,0.2069,0.1404,ms/build,32% faster,recorded-local,generation-local,git commit ef49261
+2026-05-15,3a1d0e6,animation,Replace Math.pow easing with LUT,easing call,1,0.1333,relative time,7.5x faster,recorded-local,easing-microbenchmark,git commit 3a1d0e6
+2026-05-17,8cf83b6,gpu,Segment-major matrix layout,GPU update ranges,6,1,ranges/frame,83% fewer ranges,operation-count,gpu-transfer,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
+2026-05-18,6e46380,generation,Move recursive segments into flat shared buffer,short-lived segment objects,thousands,none,allocations,eliminated allocation churn,architectural,generation-architecture,git commit 6e46380
+2026-05-19,42824d5,generation,Reuse noise and shared buffers with Taylor approximations,complex buildSnowflake,0.117,0.044,ms/build,62% faster,recorded-local,generation-local-complex,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
+2026-05-20,5b82f39,generation,Use symmetry ratios and Taylor expansions,complex buildSnowflake,0.053,0.048,ms/build,10% faster,recorded-local,generation-local-complex,git commit 5b82f39
+2026-05-21,6a820d6,generation,Additive recursive tracking and animation bulk copies,buildSnowflake,0.09,0.051,ms/build,43% faster,recorded-local,generation-local,git commit 6a820d6
+2026-05-22,8a8658e,generation,Strength-reduce recursive and animation loops,buildSnowflake,,,ms/build,7-10% faster,reported-claim,generation-local,git commit 8a8658e
+2026-05-24,dc500bd,generation,Hoist hot-loop indexes and geometric ratios,buildSnowflake,0.052,0.05,ms/build,2.3% faster,recorded-local,generation-local,git commit dc500bd
+2026-05-25,c130a43,generation,Pack delay and index for native typed-array sort,buildSnowflake,0.051,0.044,ms/build,10% faster,recorded-local,generation-local,git commit c130a43
+2026-05-25,c130a43,generation,Pack delay and index for native typed-array sort,sorting phase,1,0.1667,relative time,6x faster,recorded-local,sorting-microbenchmark,git commit c130a43
+2026-05-26,6fa669a,generation,Reduce matrix population arithmetic,buildSnowflake,0.074,0.042,ms/build,43% faster,recorded-local,generation-local,git commit 6fa669a
+2026-05-27,c5e543e,generation,Unroll symmetry population and reduce recursion arithmetic,buildSnowflake,0.0468,0.0418,ms/build,10.7% faster,recorded-local,generation-local,git commit c5e543e
+2026-05-28,1ffb0a2,generation,Use negation identities for opposite arms,buildSnowflake,0.048,0.042,ms/build,12.5% faster,recorded-local,generation-local,git commit 1ffb0a2
+2026-05-30,11cd245,generation,Hoist constants and hardcode common trig values,buildSnowflake,0.046,0.041,ms/build,11% faster,recorded-local,generation-local,git commit 11cd245
+2026-06-01,16f0747,generation,Use R120 equals R60 minus identity,huge-profile buildSnowflake,0.136,0.122,ms/build,10% faster,recorded-local,generation-local-huge,git commit 16f0747
+2026-06-02,c6b2698,generation,Inline RNG and additively track recursive state,complex buildSnowflake,0.085,0.061,ms/build,28% faster,recorded-local,generation-local-complex,git commit c6b2698
+2026-06-03,c9ef7e5,generation,Fuse sort-buffer packing into segment generation,buildSnowflake,0.042,0.0414,ms/build,1.4% faster,recorded-local,generation-local,git commit c9ef7e5
+2026-06-04,d7ed056,generation,Hoist recursive side-length calculations,buildSnowflake,0.041,0.039,ms/build,5% faster,recorded-local,generation-local,git commit d7ed056
+2026-06-05,e1c2f7b,generation,Hoist 60-degree direction rotation,complex buildSnowflake,0.0403,0.03,ms/build,25.5% faster,recorded-local,generation-local-complex,git commit e1c2f7b
+2026-06-06,5be8fcb,animation,Batch completed-segment typed-array copies,animation loop overhead,1,0.7,relative time,30% less overhead,recorded-local,animation-microbenchmark,git commit 5be8fcb
+2026-06-06,5779f0d,rendering,Prune future growth draws,visible instance count,all instances,started instances,instances,avoids future-branch vertex work,architectural,render-architecture,git commit 5779f0d
+2026-06-06,5779f0d,startup,Optimize procedural material texture loops,bump-map generation,1,0.78,relative time,22% faster,recorded-local,startup-texture,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
+2026-06-06,5779f0d,startup,Optimize procedural material texture loops,environment-map generation,1,0.535,relative time,1.87x faster,recorded-local,startup-texture,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
+2026-06-08,b49546c,generation,Hoist scale factors and optimize symmetry,huge-profile buildSnowflake,,0.028,ms/build,measured endpoint,recorded-local,generation-local-huge,git commit b49546c
+2026-06-08,ab107a8,generation,Replace index multiplications with additive tracking,hot-loop index multiplications,repeated,additive increments,operations,measurable throughput improvement,architectural,generation-architecture,git commit ab107a8
+2026-06-09,3efc3b2,generation,Use inverse LUTs Taylor jitter and hoisted symmetry,geometry hot path,,,ms/build,2-8% faster,reported-claim,generation-local,git commit 3efc3b2
+2026-06-11,9928db0,generation,Hoist matrix basis into recursive geometry phase,buildSnowflake,0.08,0.0448,ms/build,44% faster,recorded-local,generation-local,git commit 9928db0
+2026-06-11,a9d0096,generation,Controlled documented baseline,typical buildSnowflake,1.07951,0.006223,ms/build,173.5x faster than initial,controlled,controlled-typical,docs/GENERATION_PERFORMANCE_HISTORY.md
+2026-06-11,a9d0096,generation,Controlled documented baseline,fernlike stress buildSnowflake,2.51991,0.014047,ms/build,179.4x faster than initial,controlled,controlled-stress,docs/GENERATION_PERFORMANCE_HISTORY.md
+2026-06-11,57d6518,generation,Unroll symmetry with rotation identities,complete stress buildSnowflake,0.01348,0.01405,ms/build,4% slower in controlled follow-up,controlled-follow-up,controlled-stress,docs/GENERATION_PERFORMANCE_HISTORY.md
+2026-06-12,e304f16,generation,Hoist symmetry basis vectors and inverse-step LUT,complete stress buildSnowflake,0.014047,0.013892,ms/build,1.1% faster in controlled follow-up,controlled-follow-up,controlled-stress,current benchmark run on 71b97b0
+2026-06-12,71b97b0,generation,Latest controlled measurement,typical buildSnowflake,1.07951,0.006222,ms/build,173.5x faster than initial,controlled,controlled-typical,current benchmark run on 71b97b0
+2026-06-12,71b97b0,generation,Latest controlled measurement,fernlike stress buildSnowflake,2.51991,0.013892,ms/build,181.4x faster than initial,controlled,controlled-stress,current benchmark run on 71b97b0
+2026-06-12,f44ac51,generation,Current main generator-equivalence verification,typical buildSnowflake,0.006222,0.006222,ms/build,generator and benchmark inputs unchanged from measured 71b97b0,source-equivalence,controlled-typical,git diff 71b97b0..f44ac51
+2026-06-12,f44ac51,generation,Current main generator-equivalence verification,fernlike stress buildSnowflake,0.013892,0.013892,ms/build,generator and benchmark inputs unchanged from measured 71b97b0,source-equivalence,controlled-stress,git diff 71b97b0..f44ac51

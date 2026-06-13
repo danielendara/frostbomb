@@ -1,6 +1,6 @@
 # Snowflake generation performance history
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 This document records the measured improvement in snowflake generation from the
 initial implementation to the current implementation. It also defines the
@@ -27,6 +27,22 @@ Snowflake generation is no longer a meaningful frame-time bottleneck. The
 current complex stress case consumes about 0.084% of a 16.67 ms frame budget.
 Rendering, shaders, postprocessing, and GPU upload behavior are more likely to
 limit interactive performance.
+
+For the complete architectural story, historical local experiments, and a
+graph of the evidence, see
+[`PERFORMANCE_EVOLUTION.md`](./PERFORMANCE_EVOLUTION.md).
+
+The latest controlled measurement on `71b97b0` recorded:
+
+| Profile | Median | Throughput | Improvement from initial |
+|---|---:|---:|---:|
+| Typical weighted conditions | 0.006222 ms/build | 160,715 builds/sec | 173.5x |
+| Complex fernlike stress case | 0.013892 ms/build | 71,982 builds/sec | 181.4x |
+
+Current main `f44ac51` changes UI and reset-view behavior. Its geometry
+generator, random inputs, benchmark files, package manifest, and lockfile are
+identical to `71b97b0`, so these generation measurements remain representative
+of current main.
 
 ## Compared revisions
 
@@ -167,4 +183,3 @@ processes, and both profiles described above.
 - `benchmark.ts` and `benchmark_bolt.ts` provide lightweight local geometry
   checks.
 - `src/snowflake/geometry.ts` contains the current data-oriented generator.
-

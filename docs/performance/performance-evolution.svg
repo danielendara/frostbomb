@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Frostbomb performance evolution</title>
+  <desc id="desc">Controlled initial-to-current snowflake generation measurements and selected local optimization experiments.</desc>
+  <style>
+    text { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; fill: #d8ecff; }
+    .title { font-size: 28px; font-weight: 700; }
+    .subtitle { font-size: 14px; fill: #9bb0c9; }
+    .panel { fill: #09111f; stroke: #29415f; stroke-width: 1; }
+    .grid { stroke: #20344e; stroke-width: 1; }
+    .axis { font-size: 12px; fill: #9bb0c9; }
+    .label { font-size: 13px; }
+    .small { font-size: 11px; fill: #9bb0c9; }
+    .stress { stroke: #ff9f7a; fill: #ff9f7a; }
+    .typical { stroke: #78dce8; fill: #78dce8; }
+    .bar { fill: #78a9ff; }
+    .bar2 { fill: #b39df3; }
+  </style>
+  <rect width="1200" height="760" fill="#050912"/>
+  <text x="50" y="48" class="title">Frostbomb performance evolution</text>
+  <text x="50" y="74" class="subtitle">Controlled results show the architectural gain; local experiments explain how we got there.</text>
+
+  <rect x="40" y="100" width="700" height="610" rx="8" class="panel"/>
+  <text x="65" y="135" class="label">A. Controlled buildSnowflake measurements (log scale, lower is better)</text>
+  <text x="65" y="157" class="small">Same profiles and deterministic seeds; fresh sequential Node processes.</text>
+
+  <line x1="105" y1="190" x2="700" y2="190" class="grid"/>
+  <line x1="105" y1="280" x2="700" y2="280" class="grid"/>
+  <line x1="105" y1="370" x2="700" y2="370" class="grid"/>
+  <line x1="105" y1="460" x2="700" y2="460" class="grid"/>
+  <line x1="105" y1="550" x2="700" y2="550" class="grid"/>
+  <line x1="105" y1="640" x2="700" y2="640" class="grid"/>
+  <text x="55" y="194" class="axis">3 ms</text>
+  <text x="55" y="284" class="axis">1 ms</text>
+  <text x="55" y="374" class="axis">0.1</text>
+  <text x="55" y="464" class="axis">0.03</text>
+  <text x="55" y="554" class="axis">0.01</text>
+  <text x="55" y="644" class="axis">0.003</text>
+
+  <line x1="165" y1="205" x2="500" y2="522" class="stress" stroke-width="3"/>
+  <line x1="500" y1="522" x2="650" y2="525" class="stress" stroke-width="3"/>
+  <circle cx="165" cy="205" r="6" class="stress"/>
+  <circle cx="500" cy="522" r="6" class="stress"/>
+  <circle cx="650" cy="525" r="6" class="stress"/>
+  <text x="178" y="202" class="label">Stress: 2.520 ms</text>
+  <text x="470" y="505" class="small">0.014047</text>
+  <text x="615" y="550" class="label">0.013892 ms</text>
+  <text x="410" y="330" class="label" fill="#ff9f7a">181x faster</text>
+
+  <line x1="165" y1="255" x2="500" y2="585" class="typical" stroke-width="3"/>
+  <line x1="500" y1="585" x2="650" y2="585" class="typical" stroke-width="3"/>
+  <circle cx="165" cy="255" r="6" class="typical"/>
+  <circle cx="500" cy="585" r="6" class="typical"/>
+  <circle cx="650" cy="585" r="6" class="typical"/>
+  <text x="178" y="252" class="label">Typical: 1.080 ms</text>
+  <text x="470" y="610" class="small">0.006223</text>
+  <text x="615" y="610" class="label">0.006222 ms</text>
+  <text x="405" y="420" class="label" fill="#78dce8">173x faster</text>
+
+  <text x="132" y="680" class="axis">Initial</text>
+  <text x="455" y="680" class="axis">PR #94 baseline</text>
+  <text x="625" y="680" class="axis">Latest main</text>
+
+  <rect x="765" y="100" width="395" height="610" rx="8" class="panel"/>
+  <text x="790" y="135" class="label">B. Selected local experiments</text>
+  <text x="790" y="157" class="small">Percent improvement reported within each experiment.</text>
+  <text x="790" y="174" class="small">Different fixtures: compare bars, do not chain them.</text>
+
+  <text x="790" y="210" class="axis">3828 primitives</text><rect x="930" y="195" width="105" height="18" class="bar"/><text x="1045" y="210" class="axis">35%</text>
+  <text x="790" y="246" class="axis">e7b1 matrices</text><rect x="930" y="231" width="120" height="18" class="bar2"/><text x="1060" y="246" class="axis">40%</text>
+  <text x="790" y="282" class="axis">ef49 manual</text><rect x="930" y="267" width="96" height="18" class="bar"/><text x="1036" y="282" class="axis">32%</text>
+  <text x="790" y="318" class="axis">4282 buffers</text><rect x="930" y="303" width="186" height="18" class="bar2"/><text x="1126" y="318" class="axis">62%</text>
+  <text x="790" y="354" class="axis">6a82 tracking</text><rect x="930" y="339" width="129" height="18" class="bar"/><text x="1069" y="354" class="axis">43%</text>
+  <text x="790" y="390" class="axis">c130 sort</text><rect x="930" y="375" width="30" height="18" class="bar2"/><text x="970" y="390" class="axis">10%</text>
+  <text x="790" y="426" class="axis">6fa6 matrix</text><rect x="930" y="411" width="129" height="18" class="bar"/><text x="1069" y="426" class="axis">43%</text>
+  <text x="790" y="462" class="axis">c6b2 recursion</text><rect x="930" y="447" width="84" height="18" class="bar2"/><text x="1024" y="462" class="axis">28%</text>
+  <text x="790" y="498" class="axis">e1c2 rotation</text><rect x="930" y="483" width="77" height="18" class="bar"/><text x="1017" y="498" class="axis">25.5%</text>
+  <text x="790" y="534" class="axis">9928 basis</text><rect x="930" y="519" width="132" height="18" class="bar2"/><text x="1072" y="534" class="axis">44%</text>
+
+  <text x="790" y="580" class="label">Other measured wins</text>
+  <text x="790" y="605" class="small">Nakaya diagram updates: 36x faster</text>
+  <text x="790" y="627" class="small">Easing LUT calls: 7.5x faster</text>
+  <text x="790" y="649" class="small">Initial bundle: 22% smaller</text>
+  <text x="790" y="671" class="small">Idle matrix update: ~0.14 ms to ~0 ms</text>
+</svg>
