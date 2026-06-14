@@ -27,7 +27,7 @@ for (let i = 0; i < 1000; i++) {
 console.log(`Average createNoise2D time: ${(Date.now() - startNoise) / 1000}ms`);
 
 const start = Date.now();
-const iterations = 1000;
+const iterations = 10000;
 let totalSegments = 0;
 for (let i = 0; i < iterations; i++) {
     const res = buildSnowflake(conditions as any, rand);
