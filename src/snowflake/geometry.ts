@@ -69,21 +69,212 @@ export function buildSnowflake(
   const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
   // Optimization: Pre-calculate path sampling scale to save multiplications in recursion.
   const pathScale = INV_MAX_DIST * pathParams.length;
+  const maxPathIdx = pathParams.length - 1;
+
+  // Performance Optimization: Capture invariant parameters and the RNG via closure in a local
+  // recursive function. This reduces the number of arguments passed in recursion from 12 to 7,
+  // minimizing stack frame overhead and property lookups on every call.
+  const rng = rand.next.bind(rand);
+
+  function buildArmInternal(
+    startX: number,
+    startY: number,
+    dirX: number,
+    dirY: number,
+    dist: number,
+    length: number,
+    depth: number,
+  ) {
+    // Sample parameters from the pre-calculated path based on distance from core
+    const pIdx = (dist * pathScale) | 0;
+    const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
+    const params = pathParams[pathIdx];
+
+    if (depth > params.maxDepth || length < 0.08) return;
+    if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
+
+    const halfLen = length * 0.5;
+    const midX = startX + dirX * halfLen;
+    const midY = startY + dirY * halfLen;
+    const nx = midX * 3 + nOffset;
+    const ny = midY * 3 + nOffset;
+    const thicknessVariation = 1 + noise2D(nx, ny) * 0.15;
+    const finalThickness = params.primaryThickness * thicknessVariation;
+    const vVar = thicknessVariation - 1;
+
+    // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
+    // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
+    const ax = vVar * 0.1;
+    const sax = ax; // sin(ax) approx
+    const cax = 1 - 0.5 * ax * ax; // cos(ax) approx
+    const sx = finalThickness;
+    const sy = length;
+    // Use pre-calculated sx, sy, and cax to derive matrix columns.
+    const m0 = -dirY * sx;
+    const m1 = dirX * sx;
+    const caxy = cax * sy;
+    const m4 = -dirX * caxy;
+    const m5 = -dirY * caxy;
+    const sxax = sx * sax;
+    const m8 = dirX * sxax;
+    const m9 = dirY * sxax;
+    const m6 = sax * sy;
+    const m10 = cax * sx; // cax * sz, where sz = sx
+    const vJitter = vVar * 0.015; // jitter constant
+    const m12 = midX + vJitter;
+    const m13 = midY + vJitter;
+    const m14 = vJitter;
+
+    const bIdx = currentSegmentCount << 4; // STRIDE 16
+    SEGMENT_BUFFER[bIdx + 0] = m0;
+    SEGMENT_BUFFER[bIdx + 1] = m1;
+    SEGMENT_BUFFER[bIdx + 2] = m4;
+    SEGMENT_BUFFER[bIdx + 3] = m5;
+    SEGMENT_BUFFER[bIdx + 4] = m8;
+    SEGMENT_BUFFER[bIdx + 5] = m9;
+    SEGMENT_BUFFER[bIdx + 6] = m6;
+    SEGMENT_BUFFER[bIdx + 7] = m10;
+    SEGMENT_BUFFER[bIdx + 8] = m12;
+    SEGMENT_BUFFER[bIdx + 9] = m13;
+    SEGMENT_BUFFER[bIdx + 10] = m14;
+    DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
+
+    currentSegmentCount++;
+
+    const sideBranchProb = params.sideBranchProb;
+    if (depth >= params.maxDepth || sideBranchProb <= 0) return;
+
+    // Walk along the main branch, occasionally spawning side branches
+    const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
+    if (numSteps <= 1) return;
+
+    const invNumSteps = INV_STEPS_LUT[numSteps] || 1 / numSteps;
+    const stepDist = length * invNumSteps;
+    const stepX = dirX * stepDist;
+    const stepY = dirY * stepDist;
+    const sideBranchDecay = params.sideBranchDecay;
+    const sideLenBase = length * sideBranchDecay;
+    let pointX = startX;
+    let pointY = startY;
+    let currentDist = dist;
+
+    // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
+    const probStep = sideBranchProb * (invNumSteps * 0.4);
+    const lenStep = invNumSteps * 0.5;
+    const stepX2 = stepX * 2;
+    const stepY2 = stepY * 2;
+    let currentLocalProb = sideBranchProb * (1 - invNumSteps * 0.4);
+    let currentLenFactor = 1 - invNumSteps * 0.5;
+    let px2 = (startX + stepX) * 2;
+    let py2 = (startY + stepY) * 2;
+
+    const cosAngle = params.cosAngle;
+    const sinAngle = params.sinAngle;
+
+    for (let i = 1; i < numSteps; i++) {
+      pointX += stepX;
+      pointY += stepY;
+      currentDist += stepDist;
+
+      // Side branches get less likely near the tip
+      // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
+      if (rng() < currentLocalProb) {
+        const sideLen = sideLenBase * (0.4 + 0.6 * rng()) * currentLenFactor;
+
+        // Real snowflakes: side branches grow at 60° (hexagonal lattice)
+        const noiseVal = noise2D(px2, py2);
+
+        const angleVariation = noiseVal * 0.1;
+        // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
+        // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
+        //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
+        const v = angleVariation + (-0.04 + 0.08 * rng());
+        const v2 = 0.5 * v * v;
+        const cosA = cosAngle - v * sinAngle - v2 * cosAngle;
+        const sinA = sinAngle + v * cosAngle - v2 * sinAngle;
+        const sideDist = currentDist;
+
+        const dxca = dirX * cosA;
+        const dysa = dirY * sinA;
+        const dxsa = dirX * sinA;
+        const dyca = dirY * cosA;
+
+        // Right side branch (sign = 1)
+        buildArmInternal(
+          pointX,
+          pointY,
+          dxca - dysa,
+          dxsa + dyca,
+          sideDist,
+          sideLen,
+          depth + 1,
+        );
+
+        // Left side branch (sign = -1)
+        // cos(-a) = cos(a), sin(-a) = -sin(a)
+        buildArmInternal(
+          pointX,
+          pointY,
+          dxca + dysa,
+          -dxsa + dyca,
+          sideDist,
+          sideLen,
+          depth + 1,
+        );
+      }
+
+      currentLocalProb -= probStep;
+      currentLenFactor -= lenStep;
+      px2 += stepX2;
+      py2 += stepY2;
+    }
+
+    // Optional pointed tip extension
+    if (params.hasTip && depth === 0) {
+      if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
+
+      const tipLen = 0.12;
+      const halfTipLen = tipLen * 0.5;
+      const endX = startX + dirX * length;
+      const endY = startY + dirY * length;
+      const tipMidX = endX + dirX * halfTipLen;
+      const tipMidY = endY + dirY * halfTipLen;
+      const tnx = tipMidX * 3 + nOffset;
+      const tny = tipMidY * 3 + nOffset;
+      const tipThicknessVariation = 1 + noise2D(tnx, tny) * 0.15;
+      const tipFinalThickness = params.primaryThickness * 0.4 * tipThicknessVariation;
+      const tipVVar = tipThicknessVariation - 1;
+
+      const tax = tipVVar * 0.1;
+      const tsax = tax;
+      const tcax = 1 - 0.5 * tax * tax;
+      const tsx = tipFinalThickness;
+      const tsy = tipLen;
+
+      const tcaxy = tcax * tsy;
+      const tsxax = tsx * tsax;
+
+      const tIdx = currentSegmentCount << 4;
+      SEGMENT_BUFFER[tIdx + 0] = -dirY * tsx;
+      SEGMENT_BUFFER[tIdx + 1] = dirX * tsx;
+      SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
+      SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
+      SEGMENT_BUFFER[tIdx + 4] = dirX * tsxax;
+      SEGMENT_BUFFER[tIdx + 5] = dirY * tsxax;
+      SEGMENT_BUFFER[tIdx + 6] = tsax * tsy;
+      SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
+      const tvJitter = tipVVar * 0.015;
+      SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
+      SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
+      SEGMENT_BUFFER[tIdx + 10] = tvJitter;
+      DELAY_BUFFER[currentSegmentCount] = length * 0.15 + (depth + 1) * 0.1;
+
+      currentSegmentCount++;
+    }
+  }
 
   // Build one primary arm along +X
-  const maxPathIdx = pathParams.length - 1;
-  buildArm(
-    0, 0, // startX, startY
-    1, 0, // dirX, dirY
-    0, // dist
-    3.5, // Total target length
-    0, // depth
-    pathParams,
-    maxPathIdx,
-    pathScale,
-    rand,
-    nOffset,
-  );
+  buildArmInternal(0, 0, 1, 0, 0, 3.5, 0);
 
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
@@ -128,11 +319,6 @@ export function buildSnowflake(
     // to improve cache locality and consolidate GPU update ranges.
     // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
     // and eliminate multiplications.
-    // R(60) = [0.5, -sin60; sin60, 0.5]
-    // R(120) = R(60) - I = [-0.5, -sin60; sin60, -0.5]
-    // R(180) = -I
-    // R(240) = -R(60)
-    // R(300) = -R(120)
 
     // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
@@ -427,216 +613,6 @@ function paramsFor(temp: number, ss: number): Params {
     sinAngle: Math.sin(p.sideBranchAngle),
   };
 }
-
-function buildArm(
-  startX: number,
-  startY: number,
-  dirX: number,
-  dirY: number,
-  dist: number,
-  length: number,
-  depth: number,
-  pathParams: Params[],
-  maxPathIdx: number,
-  pathScale: number,
-  rand: Rand,
-  nOffset: number,
-) {
-  // Sample parameters from the pre-calculated path based on distance from core
-  // Optimization: use pre-calculated pathScale and maxPathIdx.
-  const pIdx = (dist * pathScale) | 0;
-  const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
-  const params = pathParams[pathIdx];
-
-  if (depth > params.maxDepth || length < 0.08) return;
-  if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
-
-  const halfLen = length * 0.5;
-  const midX = startX + dirX * halfLen;
-  const midY = startY + dirY * halfLen;
-  const nx = midX * 3 + nOffset;
-  const ny = midY * 3 + nOffset;
-  const thicknessVariation = 1 + noise2D(nx, ny) * 0.15;
-  const finalThickness = params.primaryThickness * thicknessVariation;
-  const vVar = thicknessVariation - 1;
-
-  // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
-  // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
-  const ax = vVar * 0.1;
-  const sax = ax; // sin(ax) approx
-  const cax = 1 - 0.5 * ax * ax; // cos(ax) approx
-  const sx = finalThickness;
-  const sy = length;
-  // Use pre-calculated sx, sy, and cax to derive matrix columns.
-  const m0 = -dirY * sx;
-  const m1 = dirX * sx;
-  const caxy = cax * sy;
-  const m4 = -dirX * caxy;
-  const m5 = -dirY * caxy;
-  const sxax = sx * sax;
-  const m8 = dirX * sxax;
-  const m9 = dirY * sxax;
-  const m6 = sax * sy;
-  const m10 = cax * sx; // cax * sz, where sz = sx
-  const vJitter = vVar * 0.015; // jitter constant
-  const m12 = midX + vJitter;
-  const m13 = midY + vJitter;
-  const m14 = vJitter;
-
-  const bIdx = currentSegmentCount << 4; // STRIDE 16
-  SEGMENT_BUFFER[bIdx + 0] = m0;
-  SEGMENT_BUFFER[bIdx + 1] = m1;
-  SEGMENT_BUFFER[bIdx + 2] = m4;
-  SEGMENT_BUFFER[bIdx + 3] = m5;
-  SEGMENT_BUFFER[bIdx + 4] = m8;
-  SEGMENT_BUFFER[bIdx + 5] = m9;
-  SEGMENT_BUFFER[bIdx + 6] = m6;
-  SEGMENT_BUFFER[bIdx + 7] = m10;
-  SEGMENT_BUFFER[bIdx + 8] = m12;
-  SEGMENT_BUFFER[bIdx + 9] = m13;
-  SEGMENT_BUFFER[bIdx + 10] = m14;
-  DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
-
-  currentSegmentCount++;
-
-  if (depth >= params.maxDepth || params.sideBranchProb <= 0) return;
-
-  // Walk along the main branch, occasionally spawning side branches
-  const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
-  if (numSteps <= 1) return;
-
-  const invNumSteps = INV_STEPS_LUT[numSteps] || 1 / numSteps;
-  const stepDist = length * invNumSteps;
-  const stepX = dirX * stepDist;
-  const stepY = dirY * stepDist;
-  const sideLenBase = length * params.sideBranchDecay;
-  let pointX = startX;
-  let pointY = startY;
-  let currentDist = dist;
-
-  // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
-  const probStep = params.sideBranchProb * (invNumSteps * 0.4);
-  const lenStep = invNumSteps * 0.5;
-  const stepX2 = stepX * 2;
-  const stepY2 = stepY * 2;
-  let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
-  let currentLenFactor = 1 - invNumSteps * 0.5;
-  let px2 = (startX + stepX) * 2;
-  let py2 = (startY + stepY) * 2;
-
-  for (let i = 1; i < numSteps; i++) {
-    pointX += stepX;
-    pointY += stepY;
-    currentDist += stepDist;
-
-    // Side branches get less likely near the tip
-    // Optimization: Additive tracking for localProb decay.
-    if (rand.chance(currentLocalProb)) {
-      const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
-
-      // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-      // Optimization: Additive tracking for noise coordinates px2/py2.
-      const noiseVal = noise2D(px2, py2);
-
-      const angleVariation = noiseVal * 0.1;
-    // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
-    // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
-    //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
-    const v = angleVariation + rand.range(-0.04, 0.04);
-    const v2 = 0.5 * v * v;
-    const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
-    const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
-    const sideDist = currentDist;
-
-    const dxca = dirX * cosA;
-    const dysa = dirY * sinA;
-    const dxsa = dirX * sinA;
-    const dyca = dirY * cosA;
-
-    // Right side branch (sign = 1)
-    buildArm(
-      pointX,
-      pointY,
-      dxca - dysa,
-      dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
-
-    // Left side branch (sign = -1)
-    // cos(-a) = cos(a), sin(-a) = -sin(a)
-    buildArm(
-      pointX,
-      pointY,
-      dxca + dysa,
-      -dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
-    }
-
-    currentLocalProb -= probStep;
-    currentLenFactor -= lenStep;
-    px2 += stepX2;
-    py2 += stepY2;
-  }
-
-  // Optional pointed tip extension
-  if (params.hasTip && depth === 0) {
-    if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
-
-    const tipLen = 0.12;
-    const halfTipLen = tipLen * 0.5;
-    const endX = startX + dirX * length;
-    const endY = startY + dirY * length;
-    const tipMidX = endX + dirX * halfTipLen;
-    const tipMidY = endY + dirY * halfTipLen;
-    const tnx = tipMidX * 3 + nOffset;
-    const tny = tipMidY * 3 + nOffset;
-    const tipThicknessVariation = 1 + noise2D(tnx, tny) * 0.15;
-    const tipFinalThickness = params.primaryThickness * 0.4 * tipThicknessVariation;
-    const tipVVar = tipThicknessVariation - 1;
-
-    const tax = tipVVar * 0.1;
-    const tsax = tax;
-    const tcax = 1 - 0.5 * tax * tax;
-    const tsx = tipFinalThickness;
-    const tsy = tipLen;
-
-    const tcaxy = tcax * tsy;
-    const tsxax = tsx * tsax;
-
-    const tIdx = currentSegmentCount << 4;
-    SEGMENT_BUFFER[tIdx + 0] = -dirY * tsx;
-    SEGMENT_BUFFER[tIdx + 1] = dirX * tsx;
-    SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
-    SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
-    SEGMENT_BUFFER[tIdx + 4] = dirX * tsxax;
-    SEGMENT_BUFFER[tIdx + 5] = dirY * tsxax;
-    SEGMENT_BUFFER[tIdx + 6] = tsax * tsy;
-    SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
-    const tvJitter = tipVVar * 0.015;
-    SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
-    SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
-    SEGMENT_BUFFER[tIdx + 10] = tvJitter;
-    DELAY_BUFFER[currentSegmentCount] = length * 0.15 + (depth + 1) * 0.1;
-
-    currentSegmentCount++;
-  }
-}
-
 
 // Internal utility functions (maintained for compatibility and internal use)
 export function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {

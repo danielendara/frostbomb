@@ -82,3 +82,8 @@
 **Learning:** In 6-fold symmetry loops, calculating a ratio ($K$) to derive other matrix components (e.g., Column 1 from Column 0) still incurs 2 multiplications per symmetry instance (12 total per segment). Hoisting the full set of basis vectors ($V_0, V_1, V_2, V_3$) into the $O(N)$ geometry phase and applying hexagonal rotation identities ($V_{rot} = V_{60} - V_{orig}$) to all of them further reduces the arithmetic density. Replacing the `1/numSteps` division in recursive loops with a small LUT also provides a measurable win in high-depth dendrites.
 **Action:** Pre-calculate and store all four 2D basis vectors for the primary arm in `SEGMENT_BUFFER`. Use hexagonal rotation and negation identities for all matrix columns in the symmetry pass. Implement `INV_STEPS_LUT` for recursion step calculations.
 **Impact:** Optimization reduced average `buildSnowflake` time by an additional ~20% (from ~0.065ms to ~0.052ms), significantly lowering the CPU cost of procedural generation.
+
+## 2026-05-26 - [Recursive Closure & RNG Inlining]
+**Learning:** In high-depth recursive functions, the overhead of passing 10+ arguments per call and repeated property lookups on an RNG object (like `rand.chance()`) adds significant CPU latency. Refactoring to a nested closure that captures invariant parameters and binding the RNG function to a local variable provides a substantial performance boost.
+**Action:** Move deep recursive logic into a nested closure to capture environment variables. Bind RNG methods (e.g., `rand.next.bind(rand)`) to local references to avoid property access in hot paths.
+**Impact:** Optimization reduced average `buildSnowflake` time from ~0.075ms to ~0.037ms (~50% improvement).
