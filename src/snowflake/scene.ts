@@ -534,8 +534,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     const sinTime = Math.sin(time);
     const cosTime = Math.cos(time);
 
+    let idx3 = 0;
     for (let i = 0; i < particleCount; i++) {
-      const idx3 = i * 3;
       let px = positions[idx3];
       let py = positions[idx3 + 1];
 
@@ -551,6 +551,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
       positions[idx3] = px;
       positions[idx3 + 1] = py;
+      idx3 += 3;
     }
     particles.geometry.attributes.position.needsUpdate = true;
 
@@ -594,11 +595,19 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
           // Optimization: Outer loop over the single arm's instances.
           // Start from minAnimatedIndex to skip already-grown segments.
+          let batchStart = -1;
+          let batchCount = 0;
+
           for (let j = minAnimatedIndex; j < armLen; j++) {
             const delay = currentFlakeData.delays[j];
 
             // Optimization: Early break since segments are sorted by delay.
-            if (delay > threshold) break;
+            if (delay > threshold) {
+              if (batchStart !== -1) {
+                target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
+              }
+              break;
+            }
 
             const progress = Math.min(1, (threshold - delay) * 2);
 
@@ -607,13 +616,24 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             // which results in contiguous memory writes and better cache locality.
             let idx = j * 6 * 16;
 
-            // If this segment is fully grown, use a fast bulk copy and advance the
-            // minimum animation pointer to skip it in the next frame.
+            // If this segment is fully grown, we batch the copy operation for contiguous segments.
             if (progress >= 1) {
-              target.set(source.subarray(idx, idx + 96), idx);
+              if (batchStart === -1) {
+                batchStart = idx;
+                batchCount = 96;
+              } else {
+                batchCount += 96;
+              }
               if (j === minAnimatedIndex) minAnimatedIndex++;
               maxIndex = j;
               continue;
+            }
+
+            // Before processing a segment that isn't fully grown, flush the current batch.
+            if (batchStart !== -1) {
+              target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
+              batchStart = -1;
+              batchCount = 0;
             }
 
             maxIndex = j;
@@ -639,6 +659,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               target[idx + 10] = m10s;
               idx += 16;
             }
+          }
+
+          // Flush final batch if it exists (e.g. if loop completed with fully grown segments)
+          if (batchStart !== -1) {
+            target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
           }
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.

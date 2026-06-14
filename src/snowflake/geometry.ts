@@ -101,6 +101,7 @@ export function buildSnowflake(
   // Float32Array is pre-filled with zeros, allowing us to skip multiple writes in the hot loop.
   const matrices = new Float32Array(armLen * 96); // 6 * 16 = 96
 
+  let offset = 0;
   for (let j = 0; j < armLen; j++) {
     const idx = sortedIndices[j];
     const delay = DELAY_BUFFER[idx];
@@ -132,8 +133,6 @@ export function buildSnowflake(
     // R(180) = -I
     // R(240) = -R(60)
     // R(300) = -R(120)
-
-    const offset = j * 96;
 
     // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
@@ -263,6 +262,8 @@ export function buildSnowflake(
     matrices[offset + 93] = m13_5;
     matrices[offset + 94] = m14;
     matrices[offset + 95] = 1;
+
+    offset += 96;
   }
 
   // Core parameters from start of path
@@ -450,9 +451,12 @@ function buildArm(
   if (depth > params.maxDepth || length < 0.08) return;
   if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
-  const midX = startX + dirX * length * 0.5;
-  const midY = startY + dirY * length * 0.5;
-  const thicknessVariation = 1 + noise2D(midX * 3 + nOffset, midY * 3 + nOffset) * 0.15;
+  const halfLen = length * 0.5;
+  const midX = startX + dirX * halfLen;
+  const midY = startY + dirY * halfLen;
+  const nx = midX * 3 + nOffset;
+  const ny = midY * 3 + nOffset;
+  const thicknessVariation = 1 + noise2D(nx, ny) * 0.15;
   const finalThickness = params.primaryThickness * thicknessVariation;
   const vVar = thicknessVariation - 1;
 
@@ -594,11 +598,14 @@ function buildArm(
     if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
     const tipLen = 0.12;
+    const halfTipLen = tipLen * 0.5;
     const endX = startX + dirX * length;
     const endY = startY + dirY * length;
-    const tipMidX = endX + dirX * tipLen * 0.5;
-    const tipMidY = endY + dirY * tipLen * 0.5;
-    const tipThicknessVariation = 1 + noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset) * 0.15;
+    const tipMidX = endX + dirX * halfTipLen;
+    const tipMidY = endY + dirY * halfTipLen;
+    const tnx = tipMidX * 3 + nOffset;
+    const tny = tipMidY * 3 + nOffset;
+    const tipThicknessVariation = 1 + noise2D(tnx, tny) * 0.15;
     const tipFinalThickness = params.primaryThickness * 0.4 * tipThicknessVariation;
     const tipVVar = tipThicknessVariation - 1;
 
