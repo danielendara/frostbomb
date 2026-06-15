@@ -16,3 +16,7 @@
 ## 2025-05-15 - Centralized keyboard shortcut documentation
 **Learning:** While `title` attributes are great for contextual hints, a centralized "Keyboard Shortcuts" list in a help or guide section provides a clear reference for users to learn all capabilities at once, especially for "hidden" shortcuts like `Esc` or `?`.
 **Action:** Always include a dedicated shortcuts section in the primary documentation or help overlay of the application.
+
+## 2026-06-15 - Multi-modal Feedback and Fallback Reliability
+**Learning:** For critical "action successful" indicators (like Copy or Save), swapping both the button text AND the icon (e.g., to a checkmark) provides stronger visual confirmation across varying screen sizes and contexts. Additionally, providing UI feedback *before* or independently of browser API results (like the Clipboard API) ensures the interface remains responsive even in restrictive environments (headless, non-secure contexts) where the API might silently fail.
+**Action:** Use a unified `setTemporaryLabel` helper that manages both text and icon state for multi-modal confirmation. Always trigger visual feedback on action attempt, with error-specific overrides if the action fails, to maintain perceived performance.
