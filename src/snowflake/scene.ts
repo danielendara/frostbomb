@@ -265,6 +265,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let minAnimatedIndex = 0;
   const entryState = { progress: 0 };
   const ENTRY_DURATION_MS = 2200;
+  const INV_ENTRY_DURATION = 1 / ENTRY_DURATION_MS;
   let entryStartTime = 0;
   let entryActive = false;
 
@@ -297,7 +298,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     if (!entryActive) {
       return;
     }
-    const t = (now - entryStartTime) / ENTRY_DURATION_MS;
+    const t = (now - entryStartTime) * INV_ENTRY_DURATION;
     if (t >= 1) {
       entryState.progress = 1;
       entryActive = false;
@@ -512,7 +513,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     timer.update(now);
     const delta = timer.getDelta();
     const motionScale = prefersReducedMotion ? 0.25 : 1;
-    time += delta * 0.3 * motionScale;
+    const timeStep = 0.3 * motionScale;
+    const driftScale = 0.002 * motionScale;
+    time += delta * timeStep;
     adaptQuality(delta);
 
     // Update snowflake material colors for Prism Mode
@@ -542,7 +545,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       py -= particleVel[i] * motionScale;
       // Horizontal drift using pre-calculated phase components
       const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
-      px += drift * 0.002 * motionScale;
+      px += drift * driftScale;
 
       if (py < -10) {
         py = 10;
@@ -614,12 +617,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             // Inner loop: Apply scale to all 6 symmetry instances.
             // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
             // which results in contiguous memory writes and better cache locality.
-            let idx = j * 6 * 16;
+            const segIdx = j * 96; // 6 * 16 = 96
 
             // If this segment is fully grown, we batch the copy operation for contiguous segments.
             if (progress >= 1) {
               if (batchStart === -1) {
-                batchStart = idx;
+                batchStart = segIdx;
                 batchCount = 96;
               } else {
                 batchCount += 96;
@@ -641,24 +644,80 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
             // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
             // These are identical for all 6 arms as they represent Z-tilt and thickness.
-            const m6s = source[idx + 6] * s;
-            const m10s = source[idx + 10] * s;
+            const m6s = source[segIdx + 6] * s;
+            const m10s = source[segIdx + 10] * s;
 
-            for (let i = 0; i < 6; i++) {
-              // Column 1
-              target[idx + 0] = source[idx + 0] * s;
-              target[idx + 1] = source[idx + 1] * s;
-              // Optimization: Skip target[idx+2] as it is always 0 for snowflake segments.
-              // Column 2
-              target[idx + 4] = source[idx + 4] * s;
-              target[idx + 5] = source[idx + 5] * s;
-              target[idx + 6] = m6s;
-              // Column 3
-              target[idx + 8] = source[idx + 8] * s;
-              target[idx + 9] = source[idx + 9] * s;
-              target[idx + 10] = m10s;
-              idx += 16;
-            }
+            // Arm 0 (Primary Arm, 0°)
+            const sm0 = source[segIdx + 0] * s;
+            const sm1 = source[segIdx + 1] * s;
+            const sm4 = source[segIdx + 4] * s;
+            const sm5 = source[segIdx + 5] * s;
+            const sm8 = source[segIdx + 8] * s;
+            const sm9 = source[segIdx + 9] * s;
+            target[segIdx + 0] = sm0;
+            target[segIdx + 1] = sm1;
+            target[segIdx + 4] = sm4;
+            target[segIdx + 5] = sm5;
+            target[segIdx + 6] = m6s;
+            target[segIdx + 8] = sm8;
+            target[segIdx + 9] = sm9;
+            target[segIdx + 10] = m10s;
+
+            // Arm 1 (60°)
+            const sm0_1 = source[segIdx + 16] * s;
+            const sm1_1 = source[segIdx + 17] * s;
+            const sm4_1 = source[segIdx + 20] * s;
+            const sm5_1 = source[segIdx + 21] * s;
+            const sm8_1 = source[segIdx + 24] * s;
+            const sm9_1 = source[segIdx + 25] * s;
+            target[segIdx + 16] = sm0_1;
+            target[segIdx + 17] = sm1_1;
+            target[segIdx + 20] = sm4_1;
+            target[segIdx + 21] = sm5_1;
+            target[segIdx + 22] = m6s;
+            target[segIdx + 24] = sm8_1;
+            target[segIdx + 25] = sm9_1;
+            target[segIdx + 26] = m10s;
+
+            // Arm 2 (120°) = Arm 1 - Arm 0
+            target[segIdx + 32] = sm0_1 - sm0;
+            target[segIdx + 33] = sm1_1 - sm1;
+            target[segIdx + 36] = sm4_1 - sm4;
+            target[segIdx + 37] = sm5_1 - sm5;
+            target[segIdx + 38] = m6s;
+            target[segIdx + 40] = sm8_1 - sm8;
+            target[segIdx + 41] = sm9_1 - sm9;
+            target[segIdx + 42] = m10s;
+
+            // Arm 3 (180°) = -Arm 0
+            target[segIdx + 48] = -sm0;
+            target[segIdx + 49] = -sm1;
+            target[segIdx + 52] = -sm4;
+            target[segIdx + 53] = -sm5;
+            target[segIdx + 54] = m6s;
+            target[segIdx + 56] = -sm8;
+            target[segIdx + 57] = -sm9;
+            target[segIdx + 58] = m10s;
+
+            // Arm 4 (240°) = -Arm 1
+            target[segIdx + 64] = -sm0_1;
+            target[segIdx + 65] = -sm1_1;
+            target[segIdx + 68] = -sm4_1;
+            target[segIdx + 69] = -sm5_1;
+            target[segIdx + 70] = m6s;
+            target[segIdx + 72] = -sm8_1;
+            target[segIdx + 73] = -sm9_1;
+            target[segIdx + 74] = m10s;
+
+            // Arm 5 (300°) = Arm 0 - Arm 1
+            target[segIdx + 80] = sm0 - sm0_1;
+            target[segIdx + 81] = sm1 - sm1_1;
+            target[segIdx + 84] = sm4 - sm4_1;
+            target[segIdx + 85] = sm5 - sm5_1;
+            target[segIdx + 86] = m6s;
+            target[segIdx + 88] = sm8 - sm8_1;
+            target[segIdx + 89] = sm9 - sm9_1;
+            target[segIdx + 90] = m10s;
           }
 
           // Flush final batch if it exists (e.g. if loop completed with fully grown segments)
