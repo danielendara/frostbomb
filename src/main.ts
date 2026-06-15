@@ -111,11 +111,8 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
   const btn = document.getElementById(id);
   if (!btn) return;
 
-  const labelEl = btn.querySelector('.action-btn__label') || btn.querySelector('#seed-display');
-  const iconEl =
-    btn.querySelector('.action-btn__icon') ||
-    btn.querySelector('.seed-btn__icon') ||
-    btn.querySelector('.refresh__icon');
+  const labelEl = btn.querySelector('.action-btn__label, #seed-display, .refresh__label') as HTMLElement;
+  const iconEl = btn.querySelector('.action-btn__icon, .seed-btn__icon, .refresh__icon') as HTMLElement;
 
   if (!labelEl) return;
 
@@ -132,17 +129,26 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
 
   if (isError) {
     btn.classList.add('btn--error');
+  } else {
+    btn.classList.remove('btn--error');
   }
 
   const existingTimeout = btn.getAttribute('data-timeout-id');
   if (existingTimeout) clearTimeout(parseInt(existingTimeout));
 
   const timeoutId = window.setTimeout(() => {
-    labelEl.textContent = labelEl.getAttribute('data-original');
-    labelEl.removeAttribute('data-original');
+    const originalLabel = labelEl.getAttribute('data-original');
+    if (originalLabel !== null) {
+      labelEl.textContent = originalLabel;
+      labelEl.removeAttribute('data-original');
+    }
+
     if (iconEl) {
-      iconEl.textContent = iconEl.getAttribute('data-original');
-      iconEl.removeAttribute('data-original');
+      const originalIcon = iconEl.getAttribute('data-original');
+      if (originalIcon !== null) {
+        iconEl.textContent = originalIcon;
+        iconEl.removeAttribute('data-original');
+      }
     }
     btn.classList.remove('btn--error');
     btn.removeAttribute('data-timeout-id');
@@ -249,65 +255,69 @@ function updateFromPane() {
 async function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
 
-  const onSuccess = () => {
-    setTemporaryLabel('btn-copy', 'Copied!', '✓');
-    setTemporaryLabel('btn-seed', 'Copied!', '✓');
-    announce('Link copied to clipboard');
-  };
+  // Immediate visual feedback for better perceived performance
+  setTemporaryLabel('btn-copy', 'Copied!', '✓');
+  setTemporaryLabel('btn-seed', 'Copied!', '✓');
+  announce('Link copied to clipboard');
 
-  const onError = () => {
-    setTemporaryLabel('btn-copy', 'Failed', '✕', true);
-    setTemporaryLabel('btn-seed', 'Failed', '✕', true);
-    announce('Failed to copy link');
-  };
-
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(url);
-      onSuccess();
-    } else {
-      throw new Error('Clipboard API unavailable');
-    }
-  } catch (err) {
-    console.warn('Clipboard API failed, trying legacy fallback:', err);
+  // Small delay to ensure UI has time to paint before potentially blocking clipboard operations
+  setTimeout(async () => {
     try {
-      const textArea = document.createElement('textarea');
-      textArea.value = url;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-9999px';
-      textArea.style.top = '0';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand('copy');
-      document.body.removeChild(textArea);
-      if (successful) {
-        onSuccess();
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
       } else {
-        onError();
+        throw new Error('Clipboard API unavailable');
       }
-    } catch (fallbackErr) {
-      console.error('Legacy fallback failed:', fallbackErr);
-      onError();
+    } catch (err) {
+      console.warn('Clipboard API failed, trying legacy fallback:', err);
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!successful) {
+          throw new Error('execCommand copy failed');
+        }
+      } catch (fallbackErr) {
+        console.error('Legacy fallback failed:', fallbackErr);
+        setTemporaryLabel('btn-copy', 'Failed', '✕', true);
+        setTemporaryLabel('btn-seed', 'Failed', '✕', true);
+        announce('Failed to copy link');
+      }
     }
-  }
+  }, 50);
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 document.getElementById('btn-seed')?.addEventListener('click', copyLink);
 
-function saveSnowflake() {
-  scene.composer.render();
-
-  const dataUrl = canvas.toDataURL('image/png');
-  const link = document.createElement('a');
-  const habit = currentConditions.habit.replace(/_/g, '-');
-  link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
-  link.href = dataUrl;
-  link.click();
-
+async function saveSnowflake() {
   setTemporaryLabel('btn-save', 'Saved!', '✓');
   announce('Snowflake saved as PNG');
+
+  // Delay to ensure UI updates before heavy rendering
+  setTimeout(() => {
+    try {
+      scene.composer.render();
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      const habit = currentConditions.habit.replace(/_/g, '-');
+      link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to save snowflake:', err);
+      setTemporaryLabel('btn-save', 'Failed', '✕', true);
+      announce('Failed to save snowflake');
+    }
+  }, 100);
 }
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
