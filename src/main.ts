@@ -200,10 +200,6 @@ async function toggleLabMode() {
   isLabMode = !isLabMode;
   const toggleGeneration = ++labToggleGeneration;
 
-  if (isLabMode && isGuideOpen) {
-    toggleFieldGuide();
-  }
-
   if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
@@ -223,10 +219,6 @@ async function toggleLabMode() {
 
 function toggleFieldGuide() {
   isGuideOpen = !isGuideOpen;
-
-  if (isGuideOpen && isLabMode) {
-    toggleLabMode();
-  }
 
   if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
   if (fieldGuide) {
@@ -275,8 +267,9 @@ nakayaCanvas?.addEventListener('keydown', (e) => {
 
     if (!isLabMode) {
       toggleLabMode();
-      return;
     }
+
+    if (e.key === ' ' || e.key === 'Enter') return;
 
     const tStep = 1;
     const ssStep = 0.05;
@@ -437,11 +430,16 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (isEditableTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+
+  // Don't hijack arrows if we're in the guide (allow scrolling) unless focused on diagram
+  const isDiagramFocused = document.activeElement === nakayaCanvas;
+  if (isGuideOpen && !isDiagramFocused && k.startsWith('arrow')) return;
+
   const actions: Record<string, () => void> = {
-    'arrowup': () => scene.rotateView(0, -0.1),
-    'arrowdown': () => scene.rotateView(0, 0.1),
-    'arrowleft': () => scene.rotateView(-0.1, 0),
-    'arrowright': () => scene.rotateView(0.1, 0),
+    'arrowup': () => (e.preventDefault(), scene.rotateView(0, -0.1)),
+    'arrowdown': () => (e.preventDefault(), scene.rotateView(0, 0.1)),
+    'arrowleft': () => (e.preventDefault(), scene.rotateView(-0.1, 0)),
+    'arrowright': () => (e.preventDefault(), scene.rotateView(0.1, 0)),
     'r': () => (handleRefresh(), visualPress('refresh')),
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
     'v': () => (scene.resetView(), visualPress('btn-reset')),
