@@ -40,6 +40,7 @@ export interface Scene {
   setPrismMode: (enabled: boolean) => void;
   updateFlake: (data: BuildResult, animate?: boolean) => void;
   resetView: () => void;
+  rotateView: (dx: number, dy: number) => void;
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
@@ -393,6 +394,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       mouse.y = 0;
       mouse.targetX = 0;
       mouse.targetY = 0;
+    },
+    rotateView: (dx: number, dy: number) => {
+      targetRotation.y += dx;
+      targetRotation.x += dy;
     },
     updateFlake: (data: BuildResult, animate = true) => {
       currentFlakeData = data;

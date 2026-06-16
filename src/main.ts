@@ -183,6 +183,7 @@ function handleRefresh(e?: Event) {
   }
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
+  announce(`New snowflake grown: a ${habitLabel[currentConditions.habit]}`);
 }
 
 document.getElementById('refresh')?.addEventListener('click', handleRefresh);
@@ -228,13 +229,66 @@ function toggleFieldGuide() {
   }
 
   if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
-  if (fieldGuide) fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
+  if (fieldGuide) {
+    fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
+    if (isGuideOpen) fieldGuide.focus();
+  }
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
 document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
+
+function handleNakayaPointer(e: PointerEvent) {
+  if (!nakayaCanvas) return;
+  const rect = nakayaCanvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+  const t = x * 40 - 40;
+  const ss = 1 - y;
+
+  labParams.temperature = t;
+  labParams.supersaturation = ss * 100;
+
+  if (!isLabMode) {
+    toggleLabMode();
+  } else {
+    updateFromPane();
+  }
+}
+
+nakayaCanvas?.addEventListener('pointerdown', (e) => {
+  nakayaCanvas.setPointerCapture(e.pointerId);
+  handleNakayaPointer(e);
+});
+
+nakayaCanvas?.addEventListener('pointermove', (e) => {
+  if (e.buttons > 0) handleNakayaPointer(e);
+});
+
+nakayaCanvas?.addEventListener('keydown', (e) => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter'].includes(e.key)) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isLabMode) {
+      toggleLabMode();
+      return;
+    }
+
+    const tStep = 1;
+    const ssStep = 0.05;
+
+    if (e.key === 'ArrowLeft') labParams.temperature = Math.max(-40, labParams.temperature - tStep);
+    if (e.key === 'ArrowRight') labParams.temperature = Math.min(0, labParams.temperature + tStep);
+    if (e.key === 'ArrowUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + ssStep * 100);
+    if (e.key === 'ArrowDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - ssStep * 100);
+
+    updateFromPane();
+  }
+});
 
 function updateFromPane() {
   const t = labParams.temperature;
@@ -384,6 +438,10 @@ window.addEventListener('keydown', (e) => {
 
   if (isEditableTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
   const actions: Record<string, () => void> = {
+    'arrowup': () => scene.rotateView(0, -0.1),
+    'arrowdown': () => scene.rotateView(0, 0.1),
+    'arrowleft': () => scene.rotateView(-0.1, 0),
+    'arrowright': () => scene.rotateView(0.1, 0),
     'r': () => (handleRefresh(), visualPress('refresh')),
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
     'v': () => (scene.resetView(), visualPress('btn-reset')),

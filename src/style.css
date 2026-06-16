@@ -335,6 +335,8 @@ body.pink-mode {
   border-left: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
   background: rgba(230, 237, 245, 0.02);
+  cursor: crosshair;
+  touch-action: none;
 }
 
 .nakaya-labels {

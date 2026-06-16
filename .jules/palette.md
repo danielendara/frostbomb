@@ -20,3 +20,7 @@
 ## 2026-06-15 - Multi-modal Feedback and Fallback Reliability
 **Learning:** For critical "action successful" indicators (like Copy or Save), swapping both the button text AND the icon (e.g., to a checkmark) provides stronger visual confirmation across varying screen sizes and contexts. Additionally, providing UI feedback *before* or independently of browser API results (like the Clipboard API) ensures the interface remains responsive even in restrictive environments (headless, non-secure contexts) where the API might silently fail.
 **Action:** Use a unified `setTemporaryLabel` helper that manages both text and icon state for multi-modal confirmation. Always trigger visual feedback on action attempt, with error-specific overrides if the action fails, to maintain perceived performance.
+
+## 2026-06-18 - Interactive Diagrams as Control Surfaces
+**Learning:** Static informative diagrams (like the Nakaya morphology chart) are missed opportunities for intuitive control. Making them interactive by mapping spatial coordinates back to simulation parameters (e.g., Temperature and Supersaturation) creates a "Lab Mode" that is more discoverable and satisfying than traditional sliders.
+**Action:** When a visualization explains the "why" of a simulation, try to make it the interface for the "how". Ensure these interactions support touch and mouse (pointer events), and crucially, provide keyboard support for ARIA-labeled interactive surfaces.
