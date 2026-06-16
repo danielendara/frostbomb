@@ -2,9 +2,13 @@ import * as THREE from 'three';
 import { BuildResult } from './geometry';
 
 const EASING_LUT_SIZE = 1024;
+const LUT_SIZE_MINUS_ONE = EASING_LUT_SIZE - 1;
+const LUT_SCALE_FACTOR = 2 * LUT_SIZE_MINUS_ONE;
+const THRESHOLD_SCALE_FACTOR = 1.5 * LUT_SCALE_FACTOR;
+
 const EASING_LUT = new Float32Array(EASING_LUT_SIZE);
 for (let i = 0; i < EASING_LUT_SIZE; i++) {
-  const t = i / (EASING_LUT_SIZE - 1);
+  const t = i / LUT_SIZE_MINUS_ONE;
   EASING_LUT[i] = t === 0 ? 0 : (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
 }
 
@@ -441,6 +445,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         branchMesh.instanceMatrix.clearUpdateRanges();
         branchMesh.instanceMatrix.needsUpdate = true;
         minAnimatedIndex = 0;
+
+        // Optimization: Pre-scale delays to shift arithmetic out of the render loop.
+        const delays = data.delays;
+        for (let i = 0; i < delays.length; i++) {
+          delays[i] *= LUT_SCALE_FACTOR;
+        }
       }
 
       if (!flakeHolder.children.includes(coreMesh)) {
@@ -593,7 +603,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
           const armLen = currentFlakeData.armCount;
-          const threshold = eased * 1.5;
+          const thresholdScaled = eased * THRESHOLD_SCALE_FACTOR;
           let maxIndex = -1;
 
           // Optimization: Outer loop over the single arm's instances.
@@ -605,14 +615,16 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const delay = currentFlakeData.delays[j];
 
             // Optimization: Early break since segments are sorted by delay.
-            if (delay > threshold) {
+            if (delay > thresholdScaled) {
               if (batchStart !== -1) {
                 target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
               }
               break;
             }
 
-            const progress = Math.min(1, (threshold - delay) * 2);
+            // Performance Optimization: Direct bitwise-truncated index into EASING_LUT.
+            // Replaces Math.min and redundant multiplications within the hot loop.
+            const lutIdx = (thresholdScaled - delay) | 0;
 
             // Inner loop: Apply scale to all 6 symmetry instances.
             // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
@@ -620,7 +632,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const segIdx = j * 96; // 6 * 16 = 96
 
             // If this segment is fully grown, we batch the copy operation for contiguous segments.
-            if (progress >= 1) {
+            if (lutIdx >= LUT_SIZE_MINUS_ONE) {
               if (batchStart === -1) {
                 batchStart = segIdx;
                 batchCount = 96;
@@ -640,7 +652,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             }
 
             maxIndex = j;
-            const s = easeOutExpoFast(progress);
+            const s = EASING_LUT[lutIdx];
 
             // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
             // These are identical for all 6 arms as they represent Z-tilt and thickness.
