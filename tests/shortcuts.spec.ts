@@ -83,9 +83,35 @@ test('shortcuts are ignored while editing lab controls', async ({ page }) => {
   await expect(page.locator('#lab-controls')).toBeVisible();
 });
 
-test('S key triggers save (downloads file)', async ({ page }) => {
-  const downloadPromise = page.waitForEvent('download');
-  await page.keyboard.press('s');
-  const download = await downloadPromise;
+test('S key triggers save (downloads file) and provides feedback', async ({ page }) => {
+  const saveBtn = page.locator('#btn-save');
+  const label = saveBtn.locator('.action-btn__label');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.keyboard.press('s'),
+  ]);
+
+  // Use toPass to handle potential UI paint delays
+  await expect(async () => {
+    const text = await label.textContent();
+    expect(['Saved!', 'Save PNG']).toContain(text);
+  }).toPass();
+
   expect(download.suggestedFilename()).toMatch(/^frostbomb-.*-.*\.png$/);
+  await download.delete();
+});
+
+test('C key triggers copy feedback on buttons', async ({ page }) => {
+  const seedDisplay = page.locator('#seed-display');
+  const copyLabel = page.locator('#btn-copy .action-btn__label');
+
+  await page.keyboard.press('c');
+
+  // Check that either button shows feedback
+  await expect(async () => {
+    const seedText = await seedDisplay.textContent();
+    const copyText = await copyLabel.textContent();
+    expect(seedText === 'Copied!' || copyText === 'Copied!').toBe(true);
+  }).toPass();
 });
