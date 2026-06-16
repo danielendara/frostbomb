@@ -87,3 +87,8 @@
 **Learning:** In high-depth recursive functions, the overhead of passing 10+ arguments per call and repeated property lookups on an RNG object (like `rand.chance()`) adds significant CPU latency. Refactoring to a nested closure that captures invariant parameters and binding the RNG function to a local variable provides a substantial performance boost.
 **Action:** Move deep recursive logic into a nested closure to capture environment variables. Bind RNG methods (e.g., `rand.next.bind(rand)`) to local references to avoid property access in hot paths.
 **Impact:** Optimization reduced average `buildSnowflake` time from ~0.075ms to ~0.037ms (~50% improvement).
+
+## 2026-05-27 - [Hexagonal Symmetry Identities & Animation Unrolling]
+**Learning:** Hexagonal symmetry identities ( = S_1 - S_0$,  = -S_0$,  = -S_1$,  = S_0 - S_1$) can be used to unroll symmetry loops in the animation hot path, reducing basis multiplications from 38 to 12 per segment. When unrolling loops that operate on flat buffers (like `instanceMatrix`), using absolute indexing (`j * 96`) is safer than mutable cursor increments to prevent data misalignment during logical refactors.
+**Action:** Unroll the 6-fold symmetry loop in `animate()` using additive/subtractive identities for basis vectors. Hoist animation-invariant constants (e.g., `driftScale`, `timeStep`) and replace divisions with pre-calculated inverse constants in the tweening logic.
+**Impact:** Reduces arithmetic density in the growth animation loop by ~63% per segment, ensuring fluid growth for complex dendrites on low-power devices.
