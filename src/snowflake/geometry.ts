@@ -37,6 +37,8 @@ const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 const INV_STEPS_LUT = new Float32Array([
   0, 1, 0.5, 0.33333334, 0.25, 0.2, 0.16666667, 0.14285715, 0.125, 0.11111111, 0.1,
 ]);
+const INV_STEPS_LUT_04 = INV_STEPS_LUT.map((v) => v * 0.4);
+const INV_STEPS_LUT_05 = INV_STEPS_LUT.map((v) => v * 0.5);
 
 // Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
@@ -84,13 +86,8 @@ export function buildSnowflake(
     dist: number,
     length: number,
     depth: number,
+    params: Params,
   ) {
-    // Sample parameters from the pre-calculated path based on distance from core
-    const pIdx = (dist * pathScale) | 0;
-    const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
-    const params = pathParams[pathIdx];
-
-    if (depth > params.maxDepth || length < 0.08) return;
     if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
     const halfLen = length * 0.5;
@@ -98,15 +95,13 @@ export function buildSnowflake(
     const midY = startY + dirY * halfLen;
     const nx = midX * 3 + nOffset;
     const ny = midY * 3 + nOffset;
-    const thicknessVariation = 1 + noise2D(nx, ny) * 0.15;
-    const finalThickness = params.primaryThickness * thicknessVariation;
-    const vVar = thicknessVariation - 1;
+    const vVar = noise2D(nx, ny) * 0.15;
+    const finalThickness = params.primaryThickness * (1 + vVar);
 
     // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
     // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
-    const ax = vVar * 0.1;
-    const sax = ax; // sin(ax) approx
-    const cax = 1 - 0.5 * ax * ax; // cos(ax) approx
+    const sax = vVar * 0.1; // sin(ax) approx
+    const cax = 1 - 0.5 * sax * sax; // cos(ax) approx
     const sx = finalThickness;
     const sy = length;
     // Use pre-calculated sx, sy, and cax to derive matrix columns.
@@ -159,17 +154,19 @@ export function buildSnowflake(
     let currentDist = dist;
 
     // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
-    const probStep = sideBranchProb * (invNumSteps * 0.4);
-    const lenStep = invNumSteps * 0.5;
+    const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
+    const probStep = sideBranchProb * lut04;
+    const lenStep = INV_STEPS_LUT_05[numSteps] || invNumSteps * 0.5;
     const stepX2 = stepX * 2;
     const stepY2 = stepY * 2;
-    let currentLocalProb = sideBranchProb * (1 - invNumSteps * 0.4);
-    let currentLenFactor = 1 - invNumSteps * 0.5;
+    let currentLocalProb = sideBranchProb * (1 - lut04);
+    let currentLenFactor = 1 - lenStep;
     let px2 = (startX + stepX) * 2;
     let py2 = (startY + stepY) * 2;
 
     const cosAngle = params.cosAngle;
     const sinAngle = params.sinAngle;
+    const nextDepth = depth + 1;
 
     for (let i = 1; i < numSteps; i++) {
       pointX += stepX;
@@ -181,46 +178,58 @@ export function buildSnowflake(
       if (rng() < currentLocalProb) {
         const sideLen = sideLenBase * (0.4 + 0.6 * rng()) * currentLenFactor;
 
-        // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-        const noiseVal = noise2D(px2, py2);
+        // Optimization: Prune side branches early before performing lookups and recursive calls.
+        if (sideLen >= 0.08) {
+          // Real snowflakes: side branches grow at 60° (hexagonal lattice)
+          const noiseVal = noise2D(px2, py2);
 
-        const angleVariation = noiseVal * 0.1;
-        // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
-        // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
-        //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
-        const v = angleVariation + (-0.04 + 0.08 * rng());
-        const v2 = 0.5 * v * v;
-        const cosA = cosAngle - v * sinAngle - v2 * cosAngle;
-        const sinA = sinAngle + v * cosAngle - v2 * sinAngle;
-        const sideDist = currentDist;
+          const angleVariation = noiseVal * 0.1;
+          // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
+          // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
+          //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
+          const v = angleVariation + (-0.04 + 0.08 * rng());
+          const v2 = 0.5 * v * v;
+          const cosA = cosAngle - v * sinAngle - v2 * cosAngle;
+          const sinA = sinAngle + v * cosAngle - v2 * sinAngle;
+          const sideDist = currentDist;
 
-        const dxca = dirX * cosA;
-        const dysa = dirY * sinA;
-        const dxsa = dirX * sinA;
-        const dyca = dirY * cosA;
+          // Optimization: Pre-sample parameters for the side branch only when it's created.
+          const pIdx = (sideDist * pathScale) | 0;
+          const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
+          const nextParams = pathParams[pathIdx];
 
-        // Right side branch (sign = 1)
-        buildArmInternal(
-          pointX,
-          pointY,
-          dxca - dysa,
-          dxsa + dyca,
-          sideDist,
-          sideLen,
-          depth + 1,
-        );
+          if (nextDepth <= nextParams.maxDepth) {
+            const dxca = dirX * cosA;
+            const dysa = dirY * sinA;
+            const dxsa = dirX * sinA;
+            const dyca = dirY * cosA;
 
-        // Left side branch (sign = -1)
-        // cos(-a) = cos(a), sin(-a) = -sin(a)
-        buildArmInternal(
-          pointX,
-          pointY,
-          dxca + dysa,
-          -dxsa + dyca,
-          sideDist,
-          sideLen,
-          depth + 1,
-        );
+            // Right side branch (sign = 1)
+            buildArmInternal(
+              pointX,
+              pointY,
+              dxca - dysa,
+              dxsa + dyca,
+              sideDist,
+              sideLen,
+              nextDepth,
+              nextParams,
+            );
+
+            // Left side branch (sign = -1)
+            // cos(-a) = cos(a), sin(-a) = -sin(a)
+            buildArmInternal(
+              pointX,
+              pointY,
+              dxca + dysa,
+              -dxsa + dyca,
+              sideDist,
+              sideLen,
+              nextDepth,
+              nextParams,
+            );
+          }
+        }
       }
 
       currentLocalProb -= probStep;
@@ -274,7 +283,7 @@ export function buildSnowflake(
   }
 
   // Build one primary arm along +X
-  buildArmInternal(0, 0, 1, 0, 0, 3.5, 0);
+  buildArmInternal(0, 0, 1, 0, 0, 3.5, 0, pathParams[0]);
 
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
