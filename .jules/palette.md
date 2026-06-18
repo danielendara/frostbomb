@@ -24,3 +24,7 @@
 ## 2026-06-18 - Interactive Diagrams as Control Surfaces
 **Learning:** Static informative diagrams (like the Nakaya morphology chart) are missed opportunities for intuitive control. Making them interactive by mapping spatial coordinates back to simulation parameters (e.g., Temperature and Supersaturation) creates a "Lab Mode" that is more discoverable and satisfying than traditional sliders.
 **Action:** When a visualization explains the "why" of a simulation, try to make it the interface for the "how". Ensure these interactions support touch and mouse (pointer events), and crucially, provide keyboard support for ARIA-labeled interactive surfaces.
+
+## 2026-06-18 - Accessible Canvas Interaction Hygiene
+**Learning:** Providing keyboard navigation for canvas-based controls (like X/Y parameter diagrams) requires strict event management to avoid UX regressions. Specifically: 1) `preventDefault()` is mandatory for arrow keys to block unintended page scrolling; 2) ARIA live announcements must be throttled/discrete (e.g., only on keypress, not fluid mouse drag) to avoid screen reader "spam"; 3) Focus indicators (e.g., `focus-visible`) must be explicitly styled for custom interactive elements to meet WCAG success criteria.
+**Action:** Use a `shouldAnnounce` flag in update handlers to separate fluid input state changes from discrete user-intent announcements. Always wrap keyboard interaction logic in `preventDefault()` and `stopPropagation()` when the interactive component has focus.

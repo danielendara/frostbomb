@@ -347,7 +347,7 @@ body.pink-mode {
 .nakaya-label {
   font-family: var(--mono);
   font-size: 0.5rem;
-  color: var(--ink-faint);
+  color: var(--ink-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   pointer-events: none;
@@ -701,7 +701,8 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+canvas:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

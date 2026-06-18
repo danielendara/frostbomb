@@ -211,7 +211,7 @@ async function toggleLabMode() {
   if (isLabMode) {
     await ensurePane();
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
-    updateFromPane();
+    updateFromPane(false);
   } else {
     grow(undefined, true);
   }
@@ -247,7 +247,7 @@ function handleNakayaPointer(e: PointerEvent) {
   if (!isLabMode) {
     toggleLabMode();
   } else {
-    updateFromPane();
+    updateFromPane(false);
   }
 }
 
@@ -261,7 +261,11 @@ nakayaCanvas?.addEventListener('pointermove', (e) => {
 });
 
 nakayaCanvas?.addEventListener('keydown', (e) => {
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter'].includes(e.key)) {
+  const { key } = e;
+  const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key);
+  const isAction = key === ' ' || key === 'Enter';
+
+  if (isArrow || isAction) {
     e.preventDefault();
     e.stopPropagation();
 
@@ -269,23 +273,28 @@ nakayaCanvas?.addEventListener('keydown', (e) => {
       toggleLabMode();
     }
 
-    if (e.key === ' ' || e.key === 'Enter') return;
+    if (isArrow) {
+      const tStep = 1;
+      const ssStep = 5;
 
-    const tStep = 1;
-    const ssStep = 0.05;
+      if (key === 'ArrowLeft') labParams.temperature = Math.max(-40, labParams.temperature - tStep);
+      if (key === 'ArrowRight') labParams.temperature = Math.min(0, labParams.temperature + tStep);
+      if (key === 'ArrowUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + ssStep);
+      if (key === 'ArrowDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - ssStep);
 
-    if (e.key === 'ArrowLeft') labParams.temperature = Math.max(-40, labParams.temperature - tStep);
-    if (e.key === 'ArrowRight') labParams.temperature = Math.min(0, labParams.temperature + tStep);
-    if (e.key === 'ArrowUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + ssStep * 100);
-    if (e.key === 'ArrowDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - ssStep * 100);
-
-    updateFromPane();
+      visualPress('nakaya-diagram');
+      updateFromPane(true);
+    }
   }
 });
 
-function updateFromPane() {
+function updateFromPane(shouldAnnounce = false) {
   const t = labParams.temperature;
   const ss = labParams.supersaturation / 100;
+
+  if (shouldAnnounce) {
+    announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labParams.supersaturation.toFixed(0)}%`);
+  }
 
   const conditions: GrowthConditions = {
     temperatureC: t,
