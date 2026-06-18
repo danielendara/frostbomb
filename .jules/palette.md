@@ -28,3 +28,15 @@
 ## 2026-06-18 - Accessible Canvas Interaction Hygiene
 **Learning:** Providing keyboard navigation for canvas-based controls (like X/Y parameter diagrams) requires strict event management to avoid UX regressions. Specifically: 1) `preventDefault()` is mandatory for arrow keys to block unintended page scrolling; 2) ARIA live announcements must be throttled/discrete (e.g., only on keypress, not fluid mouse drag) to avoid screen reader "spam"; 3) Focus indicators (e.g., `focus-visible`) must be explicitly styled for custom interactive elements to meet WCAG success criteria.
 **Action:** Use a `shouldAnnounce` flag in update handlers to separate fluid input state changes from discrete user-intent announcements. Always wrap keyboard interaction logic in `preventDefault()` and `stopPropagation()` when the interactive component has focus.
+
+## 2026-06-25 - Focus Restoration for Accessibility
+**Learning:** Closing overlays or modals without explicitly returning focus to the triggering element leaves keyboard users in a "null" state, often forcing them to tab through the entire page again. This is especially disruptive in apps with many global shortcuts.
+**Action:** Always explicitly `.focus()` the triggering button when closing an overlay to maintain logical tab order.
+
+## 2026-06-25 - Contextual 3D Canvas Labeling
+**Learning:** For procedural generators, a static `aria-label` like "3D Scene" is unhelpful. Updating the label dynamically to include the generated object's attributes (e.g., crystal habit and seed) provides immediate context to screen reader users that their action was successful.
+**Action:** Update the visualization's `aria-label` dynamically whenever the procedural content changes.
+
+## 2026-06-25 - Bridging Async Latency with Loading Announcements
+**Learning:** When a UI component loads asynchronously (e.g., Lab Mode controls), "silent" latency can make the interface seem unresponsive. Providing a visual "LOADING..." state paired with an ARIA live announcement prevents user confusion during the transition.
+**Action:** Implement visual status indicators and `announce()` calls during the `await` period of dynamic imports or heavy initialization.
