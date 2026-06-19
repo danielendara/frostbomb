@@ -45,8 +45,8 @@
       </div>
 
       <dl class="field-notes__list" id="stats-display">
-        <div class="field-notes__row"><dt>Temperature</dt><dd id="stat-temp">—</dd></div>
-        <div class="field-notes__row"><dt>Supersaturation</dt><dd id="stat-humid">—</dd></div>
+        <div class="field-notes__row"><dt title="Determines whether the ice grows into flat plates or long columns.">Temperature</dt><dd id="stat-temp">—</dd></div>
+        <div class="field-notes__row"><dt title="The 'fuel' for growth; higher humidity forces more complex branching.">Supersaturation</dt><dd id="stat-humid">—</dd></div>
         <div class="field-notes__row"><dt>Habit</dt><dd id="stat-habit" aria-live="polite">—</dd></div>
         <div class="field-notes__row"><dt>Branches</dt><dd id="stat-branches">—</dd></div>
       </dl>
@@ -73,7 +73,7 @@
             <h3>Nakaya Diagram</h3>
             <p>The physical map of snowflake shapes. Created by Ukichiro Nakaya in the 1930s, it proves that no two snowflakes are alike because no two follow the same path.</p>
             <div class="nakaya-container">
-              <canvas id="nakaya-diagram" width="300" height="200" role="button" tabindex="0" aria-label="Nakaya morphology diagram. Use arrow keys to adjust temperature and humidity, or click and drag to explore habits." title="Click, drag, or use arrow keys on the diagram to set manual growth conditions"></canvas>
+              <canvas id="nakaya-diagram" width="300" height="200" role="button" tabindex="0" aria-label="Nakaya morphology diagram. Use arrow keys to adjust temperature and humidity, or click and drag to explore habits." title="Click, drag, or use arrow keys (Arrows) on the diagram to set manual growth conditions"></canvas>
               <div class="nakaya-labels">
                 <span class="nakaya-label nakaya-label--y">Supersaturation →</span>
                 <span class="nakaya-label nakaya-label--x">Temperature (°C) →</span>
