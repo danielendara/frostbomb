@@ -76,7 +76,7 @@ export function buildSnowflake(
   // Performance Optimization: Capture invariant parameters and the RNG via closure in a local
   // recursive function. This reduces the number of arguments passed in recursion from 12 to 7,
   // minimizing stack frame overhead and property lookups on every call.
-  const rng = rand.next.bind(rand);
+  const rng = rand.rng;
 
   function buildArmInternal(
     startX: number,
@@ -90,13 +90,25 @@ export function buildSnowflake(
   ) {
     if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
+    // Performance Optimization: Destructure params once per call to minimize property lookups
+    // in the hot recursion path.
+    const {
+      primaryThickness,
+      sideBranchProb,
+      sideBranchDecay,
+      cosAngle,
+      sinAngle,
+      maxDepth,
+      hasTip,
+    } = params;
+
     const halfLen = length * 0.5;
     const midX = startX + dirX * halfLen;
     const midY = startY + dirY * halfLen;
     const nx = midX * 3 + nOffset;
     const ny = midY * 3 + nOffset;
     const vVar = noise2D(nx, ny) * 0.15;
-    const finalThickness = params.primaryThickness * (1 + vVar);
+    const finalThickness = primaryThickness * (1 + vVar);
 
     // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
     // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
@@ -136,8 +148,7 @@ export function buildSnowflake(
 
     currentSegmentCount++;
 
-    const sideBranchProb = params.sideBranchProb;
-    if (depth >= params.maxDepth || sideBranchProb <= 0) return;
+    if (depth >= maxDepth || sideBranchProb <= 0) return;
 
     // Walk along the main branch, occasionally spawning side branches
     const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
@@ -147,7 +158,6 @@ export function buildSnowflake(
     const stepDist = length * invNumSteps;
     const stepX = dirX * stepDist;
     const stepY = dirY * stepDist;
-    const sideBranchDecay = params.sideBranchDecay;
     const sideLenBase = length * sideBranchDecay;
     let pointX = startX;
     let pointY = startY;
@@ -164,9 +174,11 @@ export function buildSnowflake(
     let px2 = (startX + stepX) * 2;
     let py2 = (startY + stepY) * 2;
 
-    const cosAngle = params.cosAngle;
-    const sinAngle = params.sinAngle;
     const nextDepth = depth + 1;
+
+    // Hoist side branch length factors to save multiplications.
+    const sideLenMin = sideLenBase * 0.4;
+    const sideLenRange = sideLenBase * 0.6;
 
     for (let i = 1; i < numSteps; i++) {
       pointX += stepX;
@@ -176,7 +188,7 @@ export function buildSnowflake(
       // Side branches get less likely near the tip
       // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
       if (rng() < currentLocalProb) {
-        const sideLen = sideLenBase * (0.4 + 0.6 * rng()) * currentLenFactor;
+        const sideLen = (sideLenMin + sideLenRange * rng()) * currentLenFactor;
 
         // Optimization: Prune side branches early before performing lookups and recursive calls.
         if (sideLen >= 0.08) {
@@ -239,29 +251,20 @@ export function buildSnowflake(
     }
 
     // Optional pointed tip extension
-    if (params.hasTip && depth === 0) {
+    if (hasTip && depth === 0) {
       if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
       const tipLen = 0.12;
-      const halfTipLen = tipLen * 0.5;
       const endX = startX + dirX * length;
       const endY = startY + dirY * length;
-      const tipMidX = endX + dirX * halfTipLen;
-      const tipMidY = endY + dirY * halfTipLen;
-      const tnx = tipMidX * 3 + nOffset;
-      const tny = tipMidY * 3 + nOffset;
-      const tipThicknessVariation = 1 + noise2D(tnx, tny) * 0.15;
-      const tipFinalThickness = params.primaryThickness * 0.4 * tipThicknessVariation;
-      const tipVVar = tipThicknessVariation - 1;
-
-      const tax = tipVVar * 0.1;
-      const tsax = tax;
-      const tcax = 1 - 0.5 * tax * tax;
-      const tsx = tipFinalThickness;
-      const tsy = tipLen;
-
-      const tcaxy = tcax * tsy;
-      const tsxax = tsx * tsax;
+      const tipMidX = endX + dirX * 0.06; // halfTipLen
+      const tipMidY = endY + dirY * 0.06;
+      const tipVVar = noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset) * 0.15;
+      const tipVVar01 = tipVVar * 0.1;
+      const tcax = 1 - 0.5 * tipVVar01 * tipVVar01;
+      const tsx = primaryThickness * 0.4 * (1 + tipVVar);
+      const tcaxy = tcax * tipLen;
+      const tsxax = tsx * tipVVar01;
 
       const tIdx = currentSegmentCount << 4;
       SEGMENT_BUFFER[tIdx + 0] = -dirY * tsx;
@@ -270,13 +273,13 @@ export function buildSnowflake(
       SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
       SEGMENT_BUFFER[tIdx + 4] = dirX * tsxax;
       SEGMENT_BUFFER[tIdx + 5] = dirY * tsxax;
-      SEGMENT_BUFFER[tIdx + 6] = tsax * tsy;
+      SEGMENT_BUFFER[tIdx + 6] = tipVVar01 * tipLen;
       SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
       const tvJitter = tipVVar * 0.015;
       SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
       SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
       SEGMENT_BUFFER[tIdx + 10] = tvJitter;
-      DELAY_BUFFER[currentSegmentCount] = length * 0.15 + (depth + 1) * 0.1;
+      DELAY_BUFFER[currentSegmentCount] = length * 0.15 + 0.1; // depth=0
 
       currentSegmentCount++;
     }
