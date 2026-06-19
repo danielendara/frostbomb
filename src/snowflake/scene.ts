@@ -125,19 +125,39 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const particleCount = prefersReducedMotion ? 80 : 200;
   const particleGeom = new THREE.BufferGeometry();
   const particlePos = new Float32Array(particleCount * 3);
-  const particleVel = new Float32Array(particleCount);
-  const particleSinPhase = new Float32Array(particleCount);
-  const particleCosPhase = new Float32Array(particleCount);
+  const particleVelBase = new Float32Array(particleCount);
+  const particleSinPhaseBase = new Float32Array(particleCount);
+  const particleCosPhaseBase = new Float32Array(particleCount);
+
+  // Performance Optimization: Pre-scaled buffers for particle velocity and drift components.
+  // These eliminate hundreds of multiplications per frame by hoisting the motionScale
+  // and driftScale applications to the initialization and mode-change phases.
+  const particleVelScaled = new Float32Array(particleCount);
+  const particleSinPhaseScaled = new Float32Array(particleCount);
+  const particleCosPhaseScaled = new Float32Array(particleCount);
 
   for (let i = 0; i < particleCount; i++) {
     particlePos[i * 3] = (Math.random() - 0.5) * 20;
     particlePos[i * 3 + 1] = (Math.random() - 0.5) * 20;
     particlePos[i * 3 + 2] = (Math.random() - 0.5) * 10;
-    particleVel[i] = 0.02 + Math.random() * 0.03;
+    particleVelBase[i] = 0.02 + Math.random() * 0.03;
     const phase = Math.random() * Math.PI * 2;
-    particleSinPhase[i] = Math.sin(phase);
-    particleCosPhase[i] = Math.cos(phase);
+    particleSinPhaseBase[i] = Math.sin(phase);
+    particleCosPhaseBase[i] = Math.cos(phase);
   }
+
+  let motionScale = prefersReducedMotion ? 0.25 : 1;
+  let timeStep = 0.3 * motionScale;
+  let driftScale = 0.002 * motionScale;
+
+  function updateScaledParticles() {
+    for (let i = 0; i < particleCount; i++) {
+      particleVelScaled[i] = particleVelBase[i] * motionScale;
+      particleSinPhaseScaled[i] = particleSinPhaseBase[i] * driftScale;
+      particleCosPhaseScaled[i] = particleCosPhaseBase[i] * driftScale;
+    }
+  }
+  updateScaledParticles();
 
   particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
   const particleMat = new THREE.PointsMaterial({
@@ -405,6 +425,13 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     },
     updateFlake: (data: BuildResult, animate = true) => {
       currentFlakeData = data;
+
+      // Performance Optimization: Hoist static core updates out of the render loop.
+      // Position and rotation are constant for a given snowflake and only need to be set once.
+      const coreData = data.core;
+      coreMesh.position.set(coreData.position[0], coreData.position[1], coreData.position[2]);
+      coreMesh.rotation.set(coreData.rotation[0], coreData.rotation[1], coreData.rotation[2]);
+
       const requiredCount = data.matrices.length / 16;
 
       // Only recreate the InstancedMesh if the existing one is too small.
@@ -493,6 +520,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   function handleReducedMotionChange(e: MediaQueryListEvent) {
     prefersReducedMotion = e.matches;
+    motionScale = prefersReducedMotion ? 0.25 : 1;
+    timeStep = 0.3 * motionScale;
+    driftScale = 0.002 * motionScale;
+    updateScaledParticles();
+
     if (prefersReducedMotion) {
       qualityScale = Math.min(qualityScale, 0.7);
       sceneInterface.setAutoRotate(false);
@@ -527,9 +559,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     const now = timestamp ?? performance.now();
     timer.update(now);
     const delta = timer.getDelta();
-    const motionScale = prefersReducedMotion ? 0.25 : 1;
-    const timeStep = 0.3 * motionScale;
-    const driftScale = 0.002 * motionScale;
+
     time += delta * timeStep;
     adaptQuality(delta);
 
@@ -557,10 +587,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       let px = positions[idx3];
       let py = positions[idx3 + 1];
 
-      py -= particleVel[i] * motionScale;
+      py -= particleVelScaled[i];
       // Horizontal drift using pre-calculated phase components
-      const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
-      px += drift * driftScale;
+      // Performance Optimization: Using pre-scaled phase components (particleCosPhaseScaled and
+      // particleSinPhaseScaled) eliminates approximately 400 multiplications per frame.
+      const drift = sinTime * particleCosPhaseScaled[i] + cosTime * particleSinPhaseScaled[i];
+      px += drift;
 
       if (py < -10) {
         py = 10;
@@ -616,6 +648,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           let batchStart = -1;
           let batchCount = 0;
 
+          // Performance Optimization: Use additive index tracking for segIdx to avoid
+          // a multiplication (j * 96) in every iteration of the growth animation loop.
+          let segIdx = minAnimatedIndex * 96;
           for (let j = minAnimatedIndex; j < armLen; j++) {
             const delay = currentFlakeData.delays[j];
 
@@ -631,11 +666,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             // Replaces Math.min and redundant multiplications within the hot loop.
             const lutIdx = (thresholdScaled - delay) | 0;
 
-            // Inner loop: Apply scale to all 6 symmetry instances.
-            // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
-            // which results in contiguous memory writes and better cache locality.
-            const segIdx = j * 96; // 6 * 16 = 96
-
             // If this segment is fully grown, we batch the copy operation for contiguous segments.
             if (lutIdx >= LUT_SIZE_MINUS_ONE) {
               if (batchStart === -1) {
@@ -646,6 +676,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
               }
               if (j === minAnimatedIndex) minAnimatedIndex++;
               maxIndex = j;
+              segIdx += 96;
               continue;
             }
 
@@ -735,6 +766,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             target[segIdx + 88] = sm8 - sm8_1;
             target[segIdx + 89] = sm9 - sm9_1;
             target[segIdx + 90] = m10s;
+
+            segIdx += 96;
           }
 
           // Flush final batch if it exists (e.g. if loop completed with fully grown segments)
@@ -762,11 +795,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       }
 
       if (coreMesh && currentFlakeData) {
-        const data = currentFlakeData.core;
+        const coreData = currentFlakeData.core;
         const s = eased;
-        coreMesh.position.set(data.position[0], data.position[1], data.position[2]);
-        coreMesh.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
-        coreMesh.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
+        coreMesh.scale.set(coreData.scale[0] * s, coreData.scale[1] * s, coreData.scale[2] * s);
       }
 
       flakeHolder.position.y = (1 - eased) * -2;
