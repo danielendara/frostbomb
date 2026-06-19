@@ -86,6 +86,10 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   scene.updateFlake(result, animate);
   nakayaDiagram?.update(conditions.path);
 
+  if (canvas) {
+    canvas.setAttribute('aria-label', `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`);
+  }
+
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
   setText('seed-display', label);
   setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
@@ -209,11 +213,19 @@ async function toggleLabMode() {
   }
 
   if (isLabMode) {
+    if (!pane && labStatus) {
+      labStatus.textContent = 'LOADING...';
+      announce('Loading lab controls');
+    }
     await ensurePane();
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
+    if (labStatus) {
+      labStatus.textContent = 'ON';
+    }
     updateFromPane(false);
   } else {
     grow(undefined, true);
+    if (labToggle) labToggle.focus();
   }
 }
 
@@ -224,6 +236,7 @@ function toggleFieldGuide() {
   if (fieldGuide) {
     fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
     if (isGuideOpen) fieldGuide.focus();
+    else if (guideToggle) guideToggle.focus();
   }
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
 }
@@ -291,9 +304,10 @@ nakayaCanvas?.addEventListener('keydown', (e) => {
 function updateFromPane(shouldAnnounce = false) {
   const t = labParams.temperature;
   const ss = labParams.supersaturation / 100;
+  const habit = getHabit(t, ss);
 
   if (shouldAnnounce) {
-    announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labParams.supersaturation.toFixed(0)}%`);
+    announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labParams.supersaturation.toFixed(0)}%: ${habitLabel[habit]}`);
   }
 
   const conditions: GrowthConditions = {
@@ -388,6 +402,7 @@ function togglePinkMode() {
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle('pink-mode', enabled);
+  announce(`Pink mode ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 btnPink?.addEventListener('click', togglePinkMode);
@@ -401,6 +416,7 @@ function togglePrismMode() {
     btnPrism.classList.toggle('active', enabled);
   }
   scene.setPrismMode(enabled);
+  announce(`Prism mode ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 btnPrism?.addEventListener('click', togglePrismMode);
@@ -418,10 +434,17 @@ function toggleAutoRotate() {
     btnRotate.classList.toggle('active', enabled);
   }
   scene.setAutoRotate(enabled);
+  announce(`Auto-rotation ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
-document.getElementById('btn-reset')?.addEventListener('click', () => scene.resetView());
+
+function resetView() {
+  scene.resetView();
+  announce('View reset to center');
+}
+
+document.getElementById('btn-reset')?.addEventListener('click', resetView);
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -451,7 +474,7 @@ window.addEventListener('keydown', (e) => {
     'arrowright': () => (e.preventDefault(), scene.rotateView(0.1, 0)),
     'r': () => (handleRefresh(), visualPress('refresh')),
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
-    'v': () => (scene.resetView(), visualPress('btn-reset')),
+    'v': () => (resetView(), visualPress('btn-reset')),
     'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     'l': () => (toggleLabMode(), visualPress('lab-toggle')),
