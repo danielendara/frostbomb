@@ -90,6 +90,12 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
     canvas.setAttribute('aria-label', `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`);
   }
 
+  document.title = `${habitLabel[conditions.habit]} — frostbomb`;
+  const btnSeed = document.getElementById('btn-seed');
+  if (btnSeed) {
+    btnSeed.setAttribute('aria-label', `Copy share link for seed ${label}`);
+  }
+
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
   setText('seed-display', label);
   setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
