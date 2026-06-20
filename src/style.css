@@ -62,6 +62,7 @@ body.pink-mode {
   z-index: 10;
   pointer-events: none;
   mix-blend-mode: difference;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .wordmark {
@@ -165,6 +166,7 @@ body.pink-mode {
   font-family: var(--mono);
   font-size: 0.72rem;
   animation: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .field-notes__header {
@@ -387,6 +389,7 @@ body.pink-mode {
   font-style: italic;
   font-family: var(--display);
   font-size: 0.85rem;
+  cursor: help;
 }
 
 .field-notes__row dd {
@@ -408,6 +411,7 @@ body.pink-mode {
   align-items: flex-end;
   gap: 1rem;
   animation: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .actions {
@@ -537,6 +541,11 @@ body.pink-mode {
 }
 
 /* --- utility --- */
+.ui-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

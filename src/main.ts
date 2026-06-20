@@ -15,6 +15,7 @@ const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
 let isLabMode = false;
 let isGuideOpen = false;
+let isUIHidden = false;
 let currentConditions: GrowthConditions;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
@@ -103,13 +104,12 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   setText('stat-habit', habitLabel[conditions.habit]);
   setText('stat-branches', `${result.branchCount}`);
 
-  if (isLabMode) {
-    labParams.habit = habitLabel[conditions.habit];
-    labParams.temperature = conditions.temperatureC;
-    labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
-    labParams.supersaturation = conditions.supersaturation * 100;
-    pane?.refresh();
-  }
+  // Always sync labParams so Lab Mode starts from the current snowflake's conditions
+  labParams.habit = habitLabel[conditions.habit];
+  labParams.temperature = conditions.temperatureC;
+  labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
+  labParams.supersaturation = conditions.supersaturation * 100;
+  pane?.refresh();
 }
 
 function setText(id: string, value: string) {
@@ -241,8 +241,12 @@ function toggleFieldGuide() {
   if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
   if (fieldGuide) {
     fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
-    if (isGuideOpen) fieldGuide.focus();
-    else if (guideToggle) guideToggle.focus();
+    if (isGuideOpen) {
+      fieldGuide.scrollTop = 0;
+      fieldGuide.focus();
+    } else if (guideToggle) {
+      guideToggle.focus();
+    }
   }
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
 }
@@ -445,6 +449,19 @@ function toggleAutoRotate() {
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
 
+function toggleUI(forceShow?: boolean) {
+  isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
+
+  const uiElements = document.querySelectorAll('.masthead, .field-notes, .footer');
+  uiElements.forEach((el) => el.classList.toggle('ui-hidden', isUIHidden));
+
+  if (isUIHidden) {
+    announce('UI hidden. Press H or Esc to show.');
+  } else {
+    announce('UI visible');
+  }
+}
+
 function resetView() {
   scene.resetView();
   announce('View reset to center');
@@ -462,8 +479,13 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape') {
     if (isGuideOpen) {
       toggleFieldGuide();
+      return;
     } else if (isLabMode) {
       toggleLabMode();
+      return;
+    } else if (isUIHidden) {
+      toggleUI(true);
+      return;
     }
   }
 
@@ -484,6 +506,7 @@ window.addEventListener('keydown', (e) => {
     'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     'l': () => (toggleLabMode(), visualPress('lab-toggle')),
+    'h': () => toggleUI(),
     'p': () => (togglePinkMode(), visualPress('btn-pink')),
     'm': () => (togglePrismMode(), visualPress('btn-prism')),
     's': () => (saveSnowflake(), visualPress('btn-save')),
