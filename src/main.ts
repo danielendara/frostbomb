@@ -452,7 +452,7 @@ btnRotate?.addEventListener('click', toggleAutoRotate);
 function toggleUI(forceShow?: boolean) {
   isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
 
-  const uiElements = document.querySelectorAll('.masthead, .field-notes, .footer');
+  const uiElements = document.querySelectorAll('.masthead, .field-notes, .footer, .lab-controls');
   uiElements.forEach((el) => el.classList.toggle('ui-hidden', isUIHidden));
 
   if (isUIHidden) {
