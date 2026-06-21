@@ -91,6 +91,11 @@ body.pink-mode {
   font-style: normal;
   font-weight: 600;
   margin: 0 0.05em;
+  transition: text-shadow 0.3s ease;
+}
+
+.wordmark-link:hover .wordmark__accent {
+  text-shadow: 0 0 8px var(--accent);
 }
 
 .wordmark__subtitle {
@@ -139,6 +144,15 @@ body.pink-mode {
 .seed-btn:focus-visible {
   outline: 1px solid var(--accent);
   background: rgba(230, 237, 245, 0.1);
+}
+
+.seed-btn:active {
+  transform: scale(0.97);
+}
+
+.seed-btn__prefix {
+  color: var(--ink-dim);
+  margin-right: 0.1rem;
 }
 
 .seed-btn__icon {
