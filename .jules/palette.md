@@ -40,3 +40,15 @@
 ## 2026-06-25 - Bridging Async Latency with Loading Announcements
 **Learning:** When a UI component loads asynchronously (e.g., Lab Mode controls), "silent" latency can make the interface seem unresponsive. Providing a visual "LOADING..." state paired with an ARIA live announcement prevents user confusion during the transition.
 **Action:** Implement visual status indicators and `announce()` calls during the `await` period of dynamic imports or heavy initialization.
+
+## 2026-07-02 - Micro-Delight via Brand Accents
+**Learning:** Subtle brand interactions, like a transition-smoothed glow on a wordmark accent during hover, can elevate the perceived quality of an application without distracting from the core experience. These "micro-delights" reward user exploration.
+**Action:** Use CSS transitions and `text-shadow` for non-functional brand elements to create a more responsive and "alive" interface.
+
+## 2026-07-02 - Expanding Interactive Hit Areas
+**Learning:** Adjacent static labels (like "Vol." for a seed code) are often mentally associated with the interactive element by users. Moving these labels *inside* the button increases the clickable surface area and reduces "missed" clicks, especially on mobile or for users with motor impairments.
+**Action:** Wrap descriptive prefixes or suffixes inside the `<button>` element to maximize the target hit area.
+
+## 2026-07-02 - Accessible Simulation Updates
+**Learning:** In procedural simulations where numbers (like branch counts) change frequently, visual updates alone are insufficient for screen reader users. Adding `aria-live="polite"` to these stat elements ensures that progress and complexity changes are communicated without interrupting the user's primary focus.
+**Action:** Apply ARIA live regions to dynamic simulation metrics that update in response to user actions or automated growth.
