@@ -112,3 +112,7 @@
 **Learning:** In deep recursive procedural generation, property access overhead (e.g., `params.thickness`) and function call/bind overhead (e.g., `rand.next.bind()`) can accumulate significantly. Destructuring parameters at the start of recursion and exposing the raw PRNG function as a public property allows for a leaner execution path.
 **Action:** Use parameter destructuring in hot recursive functions to minimize property lookups. Expose internal state like `rng` in utility classes to bypass method wrapper overhead in high-frequency paths.
 **Impact:** Reduced average `buildSnowflake` time for complex dendrites by ~10% (0.0403ms to 0.0368ms), totaling a ~54% cumulative improvement from the original baseline.
+
+## 2026-06-20 - [Additive Tracking Initialization]
+**Learning:** When replacing linear indexing (e.g., `i * step`) with additive tracking (`tracker += step`) in loops that don't start at zero (e.g., `for (let i = 1; ...)`), the tracker must be initialized to the value corresponding to the loop's start condition. In the snowflake side-branch loop, initializing `pIdxFloat` to `dist * pathScale` before the first `currentDist += stepDist` ensures the first branch at `i=1` samples the correct path parameters.
+**Action:** Always verify that additive trackers are synchronized with their discrete counterparts at the first iteration of a loop.

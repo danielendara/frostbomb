@@ -47,6 +47,16 @@ const SEGMENT_STRIDE = 16;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
 const DELAY_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
 const SEGMENT_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
+const MATRICES_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * 96);
+for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
+  const o = i * 96;
+  MATRICES_BUFFER[o + 15] = 1;
+  MATRICES_BUFFER[o + 31] = 1;
+  MATRICES_BUFFER[o + 47] = 1;
+  MATRICES_BUFFER[o + 63] = 1;
+  MATRICES_BUFFER[o + 79] = 1;
+  MATRICES_BUFFER[o + 95] = 1;
+}
 let currentSegmentCount = 0;
 
 // Performance Optimization: Global noise instance avoids building a permutation table every time.
@@ -163,6 +173,11 @@ export function buildSnowflake(
     let pointY = startY;
     let currentDist = dist;
 
+    // Performance Optimization: Use additive tracking for atmospheric path sampling to avoid
+    // multiplications and divisions in the hot loop.
+    let pIdxFloat = dist * pathScale;
+    const pIdxStep = stepDist * pathScale;
+
     // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
     const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
     const probStep = sideBranchProb * lut04;
@@ -184,6 +199,7 @@ export function buildSnowflake(
       pointX += stepX;
       pointY += stepY;
       currentDist += stepDist;
+      pIdxFloat += pIdxStep;
 
       // Side branches get less likely near the tip
       // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
@@ -203,10 +219,8 @@ export function buildSnowflake(
           const v2 = 0.5 * v * v;
           const cosA = cosAngle - v * sinAngle - v2 * cosAngle;
           const sinA = sinAngle + v * cosAngle - v2 * sinAngle;
-          const sideDist = currentDist;
-
           // Optimization: Pre-sample parameters for the side branch only when it's created.
-          const pIdx = (sideDist * pathScale) | 0;
+          const pIdx = pIdxFloat | 0;
           const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
           const nextParams = pathParams[pathIdx];
 
@@ -222,7 +236,7 @@ export function buildSnowflake(
               pointY,
               dxca - dysa,
               dxsa + dyca,
-              sideDist,
+              currentDist,
               sideLen,
               nextDepth,
               nextParams,
@@ -235,7 +249,7 @@ export function buildSnowflake(
               pointY,
               dxca + dysa,
               -dxsa + dyca,
-              sideDist,
+              currentDist,
               sideLen,
               nextDepth,
               nextParams,
@@ -301,8 +315,9 @@ export function buildSnowflake(
   // intermediate allocations. We return a slice (copy) to ensure that the returned data
   // is owned by the caller and not overwritten by subsequent buildSnowflake calls.
   const delays = new Float32Array(armLen);
-  // Float32Array is pre-filled with zeros, allowing us to skip multiple writes in the hot loop.
-  const matrices = new Float32Array(armLen * 96); // 6 * 16 = 96
+  // Performance Optimization: Use a shared scratchpad buffer and slice() to return the result.
+  // slice() uses memcpy and avoids zero-filling the buffer if pre-managed.
+  const matrices = MATRICES_BUFFER.slice(0, armLen * 96);
 
   let offset = 0;
   for (let j = 0; j < armLen; j++) {
@@ -344,7 +359,6 @@ export function buildSnowflake(
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
     matrices[offset + 14] = m14;
-    matrices[offset + 15] = 1;
 
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
@@ -367,7 +381,6 @@ export function buildSnowflake(
     matrices[offset + 28] = m12_1;
     matrices[offset + 29] = m13_1;
     matrices[offset + 30] = m14;
-    matrices[offset + 31] = 1;
 
     // Arm 2 (120°) = Arm 1 - Arm 0
     const m0_2 = m0_1 - m0;
@@ -390,7 +403,6 @@ export function buildSnowflake(
     matrices[offset + 44] = m12_2;
     matrices[offset + 45] = m13_2;
     matrices[offset + 46] = m14;
-    matrices[offset + 47] = 1;
 
     // Arm 3 (180°) = -Arm 0
     const m0_3 = -m0;
@@ -413,7 +425,6 @@ export function buildSnowflake(
     matrices[offset + 60] = m12_3;
     matrices[offset + 61] = m13_3;
     matrices[offset + 62] = m14;
-    matrices[offset + 63] = 1;
 
     // Arm 4 (240°) = -Arm 1
     const m0_4 = -m0_1;
@@ -436,7 +447,6 @@ export function buildSnowflake(
     matrices[offset + 76] = m12_4;
     matrices[offset + 77] = m13_4;
     matrices[offset + 78] = m14;
-    matrices[offset + 79] = 1;
 
     // Arm 5 (300°) = -Arm 2
     const m0_5 = -m0_2;
@@ -459,7 +469,6 @@ export function buildSnowflake(
     matrices[offset + 92] = m12_5;
     matrices[offset + 93] = m13_5;
     matrices[offset + 94] = m14;
-    matrices[offset + 95] = 1;
 
     offset += 96;
   }

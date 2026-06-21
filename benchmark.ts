@@ -17,7 +17,7 @@ for (let i = 0; i < 100; i++) {
 }
 
 const start = performance.now();
-const iterations = 1000;
+const iterations = 10000;
 for (let i = 0; i < iterations; i++) {
     buildSnowflake(conditions as any, rand);
 }
