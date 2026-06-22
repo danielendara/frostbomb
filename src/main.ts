@@ -378,8 +378,8 @@ document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 document.getElementById('btn-seed')?.addEventListener('click', copyLink);
 
 async function saveSnowflake() {
-  setTemporaryLabel('btn-save', 'Saved!', '✓');
-  announce('Snowflake saved as PNG');
+  setTemporaryLabel('btn-save', 'Saving...', '⌛');
+  announce('Saving snowflake as PNG');
 
   // Delay to ensure UI updates before heavy rendering
   setTimeout(() => {
@@ -392,6 +392,9 @@ async function saveSnowflake() {
       link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
       link.href = dataUrl;
       link.click();
+
+      setTemporaryLabel('btn-save', 'Saved!', '✓');
+      announce('Snowflake saved');
     } catch (err) {
       console.error('Failed to save snowflake:', err);
       setTemporaryLabel('btn-save', 'Failed', '✕', true);
