@@ -98,6 +98,18 @@ body.pink-mode {
   text-shadow: 0 0 8px var(--accent);
 }
 
+@keyframes prism-cycle {
+  0% { color: hsl(0, 80%, 75%); text-shadow: 0 0 12px hsla(0, 80%, 75%, 0.4); }
+  25% { color: hsl(90, 80%, 75%); text-shadow: 0 0 12px hsla(90, 80%, 75%, 0.4); }
+  50% { color: hsl(180, 80%, 75%); text-shadow: 0 0 12px hsla(180, 80%, 75%, 0.4); }
+  75% { color: hsl(270, 80%, 75%); text-shadow: 0 0 12px hsla(270, 80%, 75%, 0.4); }
+  100% { color: hsl(360, 80%, 75%); text-shadow: 0 0 12px hsla(360, 80%, 75%, 0.4); }
+}
+
+.prism-mode .wordmark__accent {
+  animation: prism-cycle 10s linear infinite;
+}
+
 .wordmark__subtitle {
   font-family: var(--mono);
   font-size: 0.65rem;
