@@ -87,6 +87,7 @@ body.pink-mode {
 }
 
 .wordmark__accent {
+  display: inline-block;
   color: var(--accent);
   font-style: normal;
   font-weight: 600;
