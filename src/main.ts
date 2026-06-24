@@ -191,6 +191,12 @@ function handleRefresh(e?: Event) {
     void (dot as HTMLElement).offsetWidth;
     dot.classList.add('animate-spin-once');
   }
+  const refreshIcon = document.querySelector('.refresh__icon');
+  if (refreshIcon) {
+    refreshIcon.classList.remove('animate-spin-once');
+    void (refreshIcon as HTMLElement).offsetWidth;
+    refreshIcon.classList.add('animate-spin-once');
+  }
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
   announce(`New snowflake grown: a ${habitLabel[currentConditions.habit]}`);
@@ -210,7 +216,10 @@ async function toggleLabMode() {
   isLabMode = !isLabMode;
   const toggleGeneration = ++labToggleGeneration;
 
-  if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
+  if (labToggle) {
+    labToggle.setAttribute('aria-pressed', isLabMode.toString());
+    labToggle.setAttribute('aria-expanded', isLabMode.toString());
+  }
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
@@ -238,7 +247,10 @@ async function toggleLabMode() {
 function toggleFieldGuide() {
   isGuideOpen = !isGuideOpen;
 
-  if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
+  if (guideToggle) {
+    guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
+    guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
+  }
   if (fieldGuide) {
     fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
     if (isGuideOpen) {
