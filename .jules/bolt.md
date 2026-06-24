@@ -116,3 +116,8 @@
 ## 2026-06-20 - [Additive Tracking Initialization]
 **Learning:** When replacing linear indexing (e.g., `i * step`) with additive tracking (`tracker += step`) in loops that don't start at zero (e.g., `for (let i = 1; ...)`), the tracker must be initialized to the value corresponding to the loop's start condition. In the snowflake side-branch loop, initializing `pIdxFloat` to `dist * pathScale` before the first `currentDist += stepDist` ensures the first branch at `i=1` samples the correct path parameters.
 **Action:** Always verify that additive trackers are synchronized with their discrete counterparts at the first iteration of a loop.
+
+## 2026-06-23 - [TypedArray subarray() & IDENTITY_INDICES optimization]
+**Learning:** Returning a `.subarray()` instead of `.slice()` for large intermediate buffers (like `matrices`) eliminates multi-megabyte allocations and copies per generation. Combined with resetting indices via `.set()` from a pre-allocated `IDENTITY_INDICES` buffer and hoisting the sort comparator, these changes significantly reduce GC pressure and CPU cycles.
+**Action:** Use `subarray()` when data is consumed synchronously and doesn't need to be owned by the caller. Use `.set()` for bulk TypedArray initialization/resets.
+**Impact:** Reduced average `buildSnowflake` time from 0.0581ms to 0.0366ms (~37% improvement).

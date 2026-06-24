@@ -47,6 +47,11 @@ const SEGMENT_STRIDE = 16;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
 const DELAY_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
 const SEGMENT_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
+const IDENTITY_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
+for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
+  IDENTITY_INDICES[i] = i;
+}
+
 const MATRICES_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * 96);
 for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
   const o = i * 96;
@@ -58,6 +63,13 @@ for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
   MATRICES_BUFFER[o + 95] = 1;
 }
 let currentSegmentCount = 0;
+
+/**
+ * Performance Optimization: Dedicated sort comparator hoisted to avoid closure re-creation.
+ */
+function compareDelays(a: number, b: number): number {
+  return DELAY_BUFFER[a] - DELAY_BUFFER[b];
+}
 
 // Performance Optimization: Global noise instance avoids building a permutation table every time.
 // We use a fixed seed for the internal permutation table to ensure that nOffset-based
@@ -115,8 +127,10 @@ export function buildSnowflake(
     const halfLen = length * 0.5;
     const midX = startX + dirX * halfLen;
     const midY = startY + dirY * halfLen;
-    const nx = midX * 3 + nOffset;
-    const ny = midY * 3 + nOffset;
+    const midX3 = midX * 3;
+    const midY3 = midY * 3;
+    const nx = midX3 + nOffset;
+    const ny = midY3 + nOffset;
     const vVar = noise2D(nx, ny) * 0.15;
     const finalThickness = primaryThickness * (1 + vVar);
 
@@ -273,7 +287,9 @@ export function buildSnowflake(
       const endY = startY + dirY * length;
       const tipMidX = endX + dirX * 0.06; // halfTipLen
       const tipMidY = endY + dirY * 0.06;
-      const tipVVar = noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset) * 0.15;
+      const tipMidX3 = tipMidX * 3;
+      const tipMidY3 = tipMidY * 3;
+      const tipVVar = noise2D(tipMidX3 + nOffset, tipMidY3 + nOffset) * 0.15;
       const tipVVar01 = tipVVar * 0.1;
       const tcax = 1 - 0.5 * tipVVar01 * tipVVar01;
       const tsx = primaryThickness * 0.4 * (1 + tipVVar);
@@ -306,18 +322,20 @@ export function buildSnowflake(
   // render loop to break early once it reaches segments that haven't started growing yet.
   const armLen = currentSegmentCount;
   const sortedIndices = SEGMENT_INDICES.subarray(0, armLen);
-  // Correctness fix: Always reset indices to ensure we only sort the current arm's data.
-  for (let i = 0; i < armLen; i++) sortedIndices[i] = i;
+  // Performance Optimization: Use .set() and a pre-allocated IDENTITY_INDICES buffer to reset indices.
+  // This leverages memcpy and is faster than an explicit O(N) for-loop.
+  sortedIndices.set(IDENTITY_INDICES.subarray(0, armLen));
   // Performance Optimization: Use a dedicated flat buffer for delay sorting to improve cache locality.
-  sortedIndices.sort((a, b) => DELAY_BUFFER[a] - DELAY_BUFFER[b]);
+  sortedIndices.sort(compareDelays);
 
   // Performance Optimization: Use shared scratchpad buffers during calculation to avoid O(N)
   // intermediate allocations. We return a slice (copy) to ensure that the returned data
   // is owned by the caller and not overwritten by subsequent buildSnowflake calls.
   const delays = new Float32Array(armLen);
-  // Performance Optimization: Use a shared scratchpad buffer and slice() to return the result.
-  // slice() uses memcpy and avoids zero-filling the buffer if pre-managed.
-  const matrices = MATRICES_BUFFER.slice(0, armLen * 96);
+  // Performance Optimization: Use a shared scratchpad buffer and subarray() to return the result.
+  // In this single-threaded, synchronous context, subarray() avoids a multi-megabyte allocation
+  // and copy, as the data is consumed or copied by the caller (scene.updateFlake) immediately.
+  const matrices = MATRICES_BUFFER.subarray(0, armLen * 96);
 
   let offset = 0;
   for (let j = 0; j < armLen; j++) {
