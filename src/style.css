@@ -221,7 +221,7 @@ body.pink-mode {
 .lab-toggle {
   background: transparent;
   border: none;
-  color: var(--ink-faint);
+  color: var(--ink-dim);
   font-family: var(--mono);
   font-size: 0.6rem;
   text-transform: uppercase;
@@ -256,7 +256,7 @@ body.pink-mode {
 }
 
 .lab-control label {
-  color: var(--ink-faint);
+  color: var(--ink-dim);
   font-size: 0.65rem;
 }
 
@@ -411,7 +411,7 @@ body.pink-mode {
 }
 
 .field-notes__row dt {
-  color: var(--ink-faint);
+  color: var(--ink-dim);
   text-transform: lowercase;
   font-style: italic;
   font-family: var(--display);
