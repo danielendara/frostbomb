@@ -121,3 +121,8 @@
 **Learning:** Returning a `.subarray()` instead of `.slice()` for large intermediate buffers (like `matrices`) eliminates multi-megabyte allocations and copies per generation. Combined with resetting indices via `.set()` from a pre-allocated `IDENTITY_INDICES` buffer and hoisting the sort comparator, these changes significantly reduce GC pressure and CPU cycles.
 **Action:** Use `subarray()` when data is consumed synchronously and doesn't need to be owned by the caller. Use `.set()` for bulk TypedArray initialization/resets.
 **Impact:** Reduced average `buildSnowflake` time from 0.0581ms to 0.0366ms (~37% improvement).
+
+## 2026-06-24 - [GPU Update Pruning & Symmetry Arithmetic Overhead]
+**Learning:** In Three.js, bulk matrix assignments via `.set()` on an `InstancedMesh.instanceMatrix.array` do not automatically prune GPU uploads to the modified range. Without an explicit `addUpdateRange()`, the entire pre-allocated buffer is uploaded, wasting PCIe bandwidth. Conversely, attempting to derive 6-fold hexagonal symmetry components via arithmetic (12 multiplications per segment) in the render loop is less efficient than sequential `TypedArray` reads (6 reads) due to modern CPU prefetching and the high cost of manual math relative to cache-local memory access.
+**Action:** Use `addUpdateRange(0, count)` in all bulk matrix update paths (including static regeneration and animation completion) to prune GPU traffic. Favor sequential memory reads over manual trigonometric derivation for symmetry components in hot loops.
+**Impact:** Prunes GPU uploads to active segments only, reducing bus traffic during interactive "Lab Mode" updates. Maintains render loop efficiency by avoiding redundant arithmetic.

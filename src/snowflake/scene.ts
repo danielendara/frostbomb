@@ -459,7 +459,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         // Fast-path for non-animated updates (e.g. Lab Mode): directly copy the pre-computed
         // matrices to the GPU buffer and skip the basis-zeroing loop.
         branchMesh.instanceMatrix.array.set(data.matrices);
-        branchMesh.instanceMatrix.clearUpdateRanges();
+        if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+          branchMesh.instanceMatrix.clearUpdateRanges();
+          branchMesh.instanceMatrix.addUpdateRange(0, data.matrices.length);
+        }
         branchMesh.instanceMatrix.needsUpdate = true;
         minAnimatedIndex = data.armCount;
       } else {
@@ -633,7 +636,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         if (eased === 1) {
           // Fast-path for finished animation: bulk copy pre-computed matrices
           branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
-          branchMesh.instanceMatrix.clearUpdateRanges();
+          if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+            branchMesh.instanceMatrix.clearUpdateRanges();
+            branchMesh.instanceMatrix.addUpdateRange(0, currentFlakeData.matrices.length);
+          }
           minAnimatedIndex = currentFlakeData.armCount;
         } else {
           // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
