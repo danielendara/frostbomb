@@ -1,0 +1,3 @@
+## 2025-05-14 - [A11y & Tooltip Discoverability]
+**Learning:** Keyboard shortcuts provided in `title` attributes are invisible to screen reader users; they should be explicitly declared using `aria-keyshortcuts`. Additionally, tooltips on small text labels (like definition lists) have poor discoverability; expanding the hover target to the entire row container and adding `cursor: help` significantly improves the interaction.
+**Action:** Always map visual shortcut hints to `aria-keyshortcuts`. For informational tooltips, use container-level triggers with subtle background transitions and `cursor: help` to signal interactivity.
