@@ -63,6 +63,7 @@ for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
   MATRICES_BUFFER[o + 79] = 1;
   MATRICES_BUFFER[o + 95] = 1;
 }
+
 let currentSegmentCount = 0;
 
 /**
@@ -91,10 +92,18 @@ export function buildSnowflake(
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
+  // Performance: Using a local array is faster than conditions.path.map() and safer
+  // than a global shared buffer.
+  const pathLen = conditions.path.length;
+  const pathParams = new Array<Params>(pathLen);
+  for (let i = 0; i < pathLen; i++) {
+    const p = conditions.path[i];
+    pathParams[i] = paramsFor(p.temp, p.ss);
+  }
+
   // Optimization: Pre-calculate path sampling scale to save multiplications in recursion.
-  const pathScale = INV_MAX_DIST * pathParams.length;
-  const maxPathIdx = pathParams.length - 1;
+  const pathScale = INV_MAX_DIST * pathLen;
+  const maxPathIdx = pathLen - 1;
 
   // Performance Optimization: Capture invariant parameters and the RNG via closure in a local
   // recursive function. This reduces the number of arguments passed in recursion from 12 to 7,
@@ -504,8 +513,31 @@ interface Params {
   hasTip: boolean;
 }
 
+// Performance Optimization: Cache for static Params to avoid repeated allocations.
+const PARAMS_CACHE: Partial<Record<Habit, Params>> = {};
+
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
+
+  if (habit === 'stellar_dendrite') {
+    return {
+      primaryLength: 2.8,
+      primaryThickness: 0.048,
+      sideBranchProb: 0.55 + ss * 0.25,
+      sideBranchDecay: 0.6,
+      sideBranchAngle: Math.PI / 3,
+      cosAngle: 0.5,
+      sinAngle: 0.86602540378,
+      maxDepth: 3,
+      habit,
+      hasRidges: true,
+      hasTip: true,
+    };
+  }
+
+  const cached = PARAMS_CACHE[habit];
+  if (cached) return cached;
+
   let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
   switch (habit) {
     case 'fernlike_dendrite':
@@ -516,19 +548,6 @@ function paramsFor(temp: number, ss: number): Params {
         sideBranchDecay: 0.68,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 4,
-        habit,
-        hasRidges: true,
-        hasTip: true,
-      };
-      break;
-    case 'stellar_dendrite':
-      p = {
-        primaryLength: 2.8,
-        primaryThickness: 0.048,
-        sideBranchProb: 0.55 + ss * 0.25,
-        sideBranchDecay: 0.6,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 3,
         habit,
         hasRidges: true,
         hasTip: true,
@@ -612,11 +631,14 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
   }
-  return {
+
+  const result: Params = {
     ...p,
     cosAngle: Math.cos(p.sideBranchAngle),
     sinAngle: Math.sin(p.sideBranchAngle),
   };
+  PARAMS_CACHE[habit] = result;
+  return result;
 }
 
 // Internal utility functions (maintained for compatibility and internal use)
