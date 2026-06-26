@@ -45,6 +45,13 @@
 **Learning:** Subtle brand interactions, like a transition-smoothed glow on a wordmark accent during hover, can elevate the perceived quality of an application without distracting from the core experience. These "micro-delights" reward user exploration.
 **Action:** Use CSS transitions and `text-shadow` for non-functional brand elements to create a more responsive and "alive" interface.
 
+## 2026-06-25 - Contrast and Contextual Clarity
+**Learning:** Using overly faint colors (e.g., `--ink-faint` at ~2.8:1) for informative labels severely impacts readability and accessibility. Moving to a more robust "dim" color (~6.4:1) maintains the visual hierarchy while meeting WCAG AA standards.
+**Action:** Avoid using colors with contrast below 4.5:1 for any text that provides essential context or labels.
+
+**Learning:** Redundant ARIA labels on visual-only decorative indicators (like axis arrows on a diagram already described by a parent `aria-label`) clutter the screen reader experience. Using `aria-hidden="true"` on these sub-elements streamlines the auditory interface.
+**Action:** Audit complex interactive components for redundant text announcements and hide purely visual signifiers from the AX tree.
+
 ## 2026-07-02 - Expanding Interactive Hit Areas
 **Learning:** Adjacent static labels (like "Vol." for a seed code) are often mentally associated with the interactive element by users. Moving these labels *inside* the button increases the clickable surface area and reduces "missed" clicks, especially on mobile or for users with motor impairments.
 **Action:** Wrap descriptive prefixes or suffixes inside the `<button>` element to maximize the target hit area.
