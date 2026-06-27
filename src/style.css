@@ -415,6 +415,10 @@ body.pink-mode {
   padding: 0 0.25rem;
 }
 
+.field-notes__row:hover {
+  background-color: rgba(230, 237, 245, 0.05);
+}
+
 .field-notes__row:hover dt {
   color: var(--ink);
 }
@@ -507,6 +511,14 @@ body.pink-mode {
 
 .action-btn--toggle:not(.active) {
   opacity: 0.6;
+}
+
+.action-btn__icon {
+  display: inline-block;
+}
+
+#btn-rotate.active .action-btn__icon {
+  animation: slow-spin 10s linear infinite;
 }
 
 .btn--error {
@@ -615,8 +627,13 @@ body.pink-mode {
   animation: dot-spin 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@keyframes slow-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .btn-press, .animate-spin-once {
+  .btn-press, .animate-spin-once, #btn-rotate.active .action-btn__icon {
     animation: none !important;
   }
   .action-btn:active, .refresh:active {
