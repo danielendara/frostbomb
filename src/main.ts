@@ -117,7 +117,7 @@ function setText(id: string, value: string) {
   if (el) el.textContent = value;
 }
 
-function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isError = false) {
+function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isError = false, isSuccess = false) {
   const btn = document.getElementById(id);
   if (!btn) return;
 
@@ -139,8 +139,13 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
 
   if (isError) {
     btn.classList.add('btn--error');
+    btn.classList.remove('btn--success');
+  } else if (isSuccess) {
+    btn.classList.add('btn--success');
+    btn.classList.remove('btn--error');
   } else {
     btn.classList.remove('btn--error');
+    btn.classList.remove('btn--success');
   }
 
   const existingTimeout = btn.getAttribute('data-timeout-id');
@@ -161,6 +166,7 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
       }
     }
     btn.classList.remove('btn--error');
+    btn.classList.remove('btn--success');
     btn.removeAttribute('data-timeout-id');
   }, 2000);
 
@@ -230,9 +236,11 @@ async function toggleLabMode() {
   if (isLabMode) {
     if (!pane && labStatus) {
       labStatus.textContent = 'LOADING...';
+      if (labToggle instanceof HTMLButtonElement) labToggle.disabled = true;
       announce('Loading lab controls');
     }
     await ensurePane();
+    if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
     if (labStatus) {
       labStatus.textContent = 'ON';
@@ -348,9 +356,9 @@ async function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
 
   // Immediate visual feedback for better perceived performance
-  setTemporaryLabel('btn-copy', 'Copied!', '✓');
-  setTemporaryLabel('btn-seed', 'Copied!', '✓');
-  announce('Link copied to clipboard');
+  setTemporaryLabel('btn-copy', 'Copied!', '✓', false, true);
+  setTemporaryLabel('btn-seed', 'Copied!', '✓', false, true);
+  announce(`Link copied for seed ${currentSeedLabel}`);
 
   // Small delay to ensure UI has time to paint before potentially blocking clipboard operations
   setTimeout(async () => {
@@ -405,7 +413,7 @@ async function saveSnowflake() {
       link.href = dataUrl;
       link.click();
 
-      setTemporaryLabel('btn-save', 'Saved!', '✓');
+      setTemporaryLabel('btn-save', 'Saved!', '✓', false, true);
       announce('Snowflake saved');
     } catch (err) {
       console.error('Failed to save snowflake:', err);
