@@ -205,7 +205,7 @@ function handleRefresh(e?: Event) {
   }
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
-  announce(`New snowflake grown: a ${habitLabel[currentConditions.habit]}`);
+  announce(`New snowflake grown: ${habitLabel[currentConditions.habit]}`);
 }
 
 document.getElementById('refresh')?.addEventListener('click', handleRefresh);
@@ -227,7 +227,7 @@ async function toggleLabMode() {
     labToggle.setAttribute('aria-expanded', isLabMode.toString());
   }
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
-  if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
+  if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
   if (labStatus) {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
     labStatus.style.color = isLabMode ? 'var(--accent)' : 'var(--ink-dim)';
@@ -271,7 +271,7 @@ function toggleFieldGuide() {
       guideToggle.focus();
     }
   }
-  if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
+  if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
