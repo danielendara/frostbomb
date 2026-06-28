@@ -239,8 +239,11 @@ async function toggleLabMode() {
       if (labToggle instanceof HTMLButtonElement) labToggle.disabled = true;
       announce('Loading lab controls');
     }
-    await ensurePane();
-    if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
+    try {
+      await ensurePane();
+    } finally {
+      if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
+    }
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
     if (labStatus) {
       labStatus.textContent = 'ON';

@@ -298,11 +298,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     const active = entryActive.toString();
     const progress = entryState.progress.toFixed(3);
     // Only update DOM if values changed to avoid redundant work and test instability
-    if (canvas.dataset.entryActive !== active) {
-      canvas.dataset.entryActive = active;
+    if (canvas.getAttribute('data-entry-active') !== active) {
+      canvas.setAttribute('data-entry-active', active);
     }
-    if (canvas.dataset.entryProgress !== progress) {
-      canvas.dataset.entryProgress = progress;
+    if (canvas.getAttribute('data-entry-progress') !== progress) {
+      canvas.setAttribute('data-entry-progress', progress);
     }
   }
   syncEntryState();
