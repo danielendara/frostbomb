@@ -293,16 +293,21 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const INV_ENTRY_DURATION = 1 / ENTRY_DURATION_MS;
   let entryStartTime = 0;
   let entryActive = false;
+  let lastEntryActive: string | null = null;
+  let lastEntryProgress: string | null = null;
 
   function syncEntryState() {
     const active = entryActive.toString();
     const progress = entryState.progress.toFixed(3);
-    // Only update DOM if values changed to avoid redundant work and test instability
-    if (canvas.dataset.entryActive !== active) {
-      canvas.dataset.entryActive = active;
+    // Only update DOM if values changed to avoid redundant work and test instability.
+    // Use setAttribute for robust synchronization with testing engines (Playwright).
+    if (lastEntryActive !== active) {
+      canvas.setAttribute('data-entry-active', active);
+      lastEntryActive = active;
     }
-    if (canvas.dataset.entryProgress !== progress) {
-      canvas.dataset.entryProgress = progress;
+    if (lastEntryProgress !== progress) {
+      canvas.setAttribute('data-entry-progress', progress);
+      lastEntryProgress = progress;
     }
   }
   syncEntryState();
@@ -462,6 +467,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
           branchMesh.instanceMatrix.clearUpdateRanges();
           branchMesh.instanceMatrix.addUpdateRange(0, data.matrices.length);
+        } else {
+          (branchMesh.instanceMatrix as any).updateRange = { offset: 0, count: data.matrices.length };
         }
         branchMesh.instanceMatrix.needsUpdate = true;
         minAnimatedIndex = data.armCount;
@@ -472,10 +479,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         target.set(data.matrices);
         for (let i = 0; i < requiredCount; i++) {
           const idx = i * 16;
-          // Zero out the 3x3 basis (columns 1-3)
-          target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
-          target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
-          target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
+          // Zero out the 3x3 basis (columns 0-2).
+          // Explicitly zero out the W components (3, 7, 11) to ensure valid transformation matrices.
+          target[idx + 0] = target[idx + 1] = target[idx + 2] = target[idx + 3] = 0;
+          target[idx + 4] = target[idx + 5] = target[idx + 6] = target[idx + 7] = 0;
+          target[idx + 8] = target[idx + 9] = target[idx + 10] = target[idx + 11] = 0;
         }
         branchMesh.instanceMatrix.clearUpdateRanges();
         branchMesh.instanceMatrix.needsUpdate = true;
@@ -639,7 +647,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
             branchMesh.instanceMatrix.clearUpdateRanges();
             branchMesh.instanceMatrix.addUpdateRange(0, currentFlakeData.matrices.length);
+          } else {
+            (branchMesh.instanceMatrix as any).updateRange = { offset: 0, count: currentFlakeData.matrices.length };
           }
+          branchMesh.instanceMatrix.needsUpdate = true;
           minAnimatedIndex = currentFlakeData.armCount;
         } else {
           // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
@@ -647,6 +658,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           const source = currentFlakeData.matrices;
           const armLen = currentFlakeData.armCount;
           const thresholdScaled = eased * THRESHOLD_SCALE_FACTOR;
+          const initialMinAnimatedIndex = minAnimatedIndex;
           let maxIndex = -1;
 
           // Optimization: Outer loop over the single arm's instances.
@@ -782,22 +794,20 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           }
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.
-          // Because of the interleaved layout, we can now use a SINGLE update range for all symmetry arms.
-          if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
-            branchMesh.instanceMatrix.clearUpdateRanges();
-            if (maxIndex >= minAnimatedIndex) {
-              const start = minAnimatedIndex * 6 * 16;
-              const count = (maxIndex - minAnimatedIndex + 1) * 6 * 16;
+          if (maxIndex >= initialMinAnimatedIndex) {
+            if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+              branchMesh.instanceMatrix.clearUpdateRanges();
+              const start = initialMinAnimatedIndex * 96; // 6 arms * 16 floats
+              const count = (maxIndex - initialMinAnimatedIndex + 1) * 96;
               branchMesh.instanceMatrix.addUpdateRange(start, count);
+            } else {
+              const start = initialMinAnimatedIndex * 96;
+              const count = (maxIndex - initialMinAnimatedIndex + 1) * 96;
+              (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: count };
             }
-          } else {
-            // Fallback for older Three.js versions: update the entire modified range
-            const start = minAnimatedIndex * 16;
-            const end = (5 * armLen + maxIndex + 1) * 16;
-            (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: end - start };
+            branchMesh.instanceMatrix.needsUpdate = true;
           }
         }
-        branchMesh.instanceMatrix.needsUpdate = true;
       }
 
       if (coreMesh && currentFlakeData) {
