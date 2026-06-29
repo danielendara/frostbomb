@@ -526,6 +526,11 @@ body.pink-mode {
   color: #ff6b6b !important;
 }
 
+.btn--success {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
 .colophon {
   font-family: var(--display);
   font-style: italic;
