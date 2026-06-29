@@ -220,6 +220,10 @@ async function toggleLabMode() {
     labToggle.setAttribute('aria-pressed', isLabMode.toString());
     labToggle.setAttribute('aria-expanded', isLabMode.toString());
   }
+  if (nakayaCanvas) {
+    nakayaCanvas.setAttribute('aria-pressed', isLabMode.toString());
+    nakayaCanvas.setAttribute('aria-expanded', isLabMode.toString());
+  }
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
   if (labStatus) {
