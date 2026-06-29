@@ -86,16 +86,16 @@ export function buildSnowflake(
   rand: Rand,
 ): BuildResult {
   currentSegmentCount = 0;
+  stellarPoolIdx = 0;
 
   // Use a seeded offset to ensure deterministic but unique noise per snowflake.
   const nOffset = rand.range(0, 1000);
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  // Performance: Using a local array is faster than conditions.path.map() and safer
-  // than a global shared buffer.
-  const pathLen = conditions.path.length;
-  const pathParams = new Array<Params>(pathLen);
+  // Performance Optimization: Use a shared buffer to avoid re-allocating the pathParams array.
+  const pathLen = Math.min(conditions.path.length, MAX_PATH_LEN);
+  const pathParams = SHARED_PATH_PARAMS;
   for (let i = 0; i < pathLen; i++) {
     const p = conditions.path[i];
     pathParams[i] = paramsFor(p.temp, p.ss);
@@ -376,18 +376,39 @@ export function buildSnowflake(
     // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
     // and eliminate multiplications.
 
+    // Performance Optimization: Use chained assignments for invariant matrix components
+    // across all 6 symmetry instances. This reduces index lookups and writes.
+    matrices[offset + 6] =
+      matrices[offset + 22] =
+      matrices[offset + 38] =
+      matrices[offset + 54] =
+      matrices[offset + 70] =
+      matrices[offset + 86] =
+        m6;
+    matrices[offset + 10] =
+      matrices[offset + 26] =
+      matrices[offset + 42] =
+      matrices[offset + 58] =
+      matrices[offset + 74] =
+      matrices[offset + 90] =
+        m10;
+    matrices[offset + 14] =
+      matrices[offset + 30] =
+      matrices[offset + 46] =
+      matrices[offset + 62] =
+      matrices[offset + 78] =
+      matrices[offset + 94] =
+        m14;
+
     // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
     matrices[offset + 1] = m1;
     matrices[offset + 4] = m4;
     matrices[offset + 5] = m5;
-    matrices[offset + 6] = m6;
     matrices[offset + 8] = m8;
     matrices[offset + 9] = m9;
-    matrices[offset + 10] = m10;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
-    matrices[offset + 14] = m14;
 
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
@@ -403,65 +424,50 @@ export function buildSnowflake(
     matrices[offset + 17] = m1_1;
     matrices[offset + 20] = m4_1;
     matrices[offset + 21] = m5_1;
-    matrices[offset + 22] = m6;
     matrices[offset + 24] = m8_1;
     matrices[offset + 25] = m9_1;
-    matrices[offset + 26] = m10;
     matrices[offset + 28] = m12_1;
     matrices[offset + 29] = m13_1;
-    matrices[offset + 30] = m14;
 
     // Arm 2 (120°) = Arm 1 - Arm 0
     matrices[offset + 32] = m0_1 - m0;
     matrices[offset + 33] = m1_1 - m1;
     matrices[offset + 36] = m4_1 - m4;
     matrices[offset + 37] = m5_1 - m5;
-    matrices[offset + 38] = m6;
     matrices[offset + 40] = m8_1 - m8;
     matrices[offset + 41] = m9_1 - m9;
-    matrices[offset + 42] = m10;
     matrices[offset + 44] = m12_1 - m12;
     matrices[offset + 45] = m13_1 - m13;
-    matrices[offset + 46] = m14;
 
     // Arm 3 (180°) = -Arm 0
     matrices[offset + 48] = -m0;
     matrices[offset + 49] = -m1;
     matrices[offset + 52] = -m4;
     matrices[offset + 53] = -m5;
-    matrices[offset + 54] = m6;
     matrices[offset + 56] = -m8;
     matrices[offset + 57] = -m9;
-    matrices[offset + 58] = m10;
     matrices[offset + 60] = -m12;
     matrices[offset + 61] = -m13;
-    matrices[offset + 62] = m14;
 
     // Arm 4 (240°) = -Arm 1
     matrices[offset + 64] = -m0_1;
     matrices[offset + 65] = -m1_1;
     matrices[offset + 68] = -m4_1;
     matrices[offset + 69] = -m5_1;
-    matrices[offset + 70] = m6;
     matrices[offset + 72] = -m8_1;
     matrices[offset + 73] = -m9_1;
-    matrices[offset + 74] = m10;
     matrices[offset + 76] = -m12_1;
     matrices[offset + 77] = -m13_1;
-    matrices[offset + 78] = m14;
 
     // Arm 5 (300°) = Arm 0 - Arm 1
     matrices[offset + 80] = m0 - m0_1;
     matrices[offset + 81] = m1 - m1_1;
     matrices[offset + 84] = m4 - m4_1;
     matrices[offset + 85] = m5 - m5_1;
-    matrices[offset + 86] = m6;
     matrices[offset + 88] = m8 - m8_1;
     matrices[offset + 89] = m9 - m9_1;
-    matrices[offset + 90] = m10;
     matrices[offset + 92] = m12 - m12_1;
     matrices[offset + 93] = m13 - m13_1;
-    matrices[offset + 94] = m14;
 
     offset += 96;
   }
@@ -516,23 +522,41 @@ interface Params {
 // Performance Optimization: Cache for static Params to avoid repeated allocations.
 const PARAMS_CACHE: Partial<Record<Habit, Params>> = {};
 
+// Performance Optimization: Object pooling for stellar_dendrite Params.
+// These depend on supersaturation and are thus not strictly static.
+const MAX_PATH_LEN = 1024;
+
+// Performance Optimization: Shared buffer for atmospheric path parameters.
+const SHARED_PATH_PARAMS = new Array<Params>(MAX_PATH_LEN);
+
+const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
+  primaryLength: 2.8,
+  primaryThickness: 0.048,
+  sideBranchProb: 0,
+  sideBranchDecay: 0.6,
+  sideBranchAngle: Math.PI / 3,
+  cosAngle: 0.5,
+  sinAngle: 0.86602540378,
+  maxDepth: 3,
+  habit: 'stellar_dendrite' as Habit,
+  hasRidges: true,
+  hasTip: true,
+}));
+let stellarPoolIdx = 0;
+
+function getStellarParams(ss: number): Params {
+  // Use bitwise AND for faster modulo with power-of-2 pool size.
+  const p = STELLAR_PARAMS_POOL[stellarPoolIdx & 1023];
+  stellarPoolIdx++;
+  p.sideBranchProb = 0.55 + ss * 0.25;
+  return p;
+}
+
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
 
   if (habit === 'stellar_dendrite') {
-    return {
-      primaryLength: 2.8,
-      primaryThickness: 0.048,
-      sideBranchProb: 0.55 + ss * 0.25,
-      sideBranchDecay: 0.6,
-      sideBranchAngle: Math.PI / 3,
-      cosAngle: 0.5,
-      sinAngle: 0.86602540378,
-      maxDepth: 3,
-      habit,
-      hasRidges: true,
-      hasTip: true,
-    };
+    return getStellarParams(ss);
   }
 
   const cached = PARAMS_CACHE[habit];
