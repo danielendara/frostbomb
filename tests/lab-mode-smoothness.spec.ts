@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('Lab mode slider changes do not trigger growth animation', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
 
   // Toggle Lab Mode
