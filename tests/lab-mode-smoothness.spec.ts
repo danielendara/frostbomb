@@ -19,13 +19,16 @@ test('Lab mode slider changes do not trigger growth animation', async ({ page })
   const humidityInput = page.locator('.tp-lblv_v input').nth(2); // Skip Temp (F) which is nth(1) and readonly
 
   const scene = page.locator('#scene');
+  const commitPaneInput = async () => {
+    await scene.click({ position: { x: 10, y: 10 } });
+  };
 
   // Set both parameters to ensure a deterministic habit regardless of the initial random flake
   await tempInput.fill('-20');
-  await tempInput.press('Enter');
+  await commitPaneInput();
 
   await humidityInput.fill('60');
-  await humidityInput.press('Enter');
+  await commitPaneInput();
 
   await expect(scene).toHaveAttribute('data-entry-active', 'false');
   await expect(scene).toHaveAttribute('data-entry-progress', '1.000');
@@ -35,7 +38,7 @@ test('Lab mode slider changes do not trigger growth animation', async ({ page })
   await expect(habitText).toHaveText(/Stellar dendrite/i);
 
   await tempInput.fill('-5');
-  await tempInput.press('Enter');
+  await commitPaneInput();
   await expect(scene).toHaveAttribute('data-entry-active', 'false');
   await expect(scene).toHaveAttribute('data-entry-progress', '1.000');
   await expect(habitText).toHaveText(/Needle/i);

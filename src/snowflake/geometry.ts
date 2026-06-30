@@ -156,9 +156,8 @@ export function buildSnowflake(
     const caxy = cax * sy;
     const m4 = -dirX * caxy;
     const m5 = -dirY * caxy;
-    const sxax = sx * sax;
-    const m8 = dirX * sxax;
-    const m9 = dirY * sxax;
+    const m8 = m1 * sax;
+    const m9 = -m0 * sax;
     const m6 = sax * sy;
     const m10 = cax * sx; // cax * sz, where sz = sx
     const vJitter = vVar * 0.015; // jitter constant
@@ -240,9 +239,11 @@ export function buildSnowflake(
           // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
           //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
           const v = angleVariation + (-0.04 + 0.08 * rng());
-          const v2 = 0.5 * v * v;
-          const cosA = cosAngle - v * sinAngle - v2 * cosAngle;
-          const sinA = sinAngle + v * cosAngle - v2 * sinAngle;
+          const vSin = v * sinAngle;
+          const vCos = v * cosAngle;
+          const vHalf = 0.5 * v;
+          const cosA = cosAngle - vSin - vHalf * vCos;
+          const sinA = sinAngle + vCos - vHalf * vSin;
           // Optimization: Pre-sample parameters for the side branch only when it's created.
           const pIdx = pIdxFloat | 0;
           const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
@@ -303,16 +304,17 @@ export function buildSnowflake(
       const tipVVar01 = tipVVar * 0.1;
       const tcax = 1 - 0.5 * tipVVar01 * tipVVar01;
       const tsx = primaryThickness * 0.4 * (1 + tipVVar);
+      const tm0 = -dirY * tsx;
+      const tm1 = dirX * tsx;
       const tcaxy = tcax * tipLen;
-      const tsxax = tsx * tipVVar01;
 
       const tIdx = currentSegmentCount << 4;
-      SEGMENT_BUFFER[tIdx + 0] = -dirY * tsx;
-      SEGMENT_BUFFER[tIdx + 1] = dirX * tsx;
+      SEGMENT_BUFFER[tIdx + 0] = tm0;
+      SEGMENT_BUFFER[tIdx + 1] = tm1;
       SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
       SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
-      SEGMENT_BUFFER[tIdx + 4] = dirX * tsxax;
-      SEGMENT_BUFFER[tIdx + 5] = dirY * tsxax;
+      SEGMENT_BUFFER[tIdx + 4] = tm1 * tipVVar01;
+      SEGMENT_BUFFER[tIdx + 5] = -tm0 * tipVVar01;
       SEGMENT_BUFFER[tIdx + 6] = tipVVar01 * tipLen;
       SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
       const tvJitter = tipVVar * 0.015;
@@ -552,19 +554,30 @@ const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
 }));
 let stellarPoolIdx = 0;
 
-function getStellarParams(ss: number): Params {
-  // Use bitwise AND for faster modulo with power-of-2 pool size.
-  const p = STELLAR_PARAMS_POOL[stellarPoolIdx & 1023];
-  stellarPoolIdx++;
-  p.sideBranchProb = 0.55 + ss * 0.25;
-  return p;
-}
-
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
 
   if (habit === 'stellar_dendrite') {
-    return getStellarParams(ss);
+    // Safety check: if the pool is exhausted within a single snowflake generation,
+    // fallback to allocation to avoid object mutation collisions.
+    if (stellarPoolIdx >= MAX_PATH_LEN) {
+      return {
+        primaryLength: 2.8,
+        primaryThickness: 0.048,
+        sideBranchProb: 0.55 + ss * 0.25,
+        sideBranchDecay: 0.6,
+        sideBranchAngle: Math.PI / 3,
+        cosAngle: 0.5,
+        sinAngle: 0.86602540378,
+        maxDepth: 3,
+        habit,
+        hasRidges: true,
+        hasTip: true,
+      };
+    }
+    const p = STELLAR_PARAMS_POOL[stellarPoolIdx++];
+    p.sideBranchProb = 0.55 + ss * 0.25;
+    return p;
   }
 
   const cached = PARAMS_CACHE[habit];
