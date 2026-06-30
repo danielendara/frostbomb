@@ -64,8 +64,8 @@
       <dl class="field-notes__list" id="stats-display">
         <div class="field-notes__row" title="Determines whether the ice grows into flat plates or long columns."><dt>Temperature</dt><dd id="stat-temp">—</dd></div>
         <div class="field-notes__row" title="The 'fuel' for growth; higher humidity forces more complex branching."><dt>Supersaturation</dt><dd id="stat-humid">—</dd></div>
-        <div class="field-notes__row" title="The resulting morphological category of the crystal."><dt>Habit</dt><dd id="stat-habit" aria-live="polite">—</dd></div>
-        <div class="field-notes__row" title="The total number of individual ice segments in this snowflake."><dt>Branches</dt><dd id="stat-branches" aria-live="polite">—</dd></div>
+        <div class="field-notes__row" title="The resulting morphological category of the crystal."><dt>Habit</dt><dd id="stat-habit">—</dd></div>
+        <div class="field-notes__row" title="The total number of individual ice segments in this snowflake."><dt>Branches</dt><dd id="stat-branches">—</dd></div>
       </dl>
 
       <div class="lab-controls" id="lab-controls" style="display: none;">
@@ -90,7 +90,7 @@
             <h3>Nakaya Diagram</h3>
             <p>The physical map of snowflake shapes. Created by Ukichiro Nakaya in the 1930s, it proves that no two snowflakes are alike because no two follow the same path.</p>
             <div class="nakaya-container">
-              <canvas id="nakaya-diagram" width="300" height="200" role="button" tabindex="0" aria-label="Nakaya morphology diagram. Use arrow keys to adjust temperature and humidity, or click and drag to explore habits." title="Click, drag, or use arrow keys (Arrows) on the diagram to set manual growth conditions" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"></canvas>
+              <canvas id="nakaya-diagram" width="300" height="200" role="button" tabindex="0" aria-label="Nakaya morphology diagram. Use arrow keys to adjust temperature and humidity, or click and drag to explore habits." title="Click, drag, or use arrow keys (Arrows) on the diagram to set manual growth conditions" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight" aria-expanded="false" aria-pressed="false" aria-controls="lab-controls"></canvas>
               <div class="nakaya-labels">
                 <span class="nakaya-label nakaya-label--y" aria-hidden="true">Supersaturation →</span>
                 <span class="nakaya-label nakaya-label--x" aria-hidden="true">Temperature (°C) →</span>
@@ -160,7 +160,7 @@
 
     <div class="grain" aria-hidden="true"></div>
 
-    <div id="a11y-announcer" class="sr-only" aria-live="polite"></div>
+    <div id="a11y-announcer" class="sr-only" aria-live="polite" role="status"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
