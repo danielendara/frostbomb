@@ -5,3 +5,7 @@
 ## 2025-01-24 - Interactive Diagram Semantics
 **Learning:** Interactive <canvas> elements that trigger state changes (like the Nakaya Diagram) require explicit ARIA attributes (`aria-expanded`, `aria-pressed`, `aria-controls`) to communicate their current state and relationship to other UI components to screen reader users.
 **Action:** Synchronize ARIA attributes in JavaScript whenever a canvas interaction modifies the global application state.
+
+## 2025-01-24 - Tooltip Affordances and Semantic Keys
+**Learning:** Native `title` tooltips on descriptive labels (e.g., Growth Conditions) are often overlooked. Adding a `dotted underline` affordance successfully signals interactivity/hidden info without cluttering the UI. Additionally, `<kbd>` tags provide essential semantic context for keyboard-driven simulations compared to plain text.
+**Action:** Apply `text-decoration: underline dotted` to labels with non-critical "hint" tooltips to aid discovery.
