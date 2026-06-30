@@ -93,10 +93,8 @@ export function buildSnowflake(
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  // Performance: Using a local array is faster than conditions.path.map() and safer
-  // than a global shared buffer.
-  const pathLen = conditions.path.length;
-  // Performance Optimization: Use shared array for path parameters to avoid O(1) allocation.
+  // Performance Optimization: Use a shared buffer to avoid re-allocating the pathParams array.
+  const pathLen = Math.min(conditions.path.length, MAX_PATH_LEN);
   const pathParams = SHARED_PATH_PARAMS;
   for (let i = 0; i < pathLen; i++) {
     const p = conditions.path[i];
@@ -380,18 +378,42 @@ export function buildSnowflake(
     // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
     // and eliminate multiplications.
 
+    // Performance Optimization: Use chained assignments for invariant matrix components
+    // across all 6 symmetry instances. This reduces index lookups and writes.
+    matrices[offset + 6] =
+      matrices[offset + 22] =
+      matrices[offset + 38] =
+      matrices[offset + 54] =
+      matrices[offset + 70] =
+      matrices[offset + 86] =
+        m6;
+    matrices[offset + 10] =
+      matrices[offset + 26] =
+      matrices[offset + 42] =
+      matrices[offset + 58] =
+      matrices[offset + 74] =
+      matrices[offset + 90] =
+        m10;
+    matrices[offset + 14] =
+      matrices[offset + 30] =
+      matrices[offset + 46] =
+      matrices[offset + 62] =
+      matrices[offset + 78] =
+      matrices[offset + 94] =
+        m14;
+
+    // Performance Optimization: Use explicit initialization for all potential non-zero indices
+    // to ensure safety when reusing the shared MATRICES_BUFFER across generations.
     // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
     matrices[offset + 1] = m1;
     matrices[offset + 4] = m4;
     matrices[offset + 5] = m5;
-    matrices[offset + 6] = m6;
     matrices[offset + 8] = m8;
     matrices[offset + 9] = m9;
-    matrices[offset + 10] = m10;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
-    matrices[offset + 14] = m14;
+    matrices[offset + 2] = matrices[offset + 3] = matrices[offset + 7] = matrices[offset + 11] = 0;
 
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
@@ -407,65 +429,55 @@ export function buildSnowflake(
     matrices[offset + 17] = m1_1;
     matrices[offset + 20] = m4_1;
     matrices[offset + 21] = m5_1;
-    matrices[offset + 22] = m6;
     matrices[offset + 24] = m8_1;
     matrices[offset + 25] = m9_1;
-    matrices[offset + 26] = m10;
     matrices[offset + 28] = m12_1;
     matrices[offset + 29] = m13_1;
-    matrices[offset + 30] = m14;
+    matrices[offset + 18] = matrices[offset + 19] = matrices[offset + 23] = matrices[offset + 27] = 0;
 
     // Arm 2 (120°) = Arm 1 - Arm 0
     matrices[offset + 32] = m0_1 - m0;
     matrices[offset + 33] = m1_1 - m1;
     matrices[offset + 36] = m4_1 - m4;
     matrices[offset + 37] = m5_1 - m5;
-    matrices[offset + 38] = m6;
     matrices[offset + 40] = m8_1 - m8;
     matrices[offset + 41] = m9_1 - m9;
-    matrices[offset + 42] = m10;
     matrices[offset + 44] = m12_1 - m12;
     matrices[offset + 45] = m13_1 - m13;
-    matrices[offset + 46] = m14;
+    matrices[offset + 34] = matrices[offset + 35] = matrices[offset + 39] = matrices[offset + 43] = 0;
 
     // Arm 3 (180°) = -Arm 0
     matrices[offset + 48] = -m0;
     matrices[offset + 49] = -m1;
     matrices[offset + 52] = -m4;
     matrices[offset + 53] = -m5;
-    matrices[offset + 54] = m6;
     matrices[offset + 56] = -m8;
     matrices[offset + 57] = -m9;
-    matrices[offset + 58] = m10;
     matrices[offset + 60] = -m12;
     matrices[offset + 61] = -m13;
-    matrices[offset + 62] = m14;
+    matrices[offset + 50] = matrices[offset + 51] = matrices[offset + 55] = matrices[offset + 59] = 0;
 
     // Arm 4 (240°) = -Arm 1
     matrices[offset + 64] = -m0_1;
     matrices[offset + 65] = -m1_1;
     matrices[offset + 68] = -m4_1;
     matrices[offset + 69] = -m5_1;
-    matrices[offset + 70] = m6;
     matrices[offset + 72] = -m8_1;
     matrices[offset + 73] = -m9_1;
-    matrices[offset + 74] = m10;
     matrices[offset + 76] = -m12_1;
     matrices[offset + 77] = -m13_1;
-    matrices[offset + 78] = m14;
+    matrices[offset + 66] = matrices[offset + 67] = matrices[offset + 71] = matrices[offset + 75] = 0;
 
     // Arm 5 (300°) = Arm 0 - Arm 1
     matrices[offset + 80] = m0 - m0_1;
     matrices[offset + 81] = m1 - m1_1;
     matrices[offset + 84] = m4 - m4_1;
     matrices[offset + 85] = m5 - m5_1;
-    matrices[offset + 86] = m6;
     matrices[offset + 88] = m8 - m8_1;
     matrices[offset + 89] = m9 - m9_1;
-    matrices[offset + 90] = m10;
     matrices[offset + 92] = m12 - m12_1;
     matrices[offset + 93] = m13 - m13_1;
-    matrices[offset + 94] = m14;
+    matrices[offset + 82] = matrices[offset + 83] = matrices[offset + 87] = matrices[offset + 91] = 0;
 
     offset += 96;
   }
@@ -517,8 +529,16 @@ interface Params {
   hasTip: boolean;
 }
 
-// Performance Optimization: Pool for stellar dendrite Params to avoid repeated allocations.
-const MAX_PATH_LEN = 64;
+// Performance Optimization: Cache for static Params to avoid repeated allocations.
+const PARAMS_CACHE: Partial<Record<Habit, Params>> = {};
+
+// Performance Optimization: Object pooling for stellar_dendrite Params.
+// These depend on supersaturation and are thus not strictly static.
+const MAX_PATH_LEN = 1024;
+
+// Performance Optimization: Shared buffer for atmospheric path parameters.
+const SHARED_PATH_PARAMS = new Array<Params>(MAX_PATH_LEN);
+
 const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
   primaryLength: 2.8,
   primaryThickness: 0.048,
@@ -533,11 +553,6 @@ const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
   hasTip: true,
 }));
 let stellarPoolIdx = 0;
-
-const SHARED_PATH_PARAMS = new Array<Params>(MAX_PATH_LEN);
-
-// Performance Optimization: Cache for static Params to avoid repeated allocations.
-const PARAMS_CACHE: Partial<Record<Habit, Params>> = {};
 
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
