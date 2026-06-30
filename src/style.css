@@ -342,6 +342,20 @@ body.pink-mode {
   font-size: 0.65rem;
 }
 
+kbd {
+  display: inline-block;
+  padding: 0.15rem 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper-lift);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--rule);
+  text-transform: uppercase;
+}
+
 .shortcut-item dd {
   color: var(--ink);
   font-family: var(--display);
@@ -430,6 +444,8 @@ body.pink-mode {
   font-family: var(--display);
   font-size: 0.85rem;
   transition: color 0.2s ease;
+  text-decoration: underline dotted var(--ink-faint);
+  text-underline-offset: 0.2rem;
 }
 
 .field-notes__row dd {
