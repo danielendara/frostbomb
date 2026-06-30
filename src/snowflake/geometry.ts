@@ -147,7 +147,8 @@ export function buildSnowflake(
     // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
     // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
     const sax = vVar * 0.1; // sin(ax) approx
-    const cax = 1 - 0.5 * sax * sax; // cos(ax) approx
+    const sax2 = sax * sax;
+    const cax = 1 - 0.5 * sax2; // cos(ax) approx
     const sx = finalThickness;
     const sy = length;
     // Use pre-calculated sx, sy, and cax to derive matrix columns.
@@ -156,11 +157,12 @@ export function buildSnowflake(
     const caxy = cax * sy;
     const m4 = -dirX * caxy;
     const m5 = -dirY * caxy;
-    const m8 = m1 * sax;
-    const m9 = -m0 * sax;
+    const sxsax = sx * sax;
+    const m8 = dirX * sxsax;
+    const m9 = dirY * sxsax;
     const m6 = sax * sy;
     const m10 = cax * sx; // cax * sz, where sz = sx
-    const vJitter = vVar * 0.015; // jitter constant
+    const vJitter = sax * 0.15; // jitter constant (vVar * 0.015)
     const m12 = midX + vJitter;
     const m13 = midY + vJitter;
     const m14 = vJitter;
@@ -301,8 +303,9 @@ export function buildSnowflake(
       const tipMidX3 = tipMidX * 3;
       const tipMidY3 = tipMidY * 3;
       const tipVVar = noise2D(tipMidX3 + nOffset, tipMidY3 + nOffset) * 0.15;
-      const tipVVar01 = tipVVar * 0.1;
-      const tcax = 1 - 0.5 * tipVVar01 * tipVVar01;
+      const tsax = tipVVar * 0.1;
+      const tsax2 = tsax * tsax;
+      const tcax = 1 - 0.5 * tsax2;
       const tsx = primaryThickness * 0.4 * (1 + tipVVar);
       const tm0 = -dirY * tsx;
       const tm1 = dirX * tsx;
@@ -313,11 +316,12 @@ export function buildSnowflake(
       SEGMENT_BUFFER[tIdx + 1] = tm1;
       SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
       SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
-      SEGMENT_BUFFER[tIdx + 4] = tm1 * tipVVar01;
-      SEGMENT_BUFFER[tIdx + 5] = -tm0 * tipVVar01;
-      SEGMENT_BUFFER[tIdx + 6] = tipVVar01 * tipLen;
+      const tsxsax = tsx * tsax;
+      SEGMENT_BUFFER[tIdx + 4] = dirX * tsxsax;
+      SEGMENT_BUFFER[tIdx + 5] = dirY * tsxsax;
+      SEGMENT_BUFFER[tIdx + 6] = tsax * tipLen;
       SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
-      const tvJitter = tipVVar * 0.015;
+      const tvJitter = tsax * 0.15;
       SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
       SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
       SEGMENT_BUFFER[tIdx + 10] = tvJitter;

@@ -478,12 +478,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         const target = branchMesh.instanceMatrix.array as Float32Array;
         target.set(data.matrices);
         for (let i = 0; i < requiredCount; i++) {
-          const idx = i * 16;
-          // Zero out the 3x3 basis (columns 0-2).
-          // Explicitly zero out the W components (3, 7, 11) to ensure valid transformation matrices.
-          target[idx + 0] = target[idx + 1] = target[idx + 2] = target[idx + 3] = 0;
-          target[idx + 4] = target[idx + 5] = target[idx + 6] = target[idx + 7] = 0;
-          target[idx + 8] = target[idx + 9] = target[idx + 10] = target[idx + 11] = 0;
+          // Zero out the 3x3 basis (columns 0-2) and W components (3, 7, 11).
+          // Performance Optimization: Use target.fill() for bulk zeroing instead of 12 individual assignments.
+          target.fill(0, i << 4, (i << 4) + 12);
         }
         branchMesh.instanceMatrix.clearUpdateRanges();
         branchMesh.instanceMatrix.needsUpdate = true;
