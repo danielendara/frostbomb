@@ -32,3 +32,31 @@ test('Tactile feedback respects prefers-reduced-motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   // This is hard to test automatically without complex visual regression or checking computed styles during mouse down.
 });
+
+test('Nakaya diagram aria-label updates on interaction', async ({ page }) => {
+  const nakaya = page.locator('#nakaya-diagram');
+
+  // Open the Field Guide so the diagram is visible
+  await page.click('#guide-toggle');
+  await expect(page.locator('#field-guide')).toBeVisible();
+
+  // Turn on Lab Mode to ensure initial label is set with dynamic values
+  await page.click('#lab-toggle');
+  await expect(page.locator('#lab-status')).toHaveText('ON');
+
+  // Ensure the label follows the dynamic pattern
+  await expect(nakaya).toHaveAttribute('aria-label', /Nakaya morphology diagram: -?\d+(\.\d+)?°C, \d+% humidity/);
+  const initialAria = await nakaya.getAttribute('aria-label');
+
+  // Trigger interaction by clicking the diagram at a specific point
+  await nakaya.click({ position: { x: 50, y: 50 }, force: true });
+
+  // Verify updated aria-label
+  await expect(async () => {
+    const currentAria = await nakaya.getAttribute('aria-label');
+    expect(currentAria).not.toBe(initialAria);
+  }).toPass({ timeout: 10000 });
+
+  const updatedAria = await nakaya.getAttribute('aria-label');
+  expect(updatedAria).toMatch(/Nakaya morphology diagram: -?\d+(\.\d+)?°C, \d+% humidity/);
+});

@@ -17,6 +17,7 @@ let isLabMode = false;
 let isGuideOpen = false;
 let isUIHidden = false;
 let currentConditions: GrowthConditions;
+let lastHabit: string | null = null;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
 
@@ -101,7 +102,20 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   setText('seed-display', label);
   setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
   setText('stat-humid', `${(conditions.supersaturation * 100).toFixed(0)}%`);
-  setText('stat-habit', habitLabel[conditions.habit]);
+
+  const habitText = habitLabel[conditions.habit];
+  setText('stat-habit', habitText);
+
+  if (lastHabit && lastHabit !== habitText) {
+    const habitEl = document.getElementById('stat-habit');
+    if (habitEl) {
+      habitEl.classList.remove('habit-animate');
+      void habitEl.offsetWidth;
+      habitEl.classList.add('habit-animate');
+    }
+  }
+  lastHabit = habitText;
+
   setText('stat-branches', `${result.branchCount}`);
 
   // Always sync labParams so Lab Mode starts from the current snowflake's conditions
@@ -342,6 +356,10 @@ function updateFromPane(shouldAnnounce = false) {
   const t = labParams.temperature;
   const ss = labParams.supersaturation / 100;
   const habit = getHabit(t, ss);
+
+  if (nakayaCanvas) {
+    nakayaCanvas.setAttribute('aria-label', `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitLabel[habit]}. Use arrow keys to adjust.`);
+  }
 
   if (shouldAnnounce) {
     announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labParams.supersaturation.toFixed(0)}%: ${habitLabel[habit]}`);
