@@ -316,7 +316,8 @@ document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
 
   row.addEventListener('click', handler);
   row.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    const ke = e as KeyboardEvent;
+    if (ke.key === 'Enter' || ke.key === ' ') {
       e.preventDefault();
       handler();
     }
