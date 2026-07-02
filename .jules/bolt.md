@@ -145,3 +145,8 @@
 **Learning:** In high-frequency recursive loops, hoisting simple arithmetic (like `sax * sax`) and reusing derived products (like `sx * sax`) provides measurable gains by reducing the instruction count in the hot path. Additionally, `TypedArray.prototype.fill()` is more efficient than individual loop-based assignments for bulk-clearing contiguous memory regions (like the 3x3 basis of an InstancedMesh matrix) when resetting animation states.
 **Action:** Identify redundant products in hot recursive paths and hoist them. Use `.fill()` for bulk zeroing of contiguous TypedArray segments.
 **Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~15% (from ~0.0355ms to ~0.0301ms).
+
+## 2026-07-02 - [Arithmetic Reuse & Redundant Assignment Pruning]
+**Learning:** In high-frequency matrix population loops, redundant assignments (like zeroing indices already guaranteed to be zero) and repetitive scalar multiplications add measurable CPU overhead. Reusing existing basis components (e.g., deriving m8/m9 from m0/m1) and pre-combining scalar constants further reduces the instruction count in the hot path.
+**Action:** Identify and eliminate redundant writes to TypedArrays. Reuse intermediate basis products to derive orthogonal components.
+**Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~5% (from ~0.0303ms to ~0.0287ms).
