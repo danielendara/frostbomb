@@ -352,8 +352,8 @@ nakayaCanvas?.addEventListener('pointermove', (e) => {
   if (e.buttons > 0) handleNakayaPointer(e);
 });
 
-nakayaCanvas?.addEventListener('keydown', (e) => {
-  const { key } = e;
+nakayaCanvas?.addEventListener('keydown', (e: Event) => {
+  const { key } = e as KeyboardEvent;
   const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key);
   const isAction = key === ' ' || key === 'Enter';
 
@@ -551,8 +551,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
 }
 
-window.addEventListener('keydown', (e) => {
-  const k = e.key.toLowerCase();
+window.addEventListener('keydown', (e: Event) => {
+  const k = (e as KeyboardEvent).key.toLowerCase();
   if (k === 'escape') {
     if (isGuideOpen) {
       toggleFieldGuide();
@@ -566,7 +566,8 @@ window.addEventListener('keydown', (e) => {
     }
   }
 
-  if (isEditableTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const ke = e as KeyboardEvent;
+  if (isEditableTarget(e.target) || ke.metaKey || ke.ctrlKey || ke.altKey) return;
 
   // Don't hijack arrows if we're in the guide (allow scrolling) unless focused on diagram
   const isDiagramFocused = document.activeElement === nakayaCanvas;
