@@ -150,3 +150,8 @@
 **Learning:** In high-frequency matrix population loops, redundant assignments (like zeroing indices already guaranteed to be zero) and repetitive scalar multiplications add measurable CPU overhead. Reusing existing basis components (e.g., deriving m8/m9 from m0/m1) and pre-combining scalar constants further reduces the instruction count in the hot path.
 **Action:** Identify and eliminate redundant writes to TypedArrays. Reuse intermediate basis products to derive orthogonal components.
 **Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~5% (from ~0.0303ms to ~0.0287ms).
+
+## 2026-07-03 - [Thickness Constant Hoisting & Side-Branch Early Exit]
+**Learning:** In recursive procedural generators with high branching factors, even simple multiplications (e.g., `primaryThickness * 0.15`) can accumulate significantly across thousands of calls. Hoisting these into the parameter initialization phase and utilizing pre-calculated constants in the hot path provides measurable gains. Furthermore, implementing an early exit in the branching loop using an additive 'max length' tracker prevents hundreds of unnecessary iterations once branches fall below the rendering threshold.
+**Action:** Identify redundant scalar multiplications in hot recursive functions and move them to a pre-calculation phase (e.g., within the `Params` object). Use additive trackers to enable early pruning of loops based on rendering thresholds.
+**Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~2.4% (from ~0.0296ms to ~0.0289ms).

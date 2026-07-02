@@ -126,6 +126,9 @@ export function buildSnowflake(
     // in the hot recursion path.
     const {
       primaryThickness,
+      thickness015,
+      thickness04,
+      thickness04_015,
       sideBranchProb,
       sideBranchDecay,
       cosAngle,
@@ -142,8 +145,7 @@ export function buildSnowflake(
     const nx = midX3 + nOffset;
     const ny = midY3 + nOffset;
     const vVarRaw = noise2D(nx, ny);
-    const vVar = vVarRaw * 0.15;
-    const sx = primaryThickness * (1 + vVar);
+    const sx = primaryThickness + vVarRaw * thickness015;
 
     // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
     // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
@@ -207,10 +209,12 @@ export function buildSnowflake(
     const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
     const probStep = sideBranchProb * lut04;
     const lenStep = INV_STEPS_LUT_05[numSteps] || invNumSteps * 0.5;
+    const sideLenMaxStep = sideLenBase * lenStep;
     const stepX2 = stepX * 2;
     const stepY2 = stepY * 2;
     let currentLocalProb = sideBranchProb * (1 - lut04);
     let currentLenFactor = 1 - lenStep;
+    let sideLenMax = sideLenBase * currentLenFactor;
     let px2 = (startX + stepX) * 2;
     let py2 = (startY + stepY) * 2;
 
@@ -221,6 +225,8 @@ export function buildSnowflake(
     const sideLenRange = sideLenBase * 0.6;
 
     for (let i = 1; i < numSteps; i++) {
+      if (sideLenMax < 0.08) break;
+
       pointX += stepX;
       pointY += stepY;
       currentDist += stepDist;
@@ -287,6 +293,7 @@ export function buildSnowflake(
 
       currentLocalProb -= probStep;
       currentLenFactor -= lenStep;
+      sideLenMax -= sideLenMaxStep;
       px2 += stepX2;
       py2 += stepY2;
     }
@@ -303,11 +310,10 @@ export function buildSnowflake(
       const tipMidX3 = tipMidX * 3;
       const tipMidY3 = tipMidY * 3;
       const tipVVarRaw = noise2D(tipMidX3 + nOffset, tipMidY3 + nOffset);
-      const tipVVar = tipVVarRaw * 0.15;
       const tsax = tipVVarRaw * 0.015;
       const tsax2 = tsax * tsax;
       const tcax = 1 - 0.5 * tsax2;
-      const tsx = primaryThickness * 0.4 * (1 + tipVVar);
+      const tsx = thickness04 + tipVVarRaw * thickness04_015;
       const tm0 = -dirY * tsx;
       const tm1 = dirX * tsx;
       const tcaxy = tcax * tipLen;
@@ -517,6 +523,9 @@ function getZDepthScale(habit: Habit): number {
 interface Params {
   primaryLength: number;
   primaryThickness: number;
+  thickness015: number;
+  thickness04: number;
+  thickness04_015: number;
   sideBranchProb: number;
   sideBranchDecay: number;
   sideBranchAngle: number;
@@ -541,6 +550,9 @@ const SHARED_PATH_PARAMS = new Array<Params>(MAX_PATH_LEN);
 const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
   primaryLength: 2.8,
   primaryThickness: 0.048,
+  thickness015: 0.048 * 0.15,
+  thickness04: 0.048 * 0.4,
+  thickness04_015: 0.048 * 0.4 * 0.15,
   sideBranchProb: 0,
   sideBranchDecay: 0.6,
   sideBranchAngle: Math.PI / 3,
@@ -563,6 +575,9 @@ function paramsFor(temp: number, ss: number): Params {
       return {
         primaryLength: 2.8,
         primaryThickness: 0.048,
+        thickness015: 0.048 * 0.15,
+        thickness04: 0.048 * 0.4,
+        thickness04_015: 0.048 * 0.4 * 0.15,
         sideBranchProb: 0.55 + ss * 0.25,
         sideBranchDecay: 0.6,
         sideBranchAngle: Math.PI / 3,
@@ -582,7 +597,7 @@ function paramsFor(temp: number, ss: number): Params {
   const cached = PARAMS_CACHE[habit];
   if (cached) return cached;
 
-  let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
+  let p: Omit<Params, 'cosAngle' | 'sinAngle' | 'thickness015' | 'thickness04' | 'thickness04_015'>;
   switch (habit) {
     case 'fernlike_dendrite':
       p = {
@@ -678,6 +693,9 @@ function paramsFor(temp: number, ss: number): Params {
 
   const result: Params = {
     ...p,
+    thickness015: p.primaryThickness * 0.15,
+    thickness04: p.primaryThickness * 0.4,
+    thickness04_015: p.primaryThickness * 0.4 * 0.15,
     cosAngle: Math.cos(p.sideBranchAngle),
     sinAngle: Math.sin(p.sideBranchAngle),
   };
