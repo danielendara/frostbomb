@@ -296,6 +296,33 @@ labToggle?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
 document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
 
+document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
+  const handler = () => {
+    const label = row.querySelector('dt')?.textContent?.trim();
+    const targets: Record<string, string> = {
+      'Temperature': 'guide-temp',
+      'Supersaturation': 'guide-humid',
+      'Habit': 'guide-habit',
+    };
+    const targetId = targets[label || ''];
+
+    if (targetId) {
+      if (!isGuideOpen) toggleFieldGuide();
+      requestAnimationFrame(() => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  };
+
+  row.addEventListener('click', handler);
+  row.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handler();
+    }
+  });
+});
+
 function handleNakayaPointer(e: PointerEvent) {
   if (!nakayaCanvas) return;
   const rect = nakayaCanvas.getBoundingClientRect();
