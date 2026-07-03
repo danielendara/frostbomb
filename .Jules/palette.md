@@ -9,3 +9,7 @@
 ## 2025-01-24 - Tooltip Affordances and Semantic Keys
 **Learning:** Native `title` tooltips on descriptive labels (e.g., Growth Conditions) are often overlooked. Adding a `dotted underline` affordance successfully signals interactivity/hidden info without cluttering the UI. Additionally, `<kbd>` tags provide essential semantic context for keyboard-driven simulations compared to plain text.
 **Action:** Apply `text-decoration: underline dotted` to labels with non-critical "hint" tooltips to aid discovery.
+
+## 2025-01-24 - Linked Discovery Patterns
+**Learning:** Connecting complex data points (like simulation stats) to their educational definitions (the Field Guide) via interactive "jumps" significantly improves domain-specific discoverability. For non-semantic interactive rows, using `role="button"`, `tabindex="0"`, and `requestAnimationFrame` before `scrollIntoView` ensures a smooth, accessible transition even when the target container's visibility is being toggled simultaneously.
+**Action:** Use interactive labels to bridge the gap between abstract data and documentation, ensuring proper ARIA roles and layout-aware scrolling.

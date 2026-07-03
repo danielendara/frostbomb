@@ -62,9 +62,9 @@
       </div>
 
       <dl class="field-notes__list" id="stats-display">
-        <div class="field-notes__row" title="Determines whether the ice grows into flat plates or long columns."><dt>Temperature</dt><dd id="stat-temp">—</dd></div>
-        <div class="field-notes__row" title="The 'fuel' for growth; higher humidity forces more complex branching."><dt>Supersaturation</dt><dd id="stat-humid">—</dd></div>
-        <div class="field-notes__row" title="The resulting morphological category of the crystal."><dt>Habit</dt><dd id="stat-habit">—</dd></div>
+        <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Temperature in the field guide" title="Determines whether the ice grows into flat plates or long columns."><dt>Temperature</dt><dd id="stat-temp">—</dd></div>
+        <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Supersaturation in the field guide" title="The 'fuel' for growth; higher humidity forces more complex branching."><dt>Supersaturation</dt><dd id="stat-humid">—</dd></div>
+        <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Habit in the field guide" title="The resulting morphological category of the crystal."><dt>Habit</dt><dd id="stat-habit">—</dd></div>
         <div class="field-notes__row" title="The total number of individual ice segments in this snowflake."><dt>Branches</dt><dd id="stat-branches">—</dd></div>
       </dl>
 
@@ -74,15 +74,15 @@
 
       <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="0" aria-label="Field Guide">
         <div class="field-guide__content">
-          <section>
+          <section id="guide-temp">
             <h3>Temperature</h3>
             <p>Determines if ice grows into flat plates or long columns. Subtle changes at the molecular level flip the growth between "basal" and "prism" faces.</p>
           </section>
-          <section>
+          <section id="guide-humid">
             <h3>Supersaturation</h3>
             <p>The "fuel" for growth. Low humidity creates simple, solid shapes. High humidity forces unstable, rapid growth that branches into complex dendrites.</p>
           </section>
-          <section>
+          <section id="guide-habit">
             <h3>Habit</h3>
             <p>The resulting morphological category. From simple "plates" to "fern-like dendrites," the habit is a record of the path taken through the atmosphere.</p>
           </section>
