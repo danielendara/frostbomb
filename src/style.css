@@ -82,7 +82,7 @@ body.pink-mode {
 }
 
 .wordmark-link:focus-visible {
-  outline: 1px solid var(--accent);
+  outline: 2px solid var(--accent);
   outline-offset: 0.35rem;
 }
 
@@ -426,6 +426,10 @@ kbd {
   border-radius: 2px;
   margin: 0 -0.25rem;
   padding: 0 0.25rem;
+}
+
+.field-notes__row[role="button"] {
+  cursor: pointer;
 }
 
 .field-notes__row:hover {

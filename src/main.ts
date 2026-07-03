@@ -99,11 +99,13 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   }
 
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
-  setText('seed-display', label);
-  setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
-  setText('stat-humid', `${(conditions.supersaturation * 100).toFixed(0)}%`);
-
+  const tempText = `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`;
+  const humidText = `${(conditions.supersaturation * 100).toFixed(0)}%`;
   const habitText = habitLabel[conditions.habit];
+
+  setText('seed-display', label);
+  setText('stat-temp', tempText);
+  setText('stat-humid', humidText);
   setText('stat-habit', habitText);
 
   if (lastHabit && lastHabit !== habitText) {
@@ -118,6 +120,11 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
 
   setText('stat-branches', `${result.branchCount}`);
 
+  updateRowAria('stat-temp', 'Temperature', tempText);
+  updateRowAria('stat-humid', 'Supersaturation', humidText);
+  updateRowAria('stat-habit', 'Habit', habitText);
+  updateRowAria('stat-branches', 'Branches', `${result.branchCount}`);
+
   // Always sync labParams so Lab Mode starts from the current snowflake's conditions
   labParams.habit = habitLabel[conditions.habit];
   labParams.temperature = conditions.temperatureC;
@@ -129,6 +136,16 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
 function setText(id: string, value: string) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function updateRowAria(ddId: string, label: string, value: string) {
+  const dd = document.getElementById(ddId);
+  const row = dd?.closest('.field-notes__row');
+  if (row) {
+    const isButton = row.getAttribute('role') === 'button';
+    const interactionHint = isButton ? '. Click to learn more in the field guide.' : '.';
+    row.setAttribute('aria-label', `${label}: ${value}${interactionHint}`);
+  }
 }
 
 function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isError = false, isSuccess = false) {
@@ -259,6 +276,19 @@ async function toggleLabMode() {
     }
     try {
       await ensurePane();
+    } catch (err) {
+      console.error('Failed to load Lab Mode:', err);
+      if (labStatus) {
+        labStatus.textContent = 'ERROR';
+        labStatus.classList.add('btn--error');
+      }
+      isLabMode = false;
+      if (labToggle) {
+        labToggle.setAttribute('aria-pressed', 'false');
+        labToggle.setAttribute('aria-expanded', 'false');
+      }
+      announce('Failed to load Lab Mode controls');
+      return;
     } finally {
       if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
     }
