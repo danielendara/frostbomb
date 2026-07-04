@@ -118,7 +118,12 @@ function visualPress(id: string) {
 function announce(message: string) {
   const announcer = document.getElementById('a11y-announcer');
   if (announcer) {
-    announcer.textContent = message;
+    announcer.textContent = '';
+    announcer.setAttribute('aria-hidden', 'true');
+    setTimeout(() => {
+      announcer.removeAttribute('aria-hidden');
+      announcer.textContent = message;
+    }, 50);
   }
 }
 
@@ -178,7 +183,14 @@ function toggleFieldGuide() {
   }
 
   if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
-  if (fieldGuide) fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
+  if (fieldGuide) {
+    fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
+    if (isGuideOpen) {
+      fieldGuide.focus();
+    } else {
+      guideToggle?.focus();
+    }
+  }
   if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
 }
 
@@ -205,18 +217,23 @@ function updateFromPane() {
 function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
   navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('btn-copy');
-    if (btn) {
-      const labelEl = btn.querySelector('.action-btn__label');
-      if (labelEl) {
-        const originalLabel = labelEl.textContent;
-        labelEl.textContent = 'Copied!';
-        announce('Link copied to clipboard');
+    announce('Link copied to clipboard');
+
+    const feedbackTargets = [
+      { id: 'btn-copy', selector: '.action-btn__label' },
+      { id: 'btn-seed', selector: '#seed-display' }
+    ];
+
+    feedbackTargets.forEach(({ selector }) => {
+      const el = document.querySelector(selector);
+      if (el) {
+        const originalLabel = el.textContent;
+        el.textContent = 'Copied!';
         setTimeout(() => {
-          labelEl.textContent = originalLabel;
+          el.textContent = originalLabel;
         }, 2000);
       }
-    }
+    });
   }).catch(err => {
     console.error('Failed to copy link:', err);
     announce('Failed to copy link');
@@ -224,6 +241,7 @@ function copyLink() {
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
+document.getElementById('btn-seed')?.addEventListener('click', copyLink);
 
 function saveSnowflake() {
   scene.composer.render();

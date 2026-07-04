@@ -16,3 +16,7 @@
 ## 2025-05-15 - Centralized keyboard shortcut documentation
 **Learning:** While `title` attributes are great for contextual hints, a centralized "Keyboard Shortcuts" list in a help or guide section provides a clear reference for users to learn all capabilities at once, especially for "hidden" shortcuts like `Esc` or `?`.
 **Action:** Always include a dedicated shortcuts section in the primary documentation or help overlay of the application.
+
+## 2026-06-11 - Modal Focus Parity
+**Learning:** For users navigating via screen readers or keyboards, a modal or overlay is "invisible" unless focus is explicitly moved into it upon opening. Returning focus to the original trigger upon closing is equally critical to prevent the user from losing their place in the DOM.
+**Action:** Implement programmatic `.focus()` calls on modal containers (with `tabindex="-1"`) and store the last-focused element to restore it on dismissal.
