@@ -13,3 +13,7 @@
 ## 2025-01-24 - Linked Discovery Patterns
 **Learning:** Connecting complex data points (like simulation stats) to their educational definitions (the Field Guide) via interactive "jumps" significantly improves domain-specific discoverability. For non-semantic interactive rows, using `role="button"`, `tabindex="0"`, and `requestAnimationFrame` before `scrollIntoView` ensures a smooth, accessible transition even when the target container's visibility is being toggled simultaneously.
 **Action:** Use interactive labels to bridge the gap between abstract data and documentation, ensuring proper ARIA roles and layout-aware scrolling.
+
+## 2025-05-15 - Anchored Navigation & Accessible Announcements
+**Learning:** Programmatic "jumps" (like scrolling to a glossary section) can be disorienting for users if there's no visual anchor upon arrival. Simultaneously, ARIA live regions often fail to re-announce identical consecutive messages (e.g., "Copied!" multiple times) unless the DOM is briefly cleared.
+**Action:** Always apply a temporary visual highlight (e.g., a pulse animation) to elements scrolled into view programmatically. For `aria-live` announcements, use a small delay (~50ms) and clear text content to force a screen reader update for repeated states.

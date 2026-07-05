@@ -215,7 +215,11 @@ function visualPress(id: string) {
 function announce(message: string) {
   const announcer = document.getElementById('a11y-announcer');
   if (announcer) {
-    announcer.textContent = message;
+    announcer.textContent = '';
+    // Small delay to ensure the DOM change is registered so identical consecutive messages are re-read
+    setTimeout(() => {
+      announcer.textContent = message;
+    }, 50);
   }
 }
 
@@ -333,13 +337,20 @@ document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
       'Temperature': 'guide-temp',
       'Supersaturation': 'guide-humid',
       'Habit': 'guide-habit',
+      'Branches': 'guide-branches',
     };
     const targetId = targets[label || ''];
 
     if (targetId) {
       if (!isGuideOpen) toggleFieldGuide();
       requestAnimationFrame(() => {
-        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          el.classList.remove('section-highlight');
+          void el.offsetWidth;
+          el.classList.add('section-highlight');
+        }
       });
     }
   };
@@ -576,13 +587,24 @@ function resetView() {
 
 document.getElementById('btn-reset')?.addEventListener('click', resetView);
 
-function isEditableTarget(target: EventTarget | null): boolean {
+function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+  return (
+    target.isContentEditable ||
+    Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+  );
+}
+
+function isInteractive(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest('button, a, [role="button"], [role="link"]'));
 }
 
 window.addEventListener('keydown', (e: Event) => {
-  const k = (e as KeyboardEvent).key.toLowerCase();
+  const ke = e as KeyboardEvent;
+  const k = ke.key.toLowerCase();
+
+  // Global escape should always work to close overlays
   if (k === 'escape') {
     if (isGuideOpen) {
       toggleFieldGuide();
@@ -596,8 +618,11 @@ window.addEventListener('keydown', (e: Event) => {
     }
   }
 
-  const ke = e as KeyboardEvent;
-  if (isEditableTarget(e.target) || ke.metaKey || ke.ctrlKey || ke.altKey) return;
+  // Never hijack if user is typing or using system modifiers
+  if (isTyping(e.target) || ke.metaKey || ke.ctrlKey || ke.altKey) return;
+
+  // Space should activate focused interactive elements (buttons/links) instead of refreshing
+  if (k === ' ' && isInteractive(e.target)) return;
 
   // Don't hijack arrows if we're in the guide (allow scrolling) unless focused on diagram
   const isDiagramFocused = document.activeElement === nakayaCanvas;
