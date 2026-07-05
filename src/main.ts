@@ -425,22 +425,25 @@ function updateFromPane(shouldAnnounce = false) {
   const t = labParams.temperature;
   const ss = labParams.supersaturation / 100;
   const habit = getHabit(t, ss);
+  const habitText = habitLabel[habit];
 
   if (nakayaCanvas) {
-    nakayaCanvas.setAttribute('aria-label', `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitLabel[habit]}. Use arrow keys to adjust.`);
+    nakayaCanvas.setAttribute('aria-label', `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitText}. Use arrow keys to adjust.`);
   }
 
   if (shouldAnnounce) {
-    announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labParams.supersaturation.toFixed(0)}%: ${habitLabel[habit]}`);
+    announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labParams.supersaturation.toFixed(0)}%: ${habitText}`);
+  } else if (lastHabit && lastHabit !== habitText) {
+    announce(`Habit changed to: ${habitText}`);
   }
 
   const conditions: GrowthConditions = {
     temperatureC: t,
     supersaturation: ss,
-    habit: getHabit(t, ss),
+    habit: habit,
     path: [{ temp: t, ss: ss }], // Manual path is just the point
   };
-  labParams.habit = habitLabel[conditions.habit];
+  labParams.habit = habitText;
   pane?.refresh();
 
   grow(conditions, true, false);
@@ -582,6 +585,7 @@ function toggleUI(forceShow?: boolean) {
 
 function resetView() {
   scene.resetView();
+  setTemporaryLabel('btn-reset', 'Reset!', '⌂', false, true);
   announce('View reset to center');
 }
 
@@ -608,6 +612,7 @@ window.addEventListener('keydown', (e: Event) => {
   if (k === 'escape') {
     if (isGuideOpen) {
       toggleFieldGuide();
+      visualPress('guide-close');
       return;
     } else if (isLabMode) {
       toggleLabMode();

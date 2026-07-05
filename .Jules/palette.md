@@ -14,6 +14,10 @@
 **Learning:** Connecting complex data points (like simulation stats) to their educational definitions (the Field Guide) via interactive "jumps" significantly improves domain-specific discoverability. For non-semantic interactive rows, using `role="button"`, `tabindex="0"`, and `requestAnimationFrame` before `scrollIntoView` ensures a smooth, accessible transition even when the target container's visibility is being toggled simultaneously.
 **Action:** Use interactive labels to bridge the gap between abstract data and documentation, ensuring proper ARIA roles and layout-aware scrolling.
 
-## 2025-05-15 - Anchored Navigation & Accessible Announcements
-**Learning:** Programmatic "jumps" (like scrolling to a glossary section) can be disorienting for users if there's no visual anchor upon arrival. Simultaneously, ARIA live regions often fail to re-announce identical consecutive messages (e.g., "Copied!" multiple times) unless the DOM is briefly cleared.
-**Action:** Always apply a temporary visual highlight (e.g., a pulse animation) to elements scrolled into view programmatically. For `aria-live` announcements, use a small delay (~50ms) and clear text content to force a screen reader update for repeated states.
+## 2025-05-15 - Keyboard Focus and Visual Synchronicity
+**Learning:** When using `role="button"` on non-semantic elements (like `div` or `span`) for dense data displays, native browser focus outlines are often omitted. Explicitly adding `focus-visible` styles ensures keyboard users can track their position in high-density metadata views.
+**Action:** Always verify that custom `role="button"` elements have a `:focus-visible` or `:focus` outline defined in the design system.
+
+## 2025-05-15 - Global Shortcut Feedback
+**Learning:** For global keyboard shortcuts like `Escape` that trigger UI actions (e.g., closing a modal), adding a brief CSS transition (like a "press" or "glow") to the corresponding physical button provides essential visual feedback that the keyboard command was successfully received and mapped to the UI element.
+**Action:** Hook into global keydown events to briefly apply an active/pressed class to the associated UI toggle for accessibility and polish.
