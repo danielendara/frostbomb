@@ -42,13 +42,14 @@ const INV_STEPS_LUT_05 = INV_STEPS_LUT.map((v) => v * 0.5);
 
 // Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
+// Using Uint16Array for indices (max 65535) saves memory as MAX_SEGMENTS_PER_ARM is only 10000.
 const MAX_SEGMENTS_PER_ARM = 10000;
 const SEGMENT_STRIDE = 16;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
 const DELAY_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
 const DELAYS_RESULT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
-const SEGMENT_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
-const IDENTITY_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
+const SEGMENT_INDICES = new Uint16Array(MAX_SEGMENTS_PER_ARM);
+const IDENTITY_INDICES = new Uint16Array(MAX_SEGMENTS_PER_ARM);
 for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
   IDENTITY_INDICES[i] = i;
 }
@@ -149,7 +150,7 @@ export function buildSnowflake(
 
     // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
     // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
-    const sax = vVarRaw * 0.015; // sin(ax) approx: 0.15 * 0.1
+    const sax = vVarRaw * 0.015; // sin(ax) approx: 0.1 * 0.15
     const sax2 = sax * sax;
     const cax = 1 - 0.5 * sax2; // cos(ax) approx
     const sy = length;
@@ -307,9 +308,7 @@ export function buildSnowflake(
       const endY = startY + dirY * length;
       const tipMidX = endX + dirX * 0.06; // halfTipLen
       const tipMidY = endY + dirY * 0.06;
-      const tipMidX3 = tipMidX * 3;
-      const tipMidY3 = tipMidY * 3;
-      const tipVVarRaw = noise2D(tipMidX3 + nOffset, tipMidY3 + nOffset);
+      const tipVVarRaw = noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset);
       const tsax = tipVVarRaw * 0.015;
       const tsax2 = tsax * tsax;
       const tcax = 1 - 0.5 * tsax2;
