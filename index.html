@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A procedurally generated snowflake, grown from real crystallography. Refresh for another one." />
+    <link rel="canonical" href="https://frostbomb.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="frostbomb" />
+    <meta property="og:url" content="https://frostbomb.com/" />
+    <meta property="og:title" content="frostbomb — a snowflake, grown from refreshes" />
+    <meta property="og:description" content="A procedurally generated snowflake, grown from real crystallography. Refresh for another one." />
+    <meta property="og:image" content="https://frostbomb.com/og-image.png" />
+    <meta property="og:image:secure_url" content="https://frostbomb.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A luminous snowflake on a dark midnight field" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="frostbomb — a snowflake, grown from refreshes" />
+    <meta name="twitter:description" content="A procedurally generated snowflake, grown from real crystallography. Refresh for another one." />
+    <meta name="twitter:image" content="https://frostbomb.com/og-image.png" />
+    <meta name="twitter:image:alt" content="A luminous snowflake on a dark midnight field" />
     <title>frostbomb — a snowflake, grown from refreshes</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,16 +32,16 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <canvas id="scene" aria-label="3D procedural snowflake visualization"></canvas>
+    <canvas id="scene" role="img" aria-label="3D procedural snowflake visualization"></canvas>
 
     <header class="masthead">
-      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R, Space)">
+      <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R, Space)" aria-keyshortcuts="r Space">
         <div class="wordmark" aria-label="frost·bomb">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
       <div class="edition" id="edition">
-        Vol.
         <button id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-keyshortcuts="c">
+          <span class="seed-btn__prefix">Vol.</span>
           <span id="seed-display" aria-live="polite">·····</span>
           <span class="seed-btn__icon" aria-hidden="true">❏</span>
         </button>
@@ -35,20 +52,20 @@
       <div class="field-notes__header">
         <h2 class="field-notes__label">Growth conditions</h2>
         <div class="field-notes__toggles">
-          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G, ?)" aria-pressed="false" aria-keyshortcuts="g ?">
+          <button id="guide-toggle" class="lab-toggle" title="Explain terminology (G, ?)" aria-pressed="false" aria-expanded="false" aria-controls="field-guide" aria-keyshortcuts="g ?">
             Guide
           </button>
-          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-pressed="false" aria-keyshortcuts="l">
+          <button id="lab-toggle" class="lab-toggle" title="Toggle Lab Mode (L)" aria-pressed="false" aria-expanded="false" aria-controls="lab-controls" aria-keyshortcuts="l">
             Lab Mode: <span id="lab-status">OFF</span>
           </button>
         </div>
       </div>
 
       <dl class="field-notes__list" id="stats-display">
-        <div class="field-notes__row"><dt>Temperature</dt><dd id="stat-temp">—</dd></div>
-        <div class="field-notes__row"><dt>Supersaturation</dt><dd id="stat-humid">—</dd></div>
-        <div class="field-notes__row"><dt>Habit</dt><dd id="stat-habit" aria-live="polite">—</dd></div>
-        <div class="field-notes__row"><dt>Branches</dt><dd id="stat-branches">—</dd></div>
+        <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Temperature in the field guide" title="Determines whether the ice grows into flat plates or long columns."><dt>Temperature</dt><dd id="stat-temp">—</dd></div>
+        <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Supersaturation in the field guide" title="The 'fuel' for growth; higher humidity forces more complex branching."><dt>Supersaturation</dt><dd id="stat-humid">—</dd></div>
+        <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Habit in the field guide" title="The resulting morphological category of the crystal."><dt>Habit</dt><dd id="stat-habit">—</dd></div>
+        <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Branches in the field guide" title="The total number of individual ice segments in this snowflake."><dt>Branches</dt><dd id="stat-branches">—</dd></div>
       </dl>
 
       <div class="lab-controls" id="lab-controls" style="display: none;">
@@ -57,45 +74,51 @@
 
       <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="-1" aria-label="Field Guide">
         <div class="field-guide__content">
-          <section>
+          <section id="guide-temp">
             <h3>Temperature</h3>
             <p>Determines if ice grows into flat plates or long columns. Subtle changes at the molecular level flip the growth between "basal" and "prism" faces.</p>
           </section>
-          <section>
+          <section id="guide-humid">
             <h3>Supersaturation</h3>
             <p>The "fuel" for growth. Low humidity creates simple, solid shapes. High humidity forces unstable, rapid growth that branches into complex dendrites.</p>
           </section>
-          <section>
+          <section id="guide-habit">
             <h3>Habit</h3>
             <p>The resulting morphological category. From simple "plates" to "fern-like dendrites," the habit is a record of the path taken through the atmosphere.</p>
+          </section>
+          <section id="guide-branches">
+            <h3>Branches</h3>
+            <p>The total count of hexagonal ice segments. Higher humidity and longer growth times lead to more intricate, branching structures with thousands of individual segments.</p>
           </section>
           <section>
             <h3>Nakaya Diagram</h3>
             <p>The physical map of snowflake shapes. Created by Ukichiro Nakaya in the 1930s, it proves that no two snowflakes are alike because no two follow the same path.</p>
             <div class="nakaya-container">
-              <canvas id="nakaya-diagram" width="300" height="200" aria-label="Nakaya morphology diagram showing snowflake growth path"></canvas>
+              <canvas id="nakaya-diagram" width="300" height="200" role="button" tabindex="0" aria-label="Nakaya morphology diagram. Use arrow keys to adjust temperature and humidity, or click and drag to explore habits." title="Click, drag, or use arrow keys (Arrows) on the diagram to set manual growth conditions" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight" aria-expanded="false" aria-pressed="false" aria-controls="lab-controls"></canvas>
               <div class="nakaya-labels">
-                <span class="nakaya-label nakaya-label--y">Supersaturation →</span>
-                <span class="nakaya-label nakaya-label--x">Temperature (°C) →</span>
+                <span class="nakaya-label nakaya-label--y" aria-hidden="true">Supersaturation →</span>
+                <span class="nakaya-label nakaya-label--x" aria-hidden="true">Temperature (°C) →</span>
               </div>
             </div>
           </section>
           <section>
             <h3>Keyboard Shortcuts</h3>
             <dl class="shortcuts-list">
-              <div class="shortcut-item"><dt>R, Space</dt><dd>Regrow snowflake</dd></div>
-              <div class="shortcut-item"><dt>L</dt><dd>Toggle Lab Mode</dd></div>
-              <div class="shortcut-item"><dt>G, ?</dt><dd>Toggle Field Guide</dd></div>
-              <div class="shortcut-item"><dt>P</dt><dd>Toggle Pink Mode</dd></div>
-              <div class="shortcut-item"><dt>M</dt><dd>Toggle Prism Mode</dd></div>
-              <div class="shortcut-item"><dt>S</dt><dd>Save as PNG</dd></div>
-              <div class="shortcut-item"><dt>A</dt><dd>Toggle Auto-rotate</dd></div>
-              <div class="shortcut-item"><dt>C</dt><dd>Copy share link</dd></div>
-              <div class="shortcut-item"><dt>V</dt><dd>Reset 3D view</dd></div>
-              <div class="shortcut-item"><dt>Esc</dt><dd>Close overlay</dd></div>
+              <div class="shortcut-item"><dt><kbd>R</kbd>, <kbd>Space</kbd></dt><dd>Regrow snowflake</dd></div>
+              <div class="shortcut-item"><dt><kbd>L</kbd></dt><dd>Toggle Lab Mode</dd></div>
+              <div class="shortcut-item"><dt><kbd>G</kbd>, <kbd>?</kbd></dt><dd>Toggle Field Guide</dd></div>
+              <div class="shortcut-item"><dt><kbd>H</kbd></dt><dd>Photo Mode (Hide UI)</dd></div>
+              <div class="shortcut-item"><dt><kbd>P</kbd></dt><dd>Toggle Pink Mode</dd></div>
+              <div class="shortcut-item"><dt><kbd>M</kbd></dt><dd>Toggle Prism Mode</dd></div>
+              <div class="shortcut-item"><dt><kbd>S</kbd></dt><dd>Save as PNG</dd></div>
+              <div class="shortcut-item"><dt><kbd>A</kbd></dt><dd>Toggle Auto-rotate</dd></div>
+              <div class="shortcut-item"><dt><kbd>C</kbd></dt><dd>Copy share link</dd></div>
+              <div class="shortcut-item"><dt><kbd>V</kbd></dt><dd>Reset 3D view</dd></div>
+              <div class="shortcut-item"><dt><kbd>Arrows</kbd></dt><dd>Rotate camera</dd></div>
+              <div class="shortcut-item"><dt><kbd>Esc</kbd></dt><dd>Close overlay / Show UI</dd></div>
             </dl>
           </section>
-          <button id="guide-close" class="field-guide__close" title="Close Field Guide (Esc)">Close Guide</button>
+          <button id="guide-close" class="field-guide__close" title="Close Field Guide (Esc)" aria-keyshortcuts="Escape">Close Guide</button>
         </div>
       </div>
     </aside>
@@ -141,7 +164,7 @@
 
     <div class="grain" aria-hidden="true"></div>
 
-    <div id="a11y-announcer" class="sr-only" aria-live="polite"></div>
+    <div id="a11y-announcer" class="sr-only" aria-live="polite" role="status"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
-## 2025-05-15 - Enhancing accessibility with ARIA live and shortcut hints
-**Learning:** For single-page applications with transient actions like "Copy Link" or "Save File", a global ARIA live announcer is essential to provide non-visual feedback that mirrors visual state changes (like button label swaps).
-**Action:** Always include a hidden `#a11y-announcer` and a helper `announce()` function when implementing features that provide visual-only feedback.
+## 2025-01-24 - Accessible UI Transitions
+**Learning:** Using `opacity: 0` alone to hide UI elements (like in a "Photo Mode") is insufficient for accessibility as the elements remain in the tab order. Combining `opacity` with `visibility: hidden` and including `visibility` in the `transition` property ensures elements are removed from the accessibility tree when the animation completes, preventing "phantom" keyboard focus.
+**Action:** Always pair `opacity` transitions with `visibility` for UI hiding utilities to maintain accessible focus management.
 
 **Learning:** Power users appreciate keyboard shortcuts, but they are often "hidden" features. Appending shortcut keys to the `title` attribute of buttons is a low-effort, high-impact way to improve discoverability without cluttering the UI.
 **Action:** Use the `(Key)` convention in button titles for all implemented keyboard shortcuts.
@@ -20,3 +20,7 @@
 ## 2026-06-11 - Modal Focus Parity
 **Learning:** For users navigating via screen readers or keyboards, a modal or overlay is "invisible" unless focus is explicitly moved into it upon opening. Returning focus to the original trigger upon closing is equally critical to prevent the user from losing their place in the DOM.
 **Action:** Implement programmatic `.focus()` calls on modal containers (with `tabindex="-1"`) and store the last-focused element to restore it on dismissal.
+
+## 2025-01-24 - Interactive Diagram Semantics
+**Learning:** Interactive <canvas> elements that trigger state changes (like the Nakaya Diagram) require explicit ARIA attributes (`aria-expanded`, `aria-pressed`, `aria-controls`) to communicate their current state and relationship to other UI components to screen reader users.
+**Action:** Synchronize ARIA attributes in JavaScript whenever a canvas interaction modifies the global application state.

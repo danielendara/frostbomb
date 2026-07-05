@@ -4,12 +4,12 @@ date,commit,area,milestone,metric,before,after,unit,reported_improvement,evidenc
 2026-04-18,7be6070,rendering,Replace branch meshes with InstancedMesh,branch draw submissions,approximately I,constant-sized,draw submissions,draw calls no longer scale with branch count,architectural,render-architecture,git commit 7be6070
 2026-04-18,4d7bae6,startup,Lazy-load Tweakpane and remove GSAP,first-paint bundle,263,206,KiB gzip,22% smaller,recorded-local,startup-bundle,git commit 4d7bae6
 2026-04-25,063bc7e,lifecycle,Pause hidden rendering and defer postprocessing,hidden-page rendering,continuous,paused,state,eliminates hidden-page CPU and GPU work,architectural,lifecycle,git commit 063bc7e
-2026-04-30,7a423ab,animation,Gate idle matrix and DOM updates,idle update time,0.14,0,ms,effectively eliminated,recorded-local,idle-frame,.Jules/bolt.md
+2026-04-30,7a423ab,animation,Gate idle matrix and DOM updates,idle update time,0.14,0,ms,effectively eliminated,recorded-local,idle-frame,.jules/bolt.md
 2026-05-01,3061679,diagram,Cache static Nakaya diagram background,100 diagram updates,18.5,0.5,ms,36x faster,recorded-local,diagram-update,git commit 3061679
 2026-05-02,3828de3,generation,Replace recursive Vector3 work with primitives,500 snowflake builds,110,70,ms,35% faster,recorded-local,generation-local-500,git commit 3828de3
 2026-05-03,789dcb3,animation,Precompute matrices and manually scale during growth,per-frame matrix composition,Object3D.updateMatrix,manual component scaling,method,removed general-purpose matrix composition,architectural,animation-architecture,git commit 789dcb3
 2026-05-04,e7bfc02,animation,Store metadata for one arm and reuse across symmetry,easing and metadata work,6N,N,operations,83% reduction or 6x,recorded-local,animation-operation-count,git commit e7bfc02
-2026-05-05,fbf47c8,gpu,Reuse InstancedMesh and restrict update ranges,GPU matrix traffic,full capacity,active instances,bytes,up to 80% less for smaller flakes,recorded-local,gpu-transfer,.Jules/bolt.md
+2026-05-05,fbf47c8,gpu,Reuse InstancedMesh and restrict update ranges,GPU matrix traffic,full capacity,active instances,bytes,up to 80% less for smaller flakes,recorded-local,gpu-transfer,.jules/bolt.md
 2026-05-06,dd75bce,particles,Use sin addition identity for snowfall,sine calls per frame,200,2,calls,99% fewer sine calls,operation-count,particle-frame,git commit dd75bce
 2026-05-07,e7b1e26,generation,Manual symmetry matrices and cached segment metadata,buildSnowflake,0.8,0.48,ms/build,40% faster,recorded-local,generation-local,git commit e7b1e26
 2026-05-08,582b945,animation,Write only changing matrix basis,matrix component writes,16,9,writes/instance,44% fewer writes,operation-count,animation-operation-count,git commit 582b945

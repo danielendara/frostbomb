@@ -78,7 +78,85 @@
 **Action:** Hoist all invariant matrix basis and organic jitter components into the `buildArm` recursive phase. Increase `SEGMENT_STRIDE` to store these values. Use a dedicated `Float32Array` for growth delays to optimize sorting.
 **Impact:** Reduced `buildSnowflake` time by ~44% (from 0.080ms to 0.0448ms), effectively making the symmetry loop a set of simple assignments and basic rotations.
 
-## 2026-05-25 - [Symmetry Basis Vector Hoisting & Rotation Identities]
+## 2025-05-25 - [Symmetry Basis Vector Hoisting & Rotation Identities]
 **Learning:** In 6-fold symmetry loops, calculating a ratio ($K$) to derive other matrix components (e.g., Column 1 from Column 0) still incurs 2 multiplications per symmetry instance (12 total per segment). Hoisting the full set of basis vectors ($V_0, V_1, V_2, V_3$) into the $O(N)$ geometry phase and applying hexagonal rotation identities ($V_{rot} = V_{60} - V_{orig}$) to all of them further reduces the arithmetic density. Replacing the `1/numSteps` division in recursive loops with a small LUT also provides a measurable win in high-depth dendrites.
 **Action:** Pre-calculate and store all four 2D basis vectors for the primary arm in `SEGMENT_BUFFER`. Use hexagonal rotation and negation identities for all matrix columns in the symmetry pass. Implement `INV_STEPS_LUT` for recursion step calculations.
 **Impact:** Optimization reduced average `buildSnowflake` time by an additional ~20% (from ~0.065ms to ~0.052ms), significantly lowering the CPU cost of procedural generation.
+
+## 2026-05-26 - [Recursive Closure & RNG Inlining]
+**Learning:** In high-depth recursive functions, the overhead of passing 10+ arguments per call and repeated property lookups on an RNG object (like `rand.chance()`) adds significant CPU latency. Refactoring to a nested closure that captures invariant parameters and binding the RNG function to a local variable provides a substantial performance boost.
+**Action:** Move deep recursive logic into a nested closure to capture environment variables. Bind RNG methods (e.g., `rand.next.bind(rand)`) to local references to avoid property access in hot paths.
+**Impact:** Optimization reduced average `buildSnowflake` time from ~0.075ms to ~0.037ms (~50% improvement).
+
+## 2026-05-27 - [Hexagonal Symmetry Identities & Animation Unrolling]
+**Learning:** Hexagonal symmetry identities ( = S_1 - S_0$,  = -S_0$,  = -S_1$,  = S_0 - S_1$) can be used to unroll symmetry loops in the animation hot path, reducing basis multiplications from 38 to 12 per segment. When unrolling loops that operate on flat buffers (like `instanceMatrix`), using absolute indexing (`j * 96`) is safer than mutable cursor increments to prevent data misalignment during logical refactors.
+**Action:** Unroll the 6-fold symmetry loop in `animate()` using additive/subtractive identities for basis vectors. Hoist animation-invariant constants (e.g., `driftScale`, `timeStep`) and replace divisions with pre-calculated inverse constants in the tweening logic.
+**Impact:** Reduces arithmetic density in the growth animation loop by ~63% per segment, ensuring fluid growth for complex dendrites on low-power devices.
+
+## 2026-05-28 - [Growth Animation Pre-Scaling & Direct LUT Indexing]
+**Learning:** In high-frequency animation loops that process thousands of instances (like snowflake growth), even O(1) easing function calls and clamping math (`Math.min`) add measurable CPU overhead when executed every frame. Pre-calculating the final index scale during the initialization/regeneration phase allows the render loop to use a single subtraction and bitwise truncation for direct Look-Up Table (LUT) access.
+**Action:** Pre-scale the `delays` array by the LUT scale factor (`(LUT_SIZE - 1) * 2`) when a snowflake is initialized. In the `animate` loop, replace `easeOutExpoFast(Math.min(1, (threshold - delay) * 2))` with a direct lookup `EASING_LUT[(thresholdScaled - delayScaled) | 0]`.
+**Impact:** Eliminates function call overhead, clamping logic, and multiple floating-point multiplications from the hottest part of the render loop. Ensures O(1) animation state updates with minimal arithmetic density.
+
+## 2026-05-29 - [Recursive Call Pruning & Parameter Hoisting]
+**Learning:** In high-depth procedural generation, the overhead of function calls (stack frames) and redundant data lookups (array/object indexing) within those calls can dominate the CPU time. Pruning branches at the call site (before entering recursion) and passing pre-sampled parameters through the recursion significantly reduces this overhead. Replacing division with inverse multiplication in the PRNG hot path also provides a consistent micro-optimization win.
+**Action:** Move constraint checks (depth, length) to the caller before initiating recursive calls. Pre-calculate or pre-sample invariant parameters (e.g., path-based growth rules) and pass them as arguments to avoid redundant lookups. Use pre-calculated inverse constants for hot-path divisions.
+**Impact:** Reduced 'Large' snowflake generation time by ~12% (0.116ms to 0.102ms) by eliminating thousands of redundant lookups and function call overheads per snowflake.
+
+## 2026-05-30 - [Particle Animation Pre-scaling & Mesh State Hoisting]
+**Learning:** Background animation elements (like 200+ snowfall particles) that scale with a global "motion" parameter often incur hundreds of redundant multiplications per frame if the scaling is applied inside the particle loop. Additionally, updating mesh properties (position, rotation) in every `requestAnimationFrame` call is wasteful if those properties only change when the underlying data (the snowflake) is regenerated.
+**Action:** Pre-calculate scaled velocity and drift buffers for particles whenever the global motion scale or accessibility settings change. Hoist static `InstancedMesh` property updates into the data initialization phase (`updateFlake`) to keep the `animate` loop strictly focused on dynamic tweening.
+**Impact:** Eliminated ~400+ redundant multiplications and several mesh property writes per frame. Ensures the render loop remains "lean" even as scene complexity increases.
+
+## 2026-05-31 - [Recursive Property Hoisting & Direct RNG Access]
+**Learning:** In deep recursive procedural generation, property access overhead (e.g., `params.thickness`) and function call/bind overhead (e.g., `rand.next.bind()`) can accumulate significantly. Destructuring parameters at the start of recursion and exposing the raw PRNG function as a public property allows for a leaner execution path.
+**Action:** Use parameter destructuring in hot recursive functions to minimize property lookups. Expose internal state like `rng` in utility classes to bypass method wrapper overhead in high-frequency paths.
+**Impact:** Reduced average `buildSnowflake` time for complex dendrites by ~10% (0.0403ms to 0.0368ms), totaling a ~54% cumulative improvement from the original baseline.
+
+## 2026-06-20 - [Additive Tracking Initialization]
+**Learning:** When replacing linear indexing (e.g., `i * step`) with additive tracking (`tracker += step`) in loops that don't start at zero (e.g., `for (let i = 1; ...)`), the tracker must be initialized to the value corresponding to the loop's start condition. In the snowflake side-branch loop, initializing `pIdxFloat` to `dist * pathScale` before the first `currentDist += stepDist` ensures the first branch at `i=1` samples the correct path parameters.
+**Action:** Always verify that additive trackers are synchronized with their discrete counterparts at the first iteration of a loop.
+
+## 2026-06-23 - [TypedArray subarray() & IDENTITY_INDICES optimization]
+**Learning:** Returning a `.subarray()` instead of `.slice()` for large intermediate buffers (like `matrices`) eliminates multi-megabyte allocations and copies per generation. Combined with resetting indices via `.set()` from a pre-allocated `IDENTITY_INDICES` buffer and hoisting the sort comparator, these changes significantly reduce GC pressure and CPU cycles.
+**Action:** Use `subarray()` when data is consumed synchronously and doesn't need to be owned by the caller. Use `.set()` for bulk TypedArray initialization/resets.
+**Impact:** Reduced average `buildSnowflake` time from 0.0581ms to 0.0366ms (~37% improvement).
+
+## 2026-06-24 - [GPU Update Pruning & Symmetry Arithmetic Overhead]
+**Learning:** In Three.js, bulk matrix assignments via `.set()` on an `InstancedMesh.instanceMatrix.array` do not automatically prune GPU uploads to the modified range. Without an explicit `addUpdateRange()`, the entire pre-allocated buffer is uploaded, wasting PCIe bandwidth. Conversely, attempting to derive 6-fold hexagonal symmetry components via arithmetic (12 multiplications per segment) in the render loop is less efficient than sequential `TypedArray` reads (6 reads) due to modern CPU prefetching and the high cost of manual math relative to cache-local memory access.
+**Action:** Use `addUpdateRange(0, count)` in all bulk matrix update paths (including static regeneration and animation completion) to prune GPU traffic. Favor sequential memory reads over manual trigonometric derivation for symmetry components in hot loops.
+**Impact:** Prunes GPU uploads to active segments only, reducing bus traffic during interactive "Lab Mode" updates. Maintains render loop efficiency by avoiding redundant arithmetic.
+
+## 2026-06-25 - [Local Buffer vs Global Shared Result Safety]
+**Learning:** Returning global shared mutable objects (like SHARED_RESULT) from geometry generation functions creates dangerous state mutation bugs when the UI logic or concurrent animations expect immutable snapshots. While shared Float32Array buffers for large data are efficient, the high-level result structure should remain fresh or carefully managed.
+**Action:** Use shared typed arrays for numeric data but return fresh objects for high-level result structures. Prefer local arrays over global caches for per-generation metadata to ensure thread-safety and avoid property-overwriting bugs in wrap-around pools.
+
+## 2026-06-26 - [Recursive Pooling & Symmetry Identity Chaining]
+**Learning:** High-branching recursive procedural generation (like snowflakes) is extremely sensitive to per-segment object allocations and redundant matrix calculations. Implementing a bitmask-indexed object pool for recursive parameters eliminates GC pressure. Furthermore, refactoring the 6-fold symmetry loop to chain assignments using vector identities (e.g., Arm 2 = Arm 1 - Arm 0) reduces multiplications and index lookups compared to per-arm rotation.
+**Action:** Use object pooling for short-lived recursive parameter objects. Chain symmetry matrix assignments using geometric identities to minimize arithmetic density.
+**Impact:** Optimization reduced average `buildSnowflake` time for complex dendrites by ~10% (from ~0.0368ms to ~0.033ms).
+
+## 2026-06-28 - [Parameter Pooling for Geometry Generation]
+**Learning:** Even small, frequent object allocations (like parameter objects or path arrays) during high-frequency procedural generation add measurable overhead due to memory pressure and GC churn. Using a fixed-size pool for dynamic parameters and a shared array for static paths effectively eliminates these allocations.
+**Action:** Identify and eliminate O(1) or O(N) object allocations in hot procedural paths by utilizing shared buffers or object pools.
+**Impact:** Optimization reduced average 'buildSnowflake' execution time by ~3% by eliminating thousands of short-lived object allocations per second.
+
+## 2026-06-30 - [Arithmetic Hoisting & Bulk Zeroing]
+**Learning:** In high-frequency recursive loops, hoisting simple arithmetic (like `sax * sax`) and reusing derived products (like `sx * sax`) provides measurable gains by reducing the instruction count in the hot path. Additionally, `TypedArray.prototype.fill()` is more efficient than individual loop-based assignments for bulk-clearing contiguous memory regions (like the 3x3 basis of an InstancedMesh matrix) when resetting animation states.
+**Action:** Identify redundant products in hot recursive paths and hoist them. Use `.fill()` for bulk zeroing of contiguous TypedArray segments.
+**Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~15% (from ~0.0355ms to ~0.0301ms).
+
+## 2026-07-02 - [Arithmetic Reuse & Redundant Assignment Pruning]
+**Learning:** In high-frequency matrix population loops, redundant assignments (like zeroing indices already guaranteed to be zero) and repetitive scalar multiplications add measurable CPU overhead. Reusing existing basis components (e.g., deriving m8/m9 from m0/m1) and pre-combining scalar constants further reduces the instruction count in the hot path.
+**Action:** Identify and eliminate redundant writes to TypedArrays. Reuse intermediate basis products to derive orthogonal components.
+**Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~5% (from ~0.0303ms to ~0.0287ms).
+
+## 2026-07-03 - [Thickness Constant Hoisting & Side-Branch Early Exit]
+**Learning:** In recursive procedural generators with high branching factors, even simple multiplications (e.g., `primaryThickness * 0.15`) can accumulate significantly across thousands of calls. Hoisting these into the parameter initialization phase and utilizing pre-calculated constants in the hot path provides measurable gains. Furthermore, implementing an early exit in the branching loop using an additive 'max length' tracker prevents hundreds of unnecessary iterations once branches fall below the rendering threshold.
+**Action:** Identify redundant scalar multiplications in hot recursive functions and move them to a pre-calculation phase (e.g., within the `Params` object). Use additive trackers to enable early pruning of loops based on rendering thresholds.
+**Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~2.4% (from ~0.0296ms to ~0.0289ms).
+
+## 2026-07-04 - [Arithmetic Reuse & Uint16 Index Buffers]
+**Learning:** In high-frequency recursive geometry generation, reusing derived products (e.g., `sx * sax`) and simplifying constants (e.g., `vJitter = sax * 0.15`) provides measurable gains by reducing instruction count. Additionally, for buffers with known small bounds (e.g., 10,000 segments), `Uint16Array` is a more cache-efficient choice than `Uint32Array` for index storage. Furthermore, overly aggressive hoisting that increases the number of arguments passed in recursion can sometimes introduce more overhead than it saves due to stack frame pressure.
+**Action:** Favor combining multiplications in hot recursive loops. Use appropriately sized TypedArrays for indices to improve memory density. Monitor recursive argument count to avoid stack frame overhead.
+**Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~20% (from ~0.045ms to ~0.036ms) while reducing the memory footprint of index buffers.

@@ -15,7 +15,9 @@ const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
 let isLabMode = false;
 let isGuideOpen = false;
+let isUIHidden = false;
 let currentConditions: GrowthConditions;
+let lastHabit: string | null = null;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
 
@@ -86,25 +88,120 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   scene.updateFlake(result, animate);
   nakayaDiagram?.update(conditions.path);
 
+  if (canvas) {
+    canvas.setAttribute('aria-label', `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`);
+  }
+
+  document.title = `${habitLabel[conditions.habit]} — frostbomb`;
+  const btnSeed = document.getElementById('btn-seed');
+  if (btnSeed) {
+    btnSeed.setAttribute('aria-label', `Copy share link for seed ${label}`);
+  }
+
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
+  const tempText = `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`;
+  const humidText = `${(conditions.supersaturation * 100).toFixed(0)}%`;
+  const habitText = habitLabel[conditions.habit];
+
   setText('seed-display', label);
-  setText('stat-temp', `${conditions.temperatureC.toFixed(1)} °C / ${tempF.toFixed(1)} °F`);
-  setText('stat-humid', `${(conditions.supersaturation * 100).toFixed(0)}%`);
-  setText('stat-habit', habitLabel[conditions.habit]);
+  setText('stat-temp', tempText);
+  setText('stat-humid', humidText);
+  setText('stat-habit', habitText);
+
+  if (lastHabit && lastHabit !== habitText) {
+    const habitEl = document.getElementById('stat-habit');
+    if (habitEl) {
+      habitEl.classList.remove('habit-animate');
+      void habitEl.offsetWidth;
+      habitEl.classList.add('habit-animate');
+    }
+  }
+  lastHabit = habitText;
+
   setText('stat-branches', `${result.branchCount}`);
 
-  if (isLabMode) {
-    labParams.habit = habitLabel[conditions.habit];
-    labParams.temperature = conditions.temperatureC;
-    labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
-    labParams.supersaturation = conditions.supersaturation * 100;
-    pane?.refresh();
-  }
+  updateRowAria('stat-temp', 'Temperature', tempText);
+  updateRowAria('stat-humid', 'Supersaturation', humidText);
+  updateRowAria('stat-habit', 'Habit', habitText);
+  updateRowAria('stat-branches', 'Branches', `${result.branchCount}`);
+
+  // Always sync labParams so Lab Mode starts from the current snowflake's conditions
+  labParams.habit = habitLabel[conditions.habit];
+  labParams.temperature = conditions.temperatureC;
+  labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
+  labParams.supersaturation = conditions.supersaturation * 100;
+  pane?.refresh();
 }
 
 function setText(id: string, value: string) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function updateRowAria(ddId: string, label: string, value: string) {
+  const dd = document.getElementById(ddId);
+  const row = dd?.closest('.field-notes__row');
+  if (row) {
+    const isButton = row.getAttribute('role') === 'button';
+    const interactionHint = isButton ? '. Click to learn more in the field guide.' : '.';
+    row.setAttribute('aria-label', `${label}: ${value}${interactionHint}`);
+  }
+}
+
+function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isError = false, isSuccess = false) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+
+  const labelEl = btn.querySelector('.action-btn__label, #seed-display, .refresh__label') as HTMLElement;
+  const iconEl = btn.querySelector('.action-btn__icon, .seed-btn__icon, .refresh__icon') as HTMLElement;
+
+  if (!labelEl) return;
+
+  // Prevent race condition: store original values if not already stored
+  if (!labelEl.hasAttribute('data-original')) {
+    labelEl.setAttribute('data-original', labelEl.textContent || '');
+  }
+  if (iconEl && !iconEl.hasAttribute('data-original')) {
+    iconEl.setAttribute('data-original', iconEl.textContent || '');
+  }
+
+  labelEl.textContent = tempText;
+  if (iconEl && tempIcon) iconEl.textContent = tempIcon;
+
+  if (isError) {
+    btn.classList.add('btn--error');
+    btn.classList.remove('btn--success');
+  } else if (isSuccess) {
+    btn.classList.add('btn--success');
+    btn.classList.remove('btn--error');
+  } else {
+    btn.classList.remove('btn--error');
+    btn.classList.remove('btn--success');
+  }
+
+  const existingTimeout = btn.getAttribute('data-timeout-id');
+  if (existingTimeout) clearTimeout(parseInt(existingTimeout));
+
+  const timeoutId = window.setTimeout(() => {
+    const originalLabel = labelEl.getAttribute('data-original');
+    if (originalLabel !== null) {
+      labelEl.textContent = originalLabel;
+      labelEl.removeAttribute('data-original');
+    }
+
+    if (iconEl) {
+      const originalIcon = iconEl.getAttribute('data-original');
+      if (originalIcon !== null) {
+        iconEl.textContent = originalIcon;
+        iconEl.removeAttribute('data-original');
+      }
+    }
+    btn.classList.remove('btn--error');
+    btn.classList.remove('btn--success');
+    btn.removeAttribute('data-timeout-id');
+  }, 2000);
+
+  btn.setAttribute('data-timeout-id', timeoutId.toString());
 }
 
 function visualPress(id: string) {
@@ -119,9 +216,8 @@ function announce(message: string) {
   const announcer = document.getElementById('a11y-announcer');
   if (announcer) {
     announcer.textContent = '';
-    announcer.setAttribute('aria-hidden', 'true');
+    // Small delay to ensure the DOM change is registered so identical consecutive messages are re-read
     setTimeout(() => {
-      announcer.removeAttribute('aria-hidden');
       announcer.textContent = message;
     }, 50);
   }
@@ -136,8 +232,15 @@ function handleRefresh(e?: Event) {
     void (dot as HTMLElement).offsetWidth;
     dot.classList.add('animate-spin-once');
   }
+  const refreshIcon = document.querySelector('.refresh__icon');
+  if (refreshIcon) {
+    refreshIcon.classList.remove('animate-spin-once');
+    void (refreshIcon as HTMLElement).offsetWidth;
+    refreshIcon.classList.add('animate-spin-once');
+  }
   window.history.replaceState(null, '', window.location.pathname);
   grow(isLabMode ? currentConditions : undefined);
+  announce(`New snowflake grown: ${habitLabel[currentConditions.habit]}`);
 }
 
 document.getElementById('refresh')?.addEventListener('click', handleRefresh);
@@ -154,53 +257,182 @@ async function toggleLabMode() {
   isLabMode = !isLabMode;
   const toggleGeneration = ++labToggleGeneration;
 
-  if (isLabMode && isGuideOpen) {
-    toggleFieldGuide();
+  if (labToggle) {
+    labToggle.setAttribute('aria-pressed', isLabMode.toString());
+    labToggle.setAttribute('aria-expanded', isLabMode.toString());
   }
-
-  if (labToggle) labToggle.setAttribute('aria-pressed', isLabMode.toString());
+  if (nakayaCanvas) {
+    nakayaCanvas.setAttribute('aria-pressed', isLabMode.toString());
+    nakayaCanvas.setAttribute('aria-expanded', isLabMode.toString());
+  }
   if (labControls) labControls.style.display = isLabMode ? 'flex' : 'none';
-  if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
+  if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
   if (labStatus) {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
     labStatus.style.color = isLabMode ? 'var(--accent)' : 'var(--ink-dim)';
   }
 
   if (isLabMode) {
-    await ensurePane();
+    if (!pane && labStatus) {
+      labStatus.textContent = 'LOADING...';
+      if (labToggle instanceof HTMLButtonElement) labToggle.disabled = true;
+      announce('Loading lab controls');
+    }
+    try {
+      await ensurePane();
+    } catch (err) {
+      console.error('Failed to load Lab Mode:', err);
+      if (labStatus) {
+        labStatus.textContent = 'ERROR';
+        labStatus.classList.add('btn--error');
+      }
+      isLabMode = false;
+      if (labToggle) {
+        labToggle.setAttribute('aria-pressed', 'false');
+        labToggle.setAttribute('aria-expanded', 'false');
+      }
+      announce('Failed to load Lab Mode controls');
+      return;
+    } finally {
+      if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
+    }
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
-    updateFromPane();
+    if (labStatus) {
+      labStatus.textContent = 'ON';
+    }
+    updateFromPane(false);
   } else {
     grow(undefined, true);
+    if (labToggle) labToggle.focus();
   }
 }
 
 function toggleFieldGuide() {
   isGuideOpen = !isGuideOpen;
 
-  if (isGuideOpen && isLabMode) {
-    toggleLabMode();
+  if (guideToggle) {
+    guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
+    guideToggle.setAttribute('aria-expanded', isGuideOpen.toString());
   }
-
-  if (guideToggle) guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
   if (fieldGuide) {
     fieldGuide.style.display = isGuideOpen ? 'block' : 'none';
     if (isGuideOpen) {
+      fieldGuide.scrollTop = 0;
       fieldGuide.focus();
-    } else {
-      guideToggle?.focus();
+    } else if (guideToggle) {
+      guideToggle.focus();
     }
   }
-  if (statsDisplay) statsDisplay.style.display = (isLabMode || isGuideOpen) ? 'none' : 'flex';
+  if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
 document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
 
-function updateFromPane() {
+document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
+  const handler = () => {
+    const label = row.querySelector('dt')?.textContent?.trim();
+    const targets: Record<string, string> = {
+      'Temperature': 'guide-temp',
+      'Supersaturation': 'guide-humid',
+      'Habit': 'guide-habit',
+      'Branches': 'guide-branches',
+    };
+    const targetId = targets[label || ''];
+
+    if (targetId) {
+      if (!isGuideOpen) toggleFieldGuide();
+      requestAnimationFrame(() => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          el.classList.remove('section-highlight');
+          void el.offsetWidth;
+          el.classList.add('section-highlight');
+        }
+      });
+    }
+  };
+
+  row.addEventListener('click', handler);
+  row.addEventListener('keydown', (e) => {
+    const ke = e as KeyboardEvent;
+    if (ke.key === 'Enter' || ke.key === ' ') {
+      e.preventDefault();
+      handler();
+    }
+  });
+});
+
+function handleNakayaPointer(e: PointerEvent) {
+  if (!nakayaCanvas) return;
+  const rect = nakayaCanvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+  const t = x * 40 - 40;
+  const ss = 1 - y;
+
+  labParams.temperature = t;
+  labParams.supersaturation = ss * 100;
+
+  if (!isLabMode) {
+    toggleLabMode();
+  } else {
+    updateFromPane(false);
+  }
+}
+
+nakayaCanvas?.addEventListener('pointerdown', (e) => {
+  nakayaCanvas.setPointerCapture(e.pointerId);
+  handleNakayaPointer(e);
+});
+
+nakayaCanvas?.addEventListener('pointermove', (e) => {
+  if (e.buttons > 0) handleNakayaPointer(e);
+});
+
+nakayaCanvas?.addEventListener('keydown', (e: Event) => {
+  const { key } = e as KeyboardEvent;
+  const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key);
+  const isAction = key === ' ' || key === 'Enter';
+
+  if (isArrow || isAction) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isLabMode) {
+      toggleLabMode();
+    }
+
+    if (isArrow) {
+      const tStep = 1;
+      const ssStep = 5;
+
+      if (key === 'ArrowLeft') labParams.temperature = Math.max(-40, labParams.temperature - tStep);
+      if (key === 'ArrowRight') labParams.temperature = Math.min(0, labParams.temperature + tStep);
+      if (key === 'ArrowUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + ssStep);
+      if (key === 'ArrowDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - ssStep);
+
+      visualPress('nakaya-diagram');
+      updateFromPane(true);
+    }
+  }
+});
+
+function updateFromPane(shouldAnnounce = false) {
   const t = labParams.temperature;
   const ss = labParams.supersaturation / 100;
+  const habit = getHabit(t, ss);
+
+  if (nakayaCanvas) {
+    nakayaCanvas.setAttribute('aria-label', `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitLabel[habit]}. Use arrow keys to adjust.`);
+  }
+
+  if (shouldAnnounce) {
+    announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labParams.supersaturation.toFixed(0)}%: ${habitLabel[habit]}`);
+  }
 
   const conditions: GrowthConditions = {
     temperatureC: t,
@@ -214,57 +446,75 @@ function updateFromPane() {
   grow(conditions, true, false);
 }
 
-function copyLink() {
+async function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
-  navigator.clipboard.writeText(url).then(() => {
-    announce('Link copied to clipboard');
 
-    const feedbackTargets = [
-      { id: 'btn-copy', selector: '.action-btn__label' },
-      { id: 'btn-seed', selector: '#seed-display' }
-    ];
+  // Immediate visual feedback for better perceived performance
+  setTemporaryLabel('btn-copy', 'Copied!', '✓', false, true);
+  setTemporaryLabel('btn-seed', 'Copied!', '✓', false, true);
+  announce(`Link copied for seed ${currentSeedLabel}`);
 
-    feedbackTargets.forEach(({ selector }) => {
-      const el = document.querySelector(selector);
-      if (el) {
-        const originalLabel = el.textContent;
-        el.textContent = 'Copied!';
-        setTimeout(() => {
-          el.textContent = originalLabel;
-        }, 2000);
+  // Small delay to ensure UI has time to paint before potentially blocking clipboard operations
+  setTimeout(async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        throw new Error('Clipboard API unavailable');
       }
-    });
-  }).catch(err => {
-    console.error('Failed to copy link:', err);
-    announce('Failed to copy link');
-  });
+    } catch (err) {
+      console.warn('Clipboard API failed, trying legacy fallback:', err);
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!successful) {
+          throw new Error('execCommand copy failed');
+        }
+      } catch (fallbackErr) {
+        console.error('Legacy fallback failed:', fallbackErr);
+        setTemporaryLabel('btn-copy', 'Failed', '✕', true);
+        setTemporaryLabel('btn-seed', 'Failed', '✕', true);
+        announce('Failed to copy link');
+      }
+    }
+  }, 50);
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 document.getElementById('btn-seed')?.addEventListener('click', copyLink);
 
-function saveSnowflake() {
-  scene.composer.render();
+async function saveSnowflake() {
+  setTemporaryLabel('btn-save', 'Saving...', '⌛');
+  announce('Saving snowflake as PNG');
 
-  const dataUrl = canvas.toDataURL('image/png');
-  const link = document.createElement('a');
-  const habit = currentConditions.habit.replace(/_/g, '-');
-  link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
-  link.href = dataUrl;
-  link.click();
+  // Delay to ensure UI updates before heavy rendering
+  setTimeout(() => {
+    try {
+      scene.composer.render();
 
-  const btn = document.getElementById('btn-save');
-  if (btn) {
-    const labelEl = btn.querySelector('.action-btn__label');
-    if (labelEl) {
-      const originalLabel = labelEl.textContent;
-      labelEl.textContent = 'Saved!';
-      announce('Snowflake saved as PNG');
-      setTimeout(() => {
-        labelEl.textContent = originalLabel;
-      }, 2000);
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      const habit = currentConditions.habit.replace(/_/g, '-');
+      link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      setTemporaryLabel('btn-save', 'Saved!', '✓', false, true);
+      announce('Snowflake saved');
+    } catch (err) {
+      console.error('Failed to save snowflake:', err);
+      setTemporaryLabel('btn-save', 'Failed', '✕', true);
+      announce('Failed to save snowflake');
     }
-  }
+  }, 100);
 }
 
 document.getElementById('btn-save')?.addEventListener('click', saveSnowflake);
@@ -279,6 +529,7 @@ function togglePinkMode() {
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle('pink-mode', enabled);
+  announce(`Pink mode ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 btnPink?.addEventListener('click', togglePinkMode);
@@ -292,6 +543,8 @@ function togglePrismMode() {
     btnPrism.classList.toggle('active', enabled);
   }
   scene.setPrismMode(enabled);
+  document.body.classList.toggle('prism-mode', enabled);
+  announce(`Prism mode ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 btnPrism?.addEventListener('click', togglePrismMode);
@@ -309,34 +562,84 @@ function toggleAutoRotate() {
     btnRotate.classList.toggle('active', enabled);
   }
   scene.setAutoRotate(enabled);
+  announce(`Auto-rotation ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
-document.getElementById('btn-reset')?.addEventListener('click', () => scene.resetView());
 
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+function toggleUI(forceShow?: boolean) {
+  isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
+
+  const uiElements = document.querySelectorAll('.masthead, .field-notes, .footer, .lab-controls');
+  uiElements.forEach((el) => el.classList.toggle('ui-hidden', isUIHidden));
+
+  if (isUIHidden) {
+    announce('UI hidden. Press H or Esc to show.');
+  } else {
+    announce('UI visible');
+  }
 }
 
-window.addEventListener('keydown', (e) => {
-  const k = e.key.toLowerCase();
+function resetView() {
+  scene.resetView();
+  announce('View reset to center');
+}
+
+document.getElementById('btn-reset')?.addEventListener('click', resetView);
+
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+  );
+}
+
+function isInteractive(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest('button, a, [role="button"], [role="link"]'));
+}
+
+window.addEventListener('keydown', (e: Event) => {
+  const ke = e as KeyboardEvent;
+  const k = ke.key.toLowerCase();
+
+  // Global escape should always work to close overlays
   if (k === 'escape') {
     if (isGuideOpen) {
       toggleFieldGuide();
+      return;
     } else if (isLabMode) {
       toggleLabMode();
+      return;
+    } else if (isUIHidden) {
+      toggleUI(true);
+      return;
     }
   }
 
-  if (isEditableTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+  // Never hijack if user is typing or using system modifiers
+  if (isTyping(e.target) || ke.metaKey || ke.ctrlKey || ke.altKey) return;
+
+  // Space should activate focused interactive elements (buttons/links) instead of refreshing
+  if (k === ' ' && isInteractive(e.target)) return;
+
+  // Don't hijack arrows if we're in the guide (allow scrolling) unless focused on diagram
+  const isDiagramFocused = document.activeElement === nakayaCanvas;
+  if (isGuideOpen && !isDiagramFocused && k.startsWith('arrow')) return;
+
   const actions: Record<string, () => void> = {
+    'arrowup': () => (e.preventDefault(), scene.rotateView(0, -0.1)),
+    'arrowdown': () => (e.preventDefault(), scene.rotateView(0, 0.1)),
+    'arrowleft': () => (e.preventDefault(), scene.rotateView(-0.1, 0)),
+    'arrowright': () => (e.preventDefault(), scene.rotateView(0.1, 0)),
     'r': () => (handleRefresh(), visualPress('refresh')),
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
-    'v': () => (scene.resetView(), visualPress('btn-reset')),
+    'v': () => (resetView(), visualPress('btn-reset')),
     'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     'l': () => (toggleLabMode(), visualPress('lab-toggle')),
+    'h': () => toggleUI(),
     'p': () => (togglePinkMode(), visualPress('btn-pink')),
     'm': () => (togglePrismMode(), visualPress('btn-prism')),
     's': () => (saveSnowflake(), visualPress('btn-save')),

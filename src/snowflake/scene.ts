@@ -2,9 +2,13 @@ import * as THREE from 'three';
 import { BuildResult } from './geometry';
 
 const EASING_LUT_SIZE = 1024;
+const LUT_SIZE_MINUS_ONE = EASING_LUT_SIZE - 1;
+const LUT_SCALE_FACTOR = 2 * LUT_SIZE_MINUS_ONE;
+const THRESHOLD_SCALE_FACTOR = 1.5 * LUT_SCALE_FACTOR;
+
 const EASING_LUT = new Float32Array(EASING_LUT_SIZE);
 for (let i = 0; i < EASING_LUT_SIZE; i++) {
-  const t = i / (EASING_LUT_SIZE - 1);
+  const t = i / LUT_SIZE_MINUS_ONE;
   EASING_LUT[i] = t === 0 ? 0 : (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
 }
 
@@ -40,6 +44,7 @@ export interface Scene {
   setPrismMode: (enabled: boolean) => void;
   updateFlake: (data: BuildResult, animate?: boolean) => void;
   resetView: () => void;
+  rotateView: (dx: number, dy: number) => void;
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
@@ -120,19 +125,39 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const particleCount = prefersReducedMotion ? 80 : 200;
   const particleGeom = new THREE.BufferGeometry();
   const particlePos = new Float32Array(particleCount * 3);
-  const particleVel = new Float32Array(particleCount);
-  const particleSinPhase = new Float32Array(particleCount);
-  const particleCosPhase = new Float32Array(particleCount);
+  const particleVelBase = new Float32Array(particleCount);
+  const particleSinPhaseBase = new Float32Array(particleCount);
+  const particleCosPhaseBase = new Float32Array(particleCount);
+
+  // Performance Optimization: Pre-scaled buffers for particle velocity and drift components.
+  // These eliminate hundreds of multiplications per frame by hoisting the motionScale
+  // and driftScale applications to the initialization and mode-change phases.
+  const particleVelScaled = new Float32Array(particleCount);
+  const particleSinPhaseScaled = new Float32Array(particleCount);
+  const particleCosPhaseScaled = new Float32Array(particleCount);
 
   for (let i = 0; i < particleCount; i++) {
     particlePos[i * 3] = (Math.random() - 0.5) * 20;
     particlePos[i * 3 + 1] = (Math.random() - 0.5) * 20;
     particlePos[i * 3 + 2] = (Math.random() - 0.5) * 10;
-    particleVel[i] = 0.02 + Math.random() * 0.03;
+    particleVelBase[i] = 0.02 + Math.random() * 0.03;
     const phase = Math.random() * Math.PI * 2;
-    particleSinPhase[i] = Math.sin(phase);
-    particleCosPhase[i] = Math.cos(phase);
+    particleSinPhaseBase[i] = Math.sin(phase);
+    particleCosPhaseBase[i] = Math.cos(phase);
   }
+
+  let motionScale = prefersReducedMotion ? 0.25 : 1;
+  let timeStep = 0.3 * motionScale;
+  let driftScale = 0.002 * motionScale;
+
+  function updateScaledParticles() {
+    for (let i = 0; i < particleCount; i++) {
+      particleVelScaled[i] = particleVelBase[i] * motionScale;
+      particleSinPhaseScaled[i] = particleSinPhaseBase[i] * driftScale;
+      particleCosPhaseScaled[i] = particleCosPhaseBase[i] * driftScale;
+    }
+  }
+  updateScaledParticles();
 
   particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
   const particleMat = new THREE.PointsMaterial({
@@ -265,18 +290,24 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let minAnimatedIndex = 0;
   const entryState = { progress: 0 };
   const ENTRY_DURATION_MS = 2200;
+  const INV_ENTRY_DURATION = 1 / ENTRY_DURATION_MS;
   let entryStartTime = 0;
   let entryActive = false;
+  let lastEntryActive: string | null = null;
+  let lastEntryProgress: string | null = null;
 
   function syncEntryState() {
     const active = entryActive.toString();
     const progress = entryState.progress.toFixed(3);
-    // Only update DOM if values changed to avoid redundant work and test instability
-    if (canvas.dataset.entryActive !== active) {
-      canvas.dataset.entryActive = active;
+    // Only update DOM if values changed to avoid redundant work and test instability.
+    // Use setAttribute for robust synchronization with testing engines (Playwright).
+    if (lastEntryActive !== active) {
+      canvas.setAttribute('data-entry-active', active);
+      lastEntryActive = active;
     }
-    if (canvas.dataset.entryProgress !== progress) {
-      canvas.dataset.entryProgress = progress;
+    if (lastEntryProgress !== progress) {
+      canvas.setAttribute('data-entry-progress', progress);
+      lastEntryProgress = progress;
     }
   }
   syncEntryState();
@@ -297,7 +328,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     if (!entryActive) {
       return;
     }
-    const t = (now - entryStartTime) / ENTRY_DURATION_MS;
+    const t = (now - entryStartTime) * INV_ENTRY_DURATION;
     if (t >= 1) {
       entryState.progress = 1;
       entryActive = false;
@@ -393,8 +424,19 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       mouse.targetX = 0;
       mouse.targetY = 0;
     },
+    rotateView: (dx: number, dy: number) => {
+      targetRotation.y += dx;
+      targetRotation.x += dy;
+    },
     updateFlake: (data: BuildResult, animate = true) => {
       currentFlakeData = data;
+
+      // Performance Optimization: Hoist static core updates out of the render loop.
+      // Position and rotation are constant for a given snowflake and only need to be set once.
+      const coreData = data.core;
+      coreMesh.position.set(coreData.position[0], coreData.position[1], coreData.position[2]);
+      coreMesh.rotation.set(coreData.rotation[0], coreData.rotation[1], coreData.rotation[2]);
+
       const requiredCount = data.matrices.length / 16;
 
       // Only recreate the InstancedMesh if the existing one is too small.
@@ -422,7 +464,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         // Fast-path for non-animated updates (e.g. Lab Mode): directly copy the pre-computed
         // matrices to the GPU buffer and skip the basis-zeroing loop.
         branchMesh.instanceMatrix.array.set(data.matrices);
-        branchMesh.instanceMatrix.clearUpdateRanges();
+        if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+          branchMesh.instanceMatrix.clearUpdateRanges();
+          branchMesh.instanceMatrix.addUpdateRange(0, data.matrices.length);
+        } else {
+          (branchMesh.instanceMatrix as any).updateRange = { offset: 0, count: data.matrices.length };
+        }
         branchMesh.instanceMatrix.needsUpdate = true;
         minAnimatedIndex = data.armCount;
       } else {
@@ -431,15 +478,19 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         const target = branchMesh.instanceMatrix.array as Float32Array;
         target.set(data.matrices);
         for (let i = 0; i < requiredCount; i++) {
-          const idx = i * 16;
-          // Zero out the 3x3 basis (columns 1-3)
-          target[idx + 0] = target[idx + 1] = target[idx + 2] = 0;
-          target[idx + 4] = target[idx + 5] = target[idx + 6] = 0;
-          target[idx + 8] = target[idx + 9] = target[idx + 10] = 0;
+          // Zero out the 3x3 basis (columns 0-2) and W components (3, 7, 11).
+          // Performance Optimization: Use target.fill() for bulk zeroing instead of 12 individual assignments.
+          target.fill(0, i << 4, (i << 4) + 12);
         }
         branchMesh.instanceMatrix.clearUpdateRanges();
         branchMesh.instanceMatrix.needsUpdate = true;
         minAnimatedIndex = 0;
+
+        // Optimization: Pre-scale delays to shift arithmetic out of the render loop.
+        const delays = data.delays;
+        for (let i = 0; i < delays.length; i++) {
+          delays[i] *= LUT_SCALE_FACTOR;
+        }
       }
 
       if (!flakeHolder.children.includes(coreMesh)) {
@@ -477,6 +528,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   function handleReducedMotionChange(e: MediaQueryListEvent) {
     prefersReducedMotion = e.matches;
+    motionScale = prefersReducedMotion ? 0.25 : 1;
+    timeStep = 0.3 * motionScale;
+    driftScale = 0.002 * motionScale;
+    updateScaledParticles();
+
     if (prefersReducedMotion) {
       qualityScale = Math.min(qualityScale, 0.7);
       sceneInterface.setAutoRotate(false);
@@ -511,8 +567,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     const now = timestamp ?? performance.now();
     timer.update(now);
     const delta = timer.getDelta();
-    const motionScale = prefersReducedMotion ? 0.25 : 1;
-    time += delta * 0.3 * motionScale;
+
+    time += delta * timeStep;
     adaptQuality(delta);
 
     // Update snowflake material colors for Prism Mode
@@ -539,10 +595,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       let px = positions[idx3];
       let py = positions[idx3 + 1];
 
-      py -= particleVel[i] * motionScale;
+      py -= particleVelScaled[i];
       // Horizontal drift using pre-calculated phase components
-      const drift = sinTime * particleCosPhase[i] + cosTime * particleSinPhase[i];
-      px += drift * 0.002 * motionScale;
+      // Performance Optimization: Using pre-scaled phase components (particleCosPhaseScaled and
+      // particleSinPhaseScaled) eliminates approximately 400 multiplications per frame.
+      const drift = sinTime * particleCosPhaseScaled[i] + cosTime * particleSinPhaseScaled[i];
+      px += drift;
 
       if (py < -10) {
         py = 10;
@@ -583,14 +641,21 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         if (eased === 1) {
           // Fast-path for finished animation: bulk copy pre-computed matrices
           branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
-          branchMesh.instanceMatrix.clearUpdateRanges();
+          if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+            branchMesh.instanceMatrix.clearUpdateRanges();
+            branchMesh.instanceMatrix.addUpdateRange(0, currentFlakeData.matrices.length);
+          } else {
+            (branchMesh.instanceMatrix as any).updateRange = { offset: 0, count: currentFlakeData.matrices.length };
+          }
+          branchMesh.instanceMatrix.needsUpdate = true;
           minAnimatedIndex = currentFlakeData.armCount;
         } else {
           // Animated growth: apply scale to pre-computed matrices manually to avoid O(N) compose()
           const target = branchMesh.instanceMatrix.array as Float32Array;
           const source = currentFlakeData.matrices;
           const armLen = currentFlakeData.armCount;
-          const threshold = eased * 1.5;
+          const thresholdScaled = eased * THRESHOLD_SCALE_FACTOR;
+          const initialMinAnimatedIndex = minAnimatedIndex;
           let maxIndex = -1;
 
           // Optimization: Outer loop over the single arm's instances.
@@ -598,34 +663,35 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           let batchStart = -1;
           let batchCount = 0;
 
+          // Performance Optimization: Use additive index tracking for segIdx to avoid
+          // a multiplication (j * 96) in every iteration of the growth animation loop.
+          let segIdx = minAnimatedIndex * 96;
           for (let j = minAnimatedIndex; j < armLen; j++) {
             const delay = currentFlakeData.delays[j];
 
             // Optimization: Early break since segments are sorted by delay.
-            if (delay > threshold) {
+            if (delay > thresholdScaled) {
               if (batchStart !== -1) {
                 target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
               }
               break;
             }
 
-            const progress = Math.min(1, (threshold - delay) * 2);
-
-            // Inner loop: Apply scale to all 6 symmetry instances.
-            // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ...]
-            // which results in contiguous memory writes and better cache locality.
-            let idx = j * 6 * 16;
+            // Performance Optimization: Direct bitwise-truncated index into EASING_LUT.
+            // Replaces Math.min and redundant multiplications within the hot loop.
+            const lutIdx = (thresholdScaled - delay) | 0;
 
             // If this segment is fully grown, we batch the copy operation for contiguous segments.
-            if (progress >= 1) {
+            if (lutIdx >= LUT_SIZE_MINUS_ONE) {
               if (batchStart === -1) {
-                batchStart = idx;
+                batchStart = segIdx;
                 batchCount = 96;
               } else {
                 batchCount += 96;
               }
               if (j === minAnimatedIndex) minAnimatedIndex++;
               maxIndex = j;
+              segIdx += 96;
               continue;
             }
 
@@ -637,28 +703,86 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             }
 
             maxIndex = j;
-            const s = easeOutExpoFast(progress);
+            const s = EASING_LUT[lutIdx];
 
             // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
             // These are identical for all 6 arms as they represent Z-tilt and thickness.
-            const m6s = source[idx + 6] * s;
-            const m10s = source[idx + 10] * s;
+            const m6s = source[segIdx + 6] * s;
+            const m10s = source[segIdx + 10] * s;
 
-            for (let i = 0; i < 6; i++) {
-              // Column 1
-              target[idx + 0] = source[idx + 0] * s;
-              target[idx + 1] = source[idx + 1] * s;
-              // Optimization: Skip target[idx+2] as it is always 0 for snowflake segments.
-              // Column 2
-              target[idx + 4] = source[idx + 4] * s;
-              target[idx + 5] = source[idx + 5] * s;
-              target[idx + 6] = m6s;
-              // Column 3
-              target[idx + 8] = source[idx + 8] * s;
-              target[idx + 9] = source[idx + 9] * s;
-              target[idx + 10] = m10s;
-              idx += 16;
-            }
+            // Arm 0 (Primary Arm, 0°)
+            const sm0 = source[segIdx + 0] * s;
+            const sm1 = source[segIdx + 1] * s;
+            const sm4 = source[segIdx + 4] * s;
+            const sm5 = source[segIdx + 5] * s;
+            const sm8 = source[segIdx + 8] * s;
+            const sm9 = source[segIdx + 9] * s;
+            target[segIdx + 0] = sm0;
+            target[segIdx + 1] = sm1;
+            target[segIdx + 4] = sm4;
+            target[segIdx + 5] = sm5;
+            target[segIdx + 6] = m6s;
+            target[segIdx + 8] = sm8;
+            target[segIdx + 9] = sm9;
+            target[segIdx + 10] = m10s;
+
+            // Arm 1 (60°)
+            const sm0_1 = source[segIdx + 16] * s;
+            const sm1_1 = source[segIdx + 17] * s;
+            const sm4_1 = source[segIdx + 20] * s;
+            const sm5_1 = source[segIdx + 21] * s;
+            const sm8_1 = source[segIdx + 24] * s;
+            const sm9_1 = source[segIdx + 25] * s;
+            target[segIdx + 16] = sm0_1;
+            target[segIdx + 17] = sm1_1;
+            target[segIdx + 20] = sm4_1;
+            target[segIdx + 21] = sm5_1;
+            target[segIdx + 22] = m6s;
+            target[segIdx + 24] = sm8_1;
+            target[segIdx + 25] = sm9_1;
+            target[segIdx + 26] = m10s;
+
+            // Arm 2 (120°) = Arm 1 - Arm 0
+            target[segIdx + 32] = sm0_1 - sm0;
+            target[segIdx + 33] = sm1_1 - sm1;
+            target[segIdx + 36] = sm4_1 - sm4;
+            target[segIdx + 37] = sm5_1 - sm5;
+            target[segIdx + 38] = m6s;
+            target[segIdx + 40] = sm8_1 - sm8;
+            target[segIdx + 41] = sm9_1 - sm9;
+            target[segIdx + 42] = m10s;
+
+            // Arm 3 (180°) = -Arm 0
+            target[segIdx + 48] = -sm0;
+            target[segIdx + 49] = -sm1;
+            target[segIdx + 52] = -sm4;
+            target[segIdx + 53] = -sm5;
+            target[segIdx + 54] = m6s;
+            target[segIdx + 56] = -sm8;
+            target[segIdx + 57] = -sm9;
+            target[segIdx + 58] = m10s;
+
+            // Arm 4 (240°) = -Arm 1
+            target[segIdx + 64] = -sm0_1;
+            target[segIdx + 65] = -sm1_1;
+            target[segIdx + 68] = -sm4_1;
+            target[segIdx + 69] = -sm5_1;
+            target[segIdx + 70] = m6s;
+            target[segIdx + 72] = -sm8_1;
+            target[segIdx + 73] = -sm9_1;
+            target[segIdx + 74] = m10s;
+
+            // Arm 5 (300°) = Arm 0 - Arm 1
+            target[segIdx + 80] = sm0 - sm0_1;
+            target[segIdx + 81] = sm1 - sm1_1;
+            target[segIdx + 84] = sm4 - sm4_1;
+            target[segIdx + 85] = sm5 - sm5_1;
+            target[segIdx + 86] = m6s;
+            target[segIdx + 88] = sm8 - sm8_1;
+            target[segIdx + 89] = sm9 - sm9_1;
+            target[segIdx + 90] = m10s;
+
+            segIdx += 96;
           }
 
           // Flush final batch if it exists (e.g. if loop completed with fully grown segments)
@@ -667,30 +791,26 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           }
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.
-          // Because of the interleaved layout, we can now use a SINGLE update range for all symmetry arms.
-          if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
-            branchMesh.instanceMatrix.clearUpdateRanges();
-            if (maxIndex >= minAnimatedIndex) {
-              const start = minAnimatedIndex * 6 * 16;
-              const count = (maxIndex - minAnimatedIndex + 1) * 6 * 16;
+          if (maxIndex >= initialMinAnimatedIndex) {
+            if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+              branchMesh.instanceMatrix.clearUpdateRanges();
+              const start = initialMinAnimatedIndex * 96; // 6 arms * 16 floats
+              const count = (maxIndex - initialMinAnimatedIndex + 1) * 96;
               branchMesh.instanceMatrix.addUpdateRange(start, count);
+            } else {
+              const start = initialMinAnimatedIndex * 96;
+              const count = (maxIndex - initialMinAnimatedIndex + 1) * 96;
+              (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: count };
             }
-          } else {
-            // Fallback for older Three.js versions: update the entire modified range
-            const start = minAnimatedIndex * 16;
-            const end = (5 * armLen + maxIndex + 1) * 16;
-            (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: end - start };
+            branchMesh.instanceMatrix.needsUpdate = true;
           }
         }
-        branchMesh.instanceMatrix.needsUpdate = true;
       }
 
       if (coreMesh && currentFlakeData) {
-        const data = currentFlakeData.core;
+        const coreData = currentFlakeData.core;
         const s = eased;
-        coreMesh.position.set(data.position[0], data.position[1], data.position[2]);
-        coreMesh.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
-        coreMesh.scale.set(data.scale[0] * s, data.scale[1] * s, data.scale[2] * s);
+        coreMesh.scale.set(coreData.scale[0] * s, coreData.scale[1] * s, coreData.scale[2] * s);
       }
 
       flakeHolder.position.y = (1 - eased) * -2;

@@ -1,3 +1,5 @@
+const INV_2_32 = 1 / 4294967296;
+
 // Mulberry32 — small, fast, deterministic PRNG.
 // Given the same 32-bit seed, always produces the same sequence.
 export function mulberry32(seed: number): () => number {
@@ -7,7 +9,7 @@ export function mulberry32(seed: number): () => number {
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) * INV_2_32;
   };
 }
 
@@ -37,7 +39,7 @@ export function resolveSeed(): { seed: number; label: string } {
 
 // Convenience helpers bound to an rng instance
 export class Rand {
-  constructor(private rng: () => number) {}
+  constructor(public readonly rng: () => number) {}
   next(): number {
     return this.rng();
   }

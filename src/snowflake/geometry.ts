@@ -37,15 +37,42 @@ const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 const INV_STEPS_LUT = new Float32Array([
   0, 1, 0.5, 0.33333334, 0.25, 0.2, 0.16666667, 0.14285715, 0.125, 0.11111111, 0.1,
 ]);
+const INV_STEPS_LUT_04 = INV_STEPS_LUT.map((v) => v * 0.4);
+const INV_STEPS_LUT_05 = INV_STEPS_LUT.map((v) => v * 0.5);
 
 // Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
+// Using Uint16Array for indices (max 65535) saves memory as MAX_SEGMENTS_PER_ARM is only 10000.
 const MAX_SEGMENTS_PER_ARM = 10000;
 const SEGMENT_STRIDE = 16;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
 const DELAY_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
-const SEGMENT_INDICES = new Uint32Array(MAX_SEGMENTS_PER_ARM);
+const DELAYS_RESULT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
+const SEGMENT_INDICES = new Uint16Array(MAX_SEGMENTS_PER_ARM);
+const IDENTITY_INDICES = new Uint16Array(MAX_SEGMENTS_PER_ARM);
+for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
+  IDENTITY_INDICES[i] = i;
+}
+
+const MATRICES_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * 96);
+for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
+  const o = i * 96;
+  MATRICES_BUFFER[o + 15] = 1;
+  MATRICES_BUFFER[o + 31] = 1;
+  MATRICES_BUFFER[o + 47] = 1;
+  MATRICES_BUFFER[o + 63] = 1;
+  MATRICES_BUFFER[o + 79] = 1;
+  MATRICES_BUFFER[o + 95] = 1;
+}
+
 let currentSegmentCount = 0;
+
+/**
+ * Performance Optimization: Dedicated sort comparator hoisted to avoid closure re-creation.
+ */
+function compareDelays(a: number, b: number): number {
+  return DELAY_BUFFER[a] - DELAY_BUFFER[b];
+}
 
 // Performance Optimization: Global noise instance avoids building a permutation table every time.
 // We use a fixed seed for the internal permutation table to ensure that nOffset-based
@@ -60,46 +87,278 @@ export function buildSnowflake(
   rand: Rand,
 ): BuildResult {
   currentSegmentCount = 0;
+  stellarPoolIdx = 0;
 
   // Use a seeded offset to ensure deterministic but unique noise per snowflake.
   const nOffset = rand.range(0, 1000);
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  const pathParams = conditions.path.map((p) => paramsFor(p.temp, p.ss));
+  // Performance Optimization: Use a shared buffer to avoid re-allocating the pathParams array.
+  const pathLen = Math.min(conditions.path.length, MAX_PATH_LEN);
+  const pathParams = SHARED_PATH_PARAMS;
+  for (let i = 0; i < pathLen; i++) {
+    const p = conditions.path[i];
+    pathParams[i] = paramsFor(p.temp, p.ss);
+  }
+
   // Optimization: Pre-calculate path sampling scale to save multiplications in recursion.
-  const pathScale = INV_MAX_DIST * pathParams.length;
+  const pathScale = INV_MAX_DIST * pathLen;
+  const maxPathIdx = pathLen - 1;
+
+  // Performance Optimization: Capture invariant parameters and the RNG via closure in a local
+  // recursive function. This reduces the number of arguments passed in recursion from 12 to 7,
+  // minimizing stack frame overhead and property lookups on every call.
+  const rng = rand.rng;
+
+  function buildArmInternal(
+    startX: number,
+    startY: number,
+    dirX: number,
+    dirY: number,
+    dist: number,
+    length: number,
+    depth: number,
+    params: Params,
+  ) {
+    if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
+
+    // Performance Optimization: Destructure params once per call to minimize property lookups
+    // in the hot recursion path.
+    const {
+      primaryThickness,
+      thickness015,
+      thickness04,
+      thickness04_015,
+      sideBranchProb,
+      sideBranchDecay,
+      cosAngle,
+      sinAngle,
+      maxDepth,
+      hasTip,
+    } = params;
+
+    const halfLen = length * 0.5;
+    const midX = startX + dirX * halfLen;
+    const midY = startY + dirY * halfLen;
+    const midX3 = midX * 3;
+    const midY3 = midY * 3;
+    const nx = midX3 + nOffset;
+    const ny = midY3 + nOffset;
+    const vVarRaw = noise2D(nx, ny);
+    const sx = primaryThickness + vVarRaw * thickness015;
+
+    // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
+    // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
+    const sax = vVarRaw * 0.015; // sin(ax) approx: 0.1 * 0.15
+    const sax2 = sax * sax;
+    const cax = 1 - 0.5 * sax2; // cos(ax) approx
+    const sy = length;
+    // Use pre-calculated sx, sy, and cax to derive matrix columns.
+    const m0 = -dirY * sx;
+    const m1 = dirX * sx;
+    const caxy = cax * sy;
+    const m4 = -dirX * caxy;
+    const m5 = -dirY * caxy;
+    // Optimization: Reuse m1 and m0 to calculate m8 and m9.
+    const m8 = m1 * sax;
+    const m9 = -m0 * sax;
+    const m6 = sax * sy;
+    const m10 = cax * sx; // cax * sz, where sz = sx
+    const vJitter = vVarRaw * 0.00225; // jitter constant: 0.15 * 0.1 * 0.15
+    const m12 = midX + vJitter;
+    const m13 = midY + vJitter;
+    const m14 = vJitter;
+
+    const bIdx = currentSegmentCount << 4; // STRIDE 16
+    SEGMENT_BUFFER[bIdx + 0] = m0;
+    SEGMENT_BUFFER[bIdx + 1] = m1;
+    SEGMENT_BUFFER[bIdx + 2] = m4;
+    SEGMENT_BUFFER[bIdx + 3] = m5;
+    SEGMENT_BUFFER[bIdx + 4] = m8;
+    SEGMENT_BUFFER[bIdx + 5] = m9;
+    SEGMENT_BUFFER[bIdx + 6] = m6;
+    SEGMENT_BUFFER[bIdx + 7] = m10;
+    SEGMENT_BUFFER[bIdx + 8] = m12;
+    SEGMENT_BUFFER[bIdx + 9] = m13;
+    SEGMENT_BUFFER[bIdx + 10] = m14;
+    DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
+
+    currentSegmentCount++;
+
+    if (depth >= maxDepth || sideBranchProb <= 0) return;
+
+    // Walk along the main branch, occasionally spawning side branches
+    const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
+    if (numSteps <= 1) return;
+
+    const invNumSteps = INV_STEPS_LUT[numSteps] || 1 / numSteps;
+    const stepDist = length * invNumSteps;
+    const stepX = dirX * stepDist;
+    const stepY = dirY * stepDist;
+    const sideLenBase = length * sideBranchDecay;
+    let pointX = startX;
+    let pointY = startY;
+    let currentDist = dist;
+
+    // Performance Optimization: Use additive tracking for atmospheric path sampling to avoid
+    // multiplications and divisions in the hot loop.
+    let pIdxFloat = dist * pathScale;
+    const pIdxStep = stepDist * pathScale;
+
+    // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
+    const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
+    const probStep = sideBranchProb * lut04;
+    const lenStep = INV_STEPS_LUT_05[numSteps] || invNumSteps * 0.5;
+    const sideLenMaxStep = sideLenBase * lenStep;
+    const stepX2 = stepX * 2;
+    const stepY2 = stepY * 2;
+    let currentLocalProb = sideBranchProb * (1 - lut04);
+    let currentLenFactor = 1 - lenStep;
+    let sideLenMax = sideLenBase * currentLenFactor;
+    let px2 = (startX + stepX) * 2;
+    let py2 = (startY + stepY) * 2;
+
+    const nextDepth = depth + 1;
+
+    // Hoist side branch length factors to save multiplications.
+    const sideLenMin = sideLenBase * 0.4;
+    const sideLenRange = sideLenBase * 0.6;
+
+    for (let i = 1; i < numSteps; i++) {
+      if (sideLenMax < 0.08) break;
+
+      pointX += stepX;
+      pointY += stepY;
+      currentDist += stepDist;
+      pIdxFloat += pIdxStep;
+
+      // Side branches get less likely near the tip
+      // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
+      if (rng() < currentLocalProb) {
+        const sideLen = (sideLenMin + sideLenRange * rng()) * currentLenFactor;
+
+        // Optimization: Prune side branches early before performing lookups and recursive calls.
+        if (sideLen >= 0.08) {
+          // Real snowflakes: side branches grow at 60° (hexagonal lattice)
+          const noiseVal = noise2D(px2, py2);
+
+          const angleVariation = noiseVal * 0.1;
+          // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
+          // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
+          //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
+          const v = angleVariation + (-0.04 + 0.08 * rng());
+          const vSin = v * sinAngle;
+          const vCos = v * cosAngle;
+          const vHalf = 0.5 * v;
+          const cosA = cosAngle - vSin - vHalf * vCos;
+          const sinA = sinAngle + vCos - vHalf * vSin;
+          // Optimization: Pre-sample parameters for the side branch only when it's created.
+          const pIdx = pIdxFloat | 0;
+          const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
+          const nextParams = pathParams[pathIdx];
+
+          if (nextDepth <= nextParams.maxDepth) {
+            const dxca = dirX * cosA;
+            const dysa = dirY * sinA;
+            const dxsa = dirX * sinA;
+            const dyca = dirY * cosA;
+
+            // Right side branch (sign = 1)
+            buildArmInternal(
+              pointX,
+              pointY,
+              dxca - dysa,
+              dxsa + dyca,
+              currentDist,
+              sideLen,
+              nextDepth,
+              nextParams,
+            );
+
+            // Left side branch (sign = -1)
+            // cos(-a) = cos(a), sin(-a) = -sin(a)
+            buildArmInternal(
+              pointX,
+              pointY,
+              dxca + dysa,
+              -dxsa + dyca,
+              currentDist,
+              sideLen,
+              nextDepth,
+              nextParams,
+            );
+          }
+        }
+      }
+
+      currentLocalProb -= probStep;
+      currentLenFactor -= lenStep;
+      sideLenMax -= sideLenMaxStep;
+      px2 += stepX2;
+      py2 += stepY2;
+    }
+
+    // Optional pointed tip extension
+    if (hasTip && depth === 0) {
+      if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
+
+      const tipLen = 0.12;
+      const endX = startX + dirX * length;
+      const endY = startY + dirY * length;
+      const tipMidX = endX + dirX * 0.06; // halfTipLen
+      const tipMidY = endY + dirY * 0.06;
+      const tipVVarRaw = noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset);
+      const tsax = tipVVarRaw * 0.015;
+      const tsax2 = tsax * tsax;
+      const tcax = 1 - 0.5 * tsax2;
+      const tsx = thickness04 + tipVVarRaw * thickness04_015;
+      const tm0 = -dirY * tsx;
+      const tm1 = dirX * tsx;
+      const tcaxy = tcax * tipLen;
+
+      const tIdx = currentSegmentCount << 4;
+      SEGMENT_BUFFER[tIdx + 0] = tm0;
+      SEGMENT_BUFFER[tIdx + 1] = tm1;
+      SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
+      SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
+      // Optimization: Reuse tm1 and tm0 to calculate indices 4 and 5.
+      SEGMENT_BUFFER[tIdx + 4] = tm1 * tsax;
+      SEGMENT_BUFFER[tIdx + 5] = -tm0 * tsax;
+      SEGMENT_BUFFER[tIdx + 6] = tsax * tipLen;
+      SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
+      const tvJitter = tipVVarRaw * 0.00225;
+      SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
+      SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
+      SEGMENT_BUFFER[tIdx + 10] = tvJitter;
+      DELAY_BUFFER[currentSegmentCount] = length * 0.15 + 0.1; // depth=0
+
+      currentSegmentCount++;
+    }
+  }
 
   // Build one primary arm along +X
-  const maxPathIdx = pathParams.length - 1;
-  buildArm(
-    0, 0, // startX, startY
-    1, 0, // dirX, dirY
-    0, // dist
-    3.5, // Total target length
-    0, // depth
-    pathParams,
-    maxPathIdx,
-    pathScale,
-    rand,
-    nOffset,
-  );
+  buildArmInternal(0, 0, 1, 0, 0, 3.5, 0, pathParams[0]);
 
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
   const armLen = currentSegmentCount;
   const sortedIndices = SEGMENT_INDICES.subarray(0, armLen);
-  // Correctness fix: Always reset indices to ensure we only sort the current arm's data.
-  for (let i = 0; i < armLen; i++) sortedIndices[i] = i;
+  // Performance Optimization: Use .set() and a pre-allocated IDENTITY_INDICES buffer to reset indices.
+  // This leverages memcpy and is faster than an explicit O(N) for-loop.
+  sortedIndices.set(IDENTITY_INDICES.subarray(0, armLen));
   // Performance Optimization: Use a dedicated flat buffer for delay sorting to improve cache locality.
-  sortedIndices.sort((a, b) => DELAY_BUFFER[a] - DELAY_BUFFER[b]);
+  sortedIndices.sort(compareDelays);
 
   // Performance Optimization: Use shared scratchpad buffers during calculation to avoid O(N)
-  // intermediate allocations. We return a slice (copy) to ensure that the returned data
-  // is owned by the caller and not overwritten by subsequent buildSnowflake calls.
-  const delays = new Float32Array(armLen);
-  // Float32Array is pre-filled with zeros, allowing us to skip multiple writes in the hot loop.
-  const matrices = new Float32Array(armLen * 96); // 6 * 16 = 96
+  // intermediate allocations. In this single-threaded, synchronous context, subarray() avoids
+  // multi-megabyte allocations and copies, as the data is consumed or copied by the caller
+  // (scene.updateFlake) immediately.
+  const delays = DELAYS_RESULT_BUFFER.subarray(0, armLen);
+  // Performance Optimization: Use a shared scratchpad buffer and subarray() to return the result.
+  // In this single-threaded, synchronous context, subarray() avoids a multi-megabyte allocation
+  // and copy, as the data is consumed or copied by the caller (scene.updateFlake) immediately.
+  const matrices = MATRICES_BUFFER.subarray(0, armLen * 96);
 
   let offset = 0;
   for (let j = 0; j < armLen; j++) {
@@ -128,25 +387,42 @@ export function buildSnowflake(
     // to improve cache locality and consolidate GPU update ranges.
     // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
     // and eliminate multiplications.
-    // R(60) = [0.5, -sin60; sin60, 0.5]
-    // R(120) = R(60) - I = [-0.5, -sin60; sin60, -0.5]
-    // R(180) = -I
-    // R(240) = -R(60)
-    // R(300) = -R(120)
 
+    // Performance Optimization: Use chained assignments for invariant matrix components
+    // across all 6 symmetry instances. This reduces index lookups and writes.
+    matrices[offset + 6] =
+      matrices[offset + 22] =
+      matrices[offset + 38] =
+      matrices[offset + 54] =
+      matrices[offset + 70] =
+      matrices[offset + 86] =
+        m6;
+    matrices[offset + 10] =
+      matrices[offset + 26] =
+      matrices[offset + 42] =
+      matrices[offset + 58] =
+      matrices[offset + 74] =
+      matrices[offset + 90] =
+        m10;
+    matrices[offset + 14] =
+      matrices[offset + 30] =
+      matrices[offset + 46] =
+      matrices[offset + 62] =
+      matrices[offset + 78] =
+      matrices[offset + 94] =
+        m14;
+
+    // Performance Optimization: Use explicit initialization for all potential non-zero indices
+    // to ensure safety when reusing the shared MATRICES_BUFFER across generations.
     // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
     matrices[offset + 1] = m1;
     matrices[offset + 4] = m4;
     matrices[offset + 5] = m5;
-    matrices[offset + 6] = m6;
     matrices[offset + 8] = m8;
     matrices[offset + 9] = m9;
-    matrices[offset + 10] = m10;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
-    matrices[offset + 14] = m14;
-    matrices[offset + 15] = 1;
 
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
@@ -162,106 +438,50 @@ export function buildSnowflake(
     matrices[offset + 17] = m1_1;
     matrices[offset + 20] = m4_1;
     matrices[offset + 21] = m5_1;
-    matrices[offset + 22] = m6;
     matrices[offset + 24] = m8_1;
     matrices[offset + 25] = m9_1;
-    matrices[offset + 26] = m10;
     matrices[offset + 28] = m12_1;
     matrices[offset + 29] = m13_1;
-    matrices[offset + 30] = m14;
-    matrices[offset + 31] = 1;
 
     // Arm 2 (120°) = Arm 1 - Arm 0
-    const m0_2 = m0_1 - m0;
-    const m1_2 = m1_1 - m1;
-    const m4_2 = m4_1 - m4;
-    const m5_2 = m5_1 - m5;
-    const m8_2 = m8_1 - m8;
-    const m9_2 = m9_1 - m9;
-    const m12_2 = m12_1 - m12;
-    const m13_2 = m13_1 - m13;
-
-    matrices[offset + 32] = m0_2;
-    matrices[offset + 33] = m1_2;
-    matrices[offset + 36] = m4_2;
-    matrices[offset + 37] = m5_2;
-    matrices[offset + 38] = m6;
-    matrices[offset + 40] = m8_2;
-    matrices[offset + 41] = m9_2;
-    matrices[offset + 42] = m10;
-    matrices[offset + 44] = m12_2;
-    matrices[offset + 45] = m13_2;
-    matrices[offset + 46] = m14;
-    matrices[offset + 47] = 1;
+    matrices[offset + 32] = m0_1 - m0;
+    matrices[offset + 33] = m1_1 - m1;
+    matrices[offset + 36] = m4_1 - m4;
+    matrices[offset + 37] = m5_1 - m5;
+    matrices[offset + 40] = m8_1 - m8;
+    matrices[offset + 41] = m9_1 - m9;
+    matrices[offset + 44] = m12_1 - m12;
+    matrices[offset + 45] = m13_1 - m13;
 
     // Arm 3 (180°) = -Arm 0
-    const m0_3 = -m0;
-    const m1_3 = -m1;
-    const m4_3 = -m4;
-    const m5_3 = -m5;
-    const m8_3 = -m8;
-    const m9_3 = -m9;
-    const m12_3 = -m12;
-    const m13_3 = -m13;
-
-    matrices[offset + 48] = m0_3;
-    matrices[offset + 49] = m1_3;
-    matrices[offset + 52] = m4_3;
-    matrices[offset + 53] = m5_3;
-    matrices[offset + 54] = m6;
-    matrices[offset + 56] = m8_3;
-    matrices[offset + 57] = m9_3;
-    matrices[offset + 58] = m10;
-    matrices[offset + 60] = m12_3;
-    matrices[offset + 61] = m13_3;
-    matrices[offset + 62] = m14;
-    matrices[offset + 63] = 1;
+    matrices[offset + 48] = -m0;
+    matrices[offset + 49] = -m1;
+    matrices[offset + 52] = -m4;
+    matrices[offset + 53] = -m5;
+    matrices[offset + 56] = -m8;
+    matrices[offset + 57] = -m9;
+    matrices[offset + 60] = -m12;
+    matrices[offset + 61] = -m13;
 
     // Arm 4 (240°) = -Arm 1
-    const m0_4 = -m0_1;
-    const m1_4 = -m1_1;
-    const m4_4 = -m4_1;
-    const m5_4 = -m5_1;
-    const m8_4 = -m8_1;
-    const m9_4 = -m9_1;
-    const m12_4 = -m12_1;
-    const m13_4 = -m13_1;
+    matrices[offset + 64] = -m0_1;
+    matrices[offset + 65] = -m1_1;
+    matrices[offset + 68] = -m4_1;
+    matrices[offset + 69] = -m5_1;
+    matrices[offset + 72] = -m8_1;
+    matrices[offset + 73] = -m9_1;
+    matrices[offset + 76] = -m12_1;
+    matrices[offset + 77] = -m13_1;
 
-    matrices[offset + 64] = m0_4;
-    matrices[offset + 65] = m1_4;
-    matrices[offset + 68] = m4_4;
-    matrices[offset + 69] = m5_4;
-    matrices[offset + 70] = m6;
-    matrices[offset + 72] = m8_4;
-    matrices[offset + 73] = m9_4;
-    matrices[offset + 74] = m10;
-    matrices[offset + 76] = m12_4;
-    matrices[offset + 77] = m13_4;
-    matrices[offset + 78] = m14;
-    matrices[offset + 79] = 1;
-
-    // Arm 5 (300°) = -Arm 2
-    const m0_5 = -m0_2;
-    const m1_5 = -m1_2;
-    const m4_5 = -m4_2;
-    const m5_5 = -m5_2;
-    const m8_5 = -m8_2;
-    const m9_5 = -m9_2;
-    const m12_5 = -m12_2;
-    const m13_5 = -m13_2;
-
-    matrices[offset + 80] = m0_5;
-    matrices[offset + 81] = m1_5;
-    matrices[offset + 84] = m4_5;
-    matrices[offset + 85] = m5_5;
-    matrices[offset + 86] = m6;
-    matrices[offset + 88] = m8_5;
-    matrices[offset + 89] = m9_5;
-    matrices[offset + 90] = m10;
-    matrices[offset + 92] = m12_5;
-    matrices[offset + 93] = m13_5;
-    matrices[offset + 94] = m14;
-    matrices[offset + 95] = 1;
+    // Arm 5 (300°) = Arm 0 - Arm 1
+    matrices[offset + 80] = m0 - m0_1;
+    matrices[offset + 81] = m1 - m1_1;
+    matrices[offset + 84] = m4 - m4_1;
+    matrices[offset + 85] = m5 - m5_1;
+    matrices[offset + 88] = m8 - m8_1;
+    matrices[offset + 89] = m9 - m9_1;
+    matrices[offset + 92] = m12 - m12_1;
+    matrices[offset + 93] = m13 - m13_1;
 
     offset += 96;
   }
@@ -302,6 +522,9 @@ function getZDepthScale(habit: Habit): number {
 interface Params {
   primaryLength: number;
   primaryThickness: number;
+  thickness015: number;
+  thickness04: number;
+  thickness04_015: number;
   sideBranchProb: number;
   sideBranchDecay: number;
   sideBranchAngle: number;
@@ -313,9 +536,67 @@ interface Params {
   hasTip: boolean;
 }
 
+// Performance Optimization: Cache for static Params to avoid repeated allocations.
+const PARAMS_CACHE: Partial<Record<Habit, Params>> = {};
+
+// Performance Optimization: Object pooling for stellar_dendrite Params.
+// These depend on supersaturation and are thus not strictly static.
+const MAX_PATH_LEN = 1024;
+
+// Performance Optimization: Shared buffer for atmospheric path parameters.
+const SHARED_PATH_PARAMS = new Array<Params>(MAX_PATH_LEN);
+
+const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
+  primaryLength: 2.8,
+  primaryThickness: 0.048,
+  thickness015: 0.048 * 0.15,
+  thickness04: 0.048 * 0.4,
+  thickness04_015: 0.048 * 0.4 * 0.15,
+  sideBranchProb: 0,
+  sideBranchDecay: 0.6,
+  sideBranchAngle: Math.PI / 3,
+  cosAngle: 0.5,
+  sinAngle: 0.86602540378,
+  maxDepth: 3,
+  habit: 'stellar_dendrite' as Habit,
+  hasRidges: true,
+  hasTip: true,
+}));
+let stellarPoolIdx = 0;
+
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
-  let p: Omit<Params, 'cosAngle' | 'sinAngle'>;
+
+  if (habit === 'stellar_dendrite') {
+    // Safety check: if the pool is exhausted within a single snowflake generation,
+    // fallback to allocation to avoid object mutation collisions.
+    if (stellarPoolIdx >= MAX_PATH_LEN) {
+      return {
+        primaryLength: 2.8,
+        primaryThickness: 0.048,
+        thickness015: 0.048 * 0.15,
+        thickness04: 0.048 * 0.4,
+        thickness04_015: 0.048 * 0.4 * 0.15,
+        sideBranchProb: 0.55 + ss * 0.25,
+        sideBranchDecay: 0.6,
+        sideBranchAngle: Math.PI / 3,
+        cosAngle: 0.5,
+        sinAngle: 0.86602540378,
+        maxDepth: 3,
+        habit,
+        hasRidges: true,
+        hasTip: true,
+      };
+    }
+    const p = STELLAR_PARAMS_POOL[stellarPoolIdx++];
+    p.sideBranchProb = 0.55 + ss * 0.25;
+    return p;
+  }
+
+  const cached = PARAMS_CACHE[habit];
+  if (cached) return cached;
+
+  let p: Omit<Params, 'cosAngle' | 'sinAngle' | 'thickness015' | 'thickness04' | 'thickness04_015'>;
   switch (habit) {
     case 'fernlike_dendrite':
       p = {
@@ -325,19 +606,6 @@ function paramsFor(temp: number, ss: number): Params {
         sideBranchDecay: 0.68,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 4,
-        habit,
-        hasRidges: true,
-        hasTip: true,
-      };
-      break;
-    case 'stellar_dendrite':
-      p = {
-        primaryLength: 2.8,
-        primaryThickness: 0.048,
-        sideBranchProb: 0.55 + ss * 0.25,
-        sideBranchDecay: 0.6,
-        sideBranchAngle: Math.PI / 3,
-        maxDepth: 3,
         habit,
         hasRidges: true,
         hasTip: true,
@@ -421,222 +689,18 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
   }
-  return {
+
+  const result: Params = {
     ...p,
+    thickness015: p.primaryThickness * 0.15,
+    thickness04: p.primaryThickness * 0.4,
+    thickness04_015: p.primaryThickness * 0.4 * 0.15,
     cosAngle: Math.cos(p.sideBranchAngle),
     sinAngle: Math.sin(p.sideBranchAngle),
   };
+  PARAMS_CACHE[habit] = result;
+  return result;
 }
-
-function buildArm(
-  startX: number,
-  startY: number,
-  dirX: number,
-  dirY: number,
-  dist: number,
-  length: number,
-  depth: number,
-  pathParams: Params[],
-  maxPathIdx: number,
-  pathScale: number,
-  rand: Rand,
-  nOffset: number,
-) {
-  // Sample parameters from the pre-calculated path based on distance from core
-  // Optimization: use pre-calculated pathScale and maxPathIdx.
-  const pIdx = (dist * pathScale) | 0;
-  const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
-  const params = pathParams[pathIdx];
-
-  if (depth > params.maxDepth || length < 0.08) return;
-  if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
-
-  const halfLen = length * 0.5;
-  const midX = startX + dirX * halfLen;
-  const midY = startY + dirY * halfLen;
-  const nx = midX * 3 + nOffset;
-  const ny = midY * 3 + nOffset;
-  const thicknessVariation = 1 + noise2D(nx, ny) * 0.15;
-  const finalThickness = params.primaryThickness * thicknessVariation;
-  const vVar = thicknessVariation - 1;
-
-  // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
-  // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
-  const ax = vVar * 0.1;
-  const sax = ax; // sin(ax) approx
-  const cax = 1 - 0.5 * ax * ax; // cos(ax) approx
-  const sx = finalThickness;
-  const sy = length;
-  // Use pre-calculated sx, sy, and cax to derive matrix columns.
-  const m0 = -dirY * sx;
-  const m1 = dirX * sx;
-  const caxy = cax * sy;
-  const m4 = -dirX * caxy;
-  const m5 = -dirY * caxy;
-  const sxax = sx * sax;
-  const m8 = dirX * sxax;
-  const m9 = dirY * sxax;
-  const m6 = sax * sy;
-  const m10 = cax * sx; // cax * sz, where sz = sx
-  const vJitter = vVar * 0.015; // jitter constant
-  const m12 = midX + vJitter;
-  const m13 = midY + vJitter;
-  const m14 = vJitter;
-
-  const bIdx = currentSegmentCount << 4; // STRIDE 16
-  SEGMENT_BUFFER[bIdx + 0] = m0;
-  SEGMENT_BUFFER[bIdx + 1] = m1;
-  SEGMENT_BUFFER[bIdx + 2] = m4;
-  SEGMENT_BUFFER[bIdx + 3] = m5;
-  SEGMENT_BUFFER[bIdx + 4] = m8;
-  SEGMENT_BUFFER[bIdx + 5] = m9;
-  SEGMENT_BUFFER[bIdx + 6] = m6;
-  SEGMENT_BUFFER[bIdx + 7] = m10;
-  SEGMENT_BUFFER[bIdx + 8] = m12;
-  SEGMENT_BUFFER[bIdx + 9] = m13;
-  SEGMENT_BUFFER[bIdx + 10] = m14;
-  DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
-
-  currentSegmentCount++;
-
-  if (depth >= params.maxDepth || params.sideBranchProb <= 0) return;
-
-  // Walk along the main branch, occasionally spawning side branches
-  const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
-  if (numSteps <= 1) return;
-
-  const invNumSteps = INV_STEPS_LUT[numSteps] || 1 / numSteps;
-  const stepDist = length * invNumSteps;
-  const stepX = dirX * stepDist;
-  const stepY = dirY * stepDist;
-  const sideLenBase = length * params.sideBranchDecay;
-  let pointX = startX;
-  let pointY = startY;
-  let currentDist = dist;
-
-  // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
-  const probStep = params.sideBranchProb * (invNumSteps * 0.4);
-  const lenStep = invNumSteps * 0.5;
-  const stepX2 = stepX * 2;
-  const stepY2 = stepY * 2;
-  let currentLocalProb = params.sideBranchProb * (1 - invNumSteps * 0.4);
-  let currentLenFactor = 1 - invNumSteps * 0.5;
-  let px2 = (startX + stepX) * 2;
-  let py2 = (startY + stepY) * 2;
-
-  for (let i = 1; i < numSteps; i++) {
-    pointX += stepX;
-    pointY += stepY;
-    currentDist += stepDist;
-
-    // Side branches get less likely near the tip
-    // Optimization: Additive tracking for localProb decay.
-    if (rand.chance(currentLocalProb)) {
-      const sideLen = sideLenBase * rand.range(0.4, 1.0) * currentLenFactor;
-
-      // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-      // Optimization: Additive tracking for noise coordinates px2/py2.
-      const noiseVal = noise2D(px2, py2);
-
-      const angleVariation = noiseVal * 0.1;
-    // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
-    // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
-    //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
-    const v = angleVariation + rand.range(-0.04, 0.04);
-    const v2 = 0.5 * v * v;
-    const cosA = params.cosAngle - v * params.sinAngle - v2 * params.cosAngle;
-    const sinA = params.sinAngle + v * params.cosAngle - v2 * params.sinAngle;
-    const sideDist = currentDist;
-
-    const dxca = dirX * cosA;
-    const dysa = dirY * sinA;
-    const dxsa = dirX * sinA;
-    const dyca = dirY * cosA;
-
-    // Right side branch (sign = 1)
-    buildArm(
-      pointX,
-      pointY,
-      dxca - dysa,
-      dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
-
-    // Left side branch (sign = -1)
-    // cos(-a) = cos(a), sin(-a) = -sin(a)
-    buildArm(
-      pointX,
-      pointY,
-      dxca + dysa,
-      -dxsa + dyca,
-      sideDist,
-      sideLen,
-      depth + 1,
-      pathParams,
-      maxPathIdx,
-      pathScale,
-      rand,
-      nOffset,
-    );
-    }
-
-    currentLocalProb -= probStep;
-    currentLenFactor -= lenStep;
-    px2 += stepX2;
-    py2 += stepY2;
-  }
-
-  // Optional pointed tip extension
-  if (params.hasTip && depth === 0) {
-    if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
-
-    const tipLen = 0.12;
-    const halfTipLen = tipLen * 0.5;
-    const endX = startX + dirX * length;
-    const endY = startY + dirY * length;
-    const tipMidX = endX + dirX * halfTipLen;
-    const tipMidY = endY + dirY * halfTipLen;
-    const tnx = tipMidX * 3 + nOffset;
-    const tny = tipMidY * 3 + nOffset;
-    const tipThicknessVariation = 1 + noise2D(tnx, tny) * 0.15;
-    const tipFinalThickness = params.primaryThickness * 0.4 * tipThicknessVariation;
-    const tipVVar = tipThicknessVariation - 1;
-
-    const tax = tipVVar * 0.1;
-    const tsax = tax;
-    const tcax = 1 - 0.5 * tax * tax;
-    const tsx = tipFinalThickness;
-    const tsy = tipLen;
-
-    const tcaxy = tcax * tsy;
-    const tsxax = tsx * tsax;
-
-    const tIdx = currentSegmentCount << 4;
-    SEGMENT_BUFFER[tIdx + 0] = -dirY * tsx;
-    SEGMENT_BUFFER[tIdx + 1] = dirX * tsx;
-    SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
-    SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
-    SEGMENT_BUFFER[tIdx + 4] = dirX * tsxax;
-    SEGMENT_BUFFER[tIdx + 5] = dirY * tsxax;
-    SEGMENT_BUFFER[tIdx + 6] = tsax * tsy;
-    SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
-    const tvJitter = tipVVar * 0.015;
-    SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
-    SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
-    SEGMENT_BUFFER[tIdx + 10] = tvJitter;
-    DELAY_BUFFER[currentSegmentCount] = length * 0.15 + (depth + 1) * 0.1;
-
-    currentSegmentCount++;
-  }
-}
-
 
 // Internal utility functions (maintained for compatibility and internal use)
 export function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
 });
 
@@ -34,7 +35,7 @@ test('Field guide contains expected terminology', async ({ page }) => {
   await expect(content).toContainText('Nakaya Diagram');
 });
 
-test('Guide and Lab Mode are mutually exclusive', async ({ page }) => {
+test('Guide and Lab Mode can coexist', async ({ page }) => {
   const guideToggle = page.locator('#guide-toggle');
   const labToggle = page.locator('#lab-toggle');
   const fieldGuide = page.locator('#field-guide');
@@ -45,15 +46,15 @@ test('Guide and Lab Mode are mutually exclusive', async ({ page }) => {
   await expect(fieldGuide).toBeVisible();
   await expect(labControls).not.toBeVisible();
 
-  // Open lab mode, guide should close
+  // Open lab mode, guide should stay open (because it contains the diagram)
   await labToggle.click();
   await expect(labControls).toBeVisible();
-  await expect(fieldGuide).not.toBeVisible();
-  await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
-
-  // Open guide again, lab mode should close
-  await guideToggle.click();
   await expect(fieldGuide).toBeVisible();
-  await expect(labControls).not.toBeVisible();
-  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(guideToggle).toHaveAttribute('aria-pressed', 'true');
+
+  // Close guide, lab controls should stay open
+  await guideToggle.click();
+  await expect(fieldGuide).not.toBeVisible();
+  await expect(labControls).toBeVisible();
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'true');
 });
