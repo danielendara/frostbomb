@@ -444,14 +444,22 @@ export function buildSnowflake(
     matrices[offset + 29] = m13_1;
 
     // Arm 2 (120°) = Arm 1 - Arm 0
-    matrices[offset + 32] = m0_1 - m0;
-    matrices[offset + 33] = m1_1 - m1;
-    matrices[offset + 36] = m4_1 - m4;
-    matrices[offset + 37] = m5_1 - m5;
-    matrices[offset + 40] = m8_1 - m8;
-    matrices[offset + 41] = m9_1 - m9;
-    matrices[offset + 44] = m12_1 - m12;
-    matrices[offset + 45] = m13_1 - m13;
+    const m0_2 = m0_1 - m0;
+    const m1_2 = m1_1 - m1;
+    const m4_2 = m4_1 - m4;
+    const m5_2 = m5_1 - m5;
+    const m8_2 = m8_1 - m8;
+    const m9_2 = m9_1 - m9;
+    const m12_2 = m12_1 - m12;
+    const m13_2 = m13_1 - m13;
+    matrices[offset + 32] = m0_2;
+    matrices[offset + 33] = m1_2;
+    matrices[offset + 36] = m4_2;
+    matrices[offset + 37] = m5_2;
+    matrices[offset + 40] = m8_2;
+    matrices[offset + 41] = m9_2;
+    matrices[offset + 44] = m12_2;
+    matrices[offset + 45] = m13_2;
 
     // Arm 3 (180°) = -Arm 0
     matrices[offset + 48] = -m0;
@@ -473,15 +481,15 @@ export function buildSnowflake(
     matrices[offset + 76] = -m12_1;
     matrices[offset + 77] = -m13_1;
 
-    // Arm 5 (300°) = Arm 0 - Arm 1
-    matrices[offset + 80] = m0 - m0_1;
-    matrices[offset + 81] = m1 - m1_1;
-    matrices[offset + 84] = m4 - m4_1;
-    matrices[offset + 85] = m5 - m5_1;
-    matrices[offset + 88] = m8 - m8_1;
-    matrices[offset + 89] = m9 - m9_1;
-    matrices[offset + 92] = m12 - m12_1;
-    matrices[offset + 93] = m13 - m13_1;
+    // Arm 5 (300°) = -Arm 2
+    matrices[offset + 80] = -m0_2;
+    matrices[offset + 81] = -m1_2;
+    matrices[offset + 84] = -m4_2;
+    matrices[offset + 85] = -m5_2;
+    matrices[offset + 88] = -m8_2;
+    matrices[offset + 89] = -m9_2;
+    matrices[offset + 92] = -m12_2;
+    matrices[offset + 93] = -m13_2;
 
     offset += 96;
   }
