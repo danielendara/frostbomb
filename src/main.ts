@@ -13,6 +13,17 @@ const scene = createScene(canvas);
 const nakayaCanvas = document.getElementById('nakaya-diagram') as HTMLCanvasElement;
 const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
+// Performance Optimization: DOM caching and change detection.
+// Drastically reduces layout work and attribute churn during "Lab Mode" slider updates.
+const DOM_CACHE = new Map<string, HTMLElement>();
+const ROW_CACHE = new Map<string, HTMLElement>();
+const LAST_TEXT = new Map<string, string>();
+const LAST_ARIA = new Map<string, string>();
+let lastNakayaAria = '';
+let lastCanvasAria = '';
+let lastSeedAria = '';
+let lastTitle = '';
+
 let isLabMode = false;
 let isGuideOpen = false;
 let isUIHidden = false;
@@ -89,13 +100,26 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   nakayaDiagram?.update(conditions.path);
 
   if (canvas) {
-    canvas.setAttribute('aria-label', `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`);
+    const canvasAria = `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`;
+    if (lastCanvasAria !== canvasAria) {
+      canvas.setAttribute('aria-label', canvasAria);
+      lastCanvasAria = canvasAria;
+    }
   }
 
-  document.title = `${habitLabel[conditions.habit]} — frostbomb`;
+  const title = `${habitLabel[conditions.habit]} — frostbomb`;
+  if (lastTitle !== title) {
+    document.title = title;
+    lastTitle = title;
+  }
+
   const btnSeed = document.getElementById('btn-seed');
   if (btnSeed) {
-    btnSeed.setAttribute('aria-label', `Copy share link for seed ${label}`);
+    const seedAria = `Copy share link for seed ${label}`;
+    if (lastSeedAria !== seedAria) {
+      btnSeed.setAttribute('aria-label', seedAria);
+      lastSeedAria = seedAria;
+    }
   }
 
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
@@ -134,17 +158,37 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
 }
 
 function setText(id: string, value: string) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
+  if (LAST_TEXT.get(id) === value) return;
+
+  let el = DOM_CACHE.get(id);
+  if (!el) {
+    el = document.getElementById(id) || undefined;
+    if (el) DOM_CACHE.set(id, el);
+  }
+
+  if (el) {
+    el.textContent = value;
+    LAST_TEXT.set(id, value);
+  }
 }
 
 function updateRowAria(ddId: string, label: string, value: string) {
-  const dd = document.getElementById(ddId);
-  const row = dd?.closest('.field-notes__row');
+  let row = ROW_CACHE.get(ddId);
+  if (!row) {
+    const dd = document.getElementById(ddId);
+    row = (dd?.closest('.field-notes__row') as HTMLElement) || undefined;
+    if (row) ROW_CACHE.set(ddId, row);
+  }
+
   if (row) {
     const isButton = row.getAttribute('role') === 'button';
     const interactionHint = isButton ? '. Click to learn more in the field guide.' : '.';
-    row.setAttribute('aria-label', `${label}: ${value}${interactionHint}`);
+    const ariaLabel = `${label}: ${value}${interactionHint}`;
+
+    if (LAST_ARIA.get(ddId) !== ariaLabel) {
+      row.setAttribute('aria-label', ariaLabel);
+      LAST_ARIA.set(ddId, ariaLabel);
+    }
   }
 }
 
@@ -428,7 +472,11 @@ function updateFromPane(shouldAnnounce = false) {
   const habitText = habitLabel[habit];
 
   if (nakayaCanvas) {
-    nakayaCanvas.setAttribute('aria-label', `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitText}. Use arrow keys to adjust.`);
+    const nakayaAria = `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitText}. Use arrow keys to adjust.`;
+    if (lastNakayaAria !== nakayaAria) {
+      nakayaCanvas.setAttribute('aria-label', nakayaAria);
+      lastNakayaAria = nakayaAria;
+    }
   }
 
   if (shouldAnnounce) {
