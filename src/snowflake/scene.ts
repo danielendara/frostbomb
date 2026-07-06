@@ -710,6 +710,21 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const m6s = source[segIdx + 6] * s;
             const m10s = source[segIdx + 10] * s;
 
+            target[segIdx + 6] =
+              target[segIdx + 22] =
+              target[segIdx + 38] =
+              target[segIdx + 54] =
+              target[segIdx + 70] =
+              target[segIdx + 86] =
+                m6s;
+            target[segIdx + 10] =
+              target[segIdx + 26] =
+              target[segIdx + 42] =
+              target[segIdx + 58] =
+              target[segIdx + 74] =
+              target[segIdx + 90] =
+                m10s;
+
             // Arm 0 (Primary Arm, 0°)
             const sm0 = source[segIdx + 0] * s;
             const sm1 = source[segIdx + 1] * s;
@@ -721,10 +736,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             target[segIdx + 1] = sm1;
             target[segIdx + 4] = sm4;
             target[segIdx + 5] = sm5;
-            target[segIdx + 6] = m6s;
             target[segIdx + 8] = sm8;
             target[segIdx + 9] = sm9;
-            target[segIdx + 10] = m10s;
 
             // Arm 1 (60°)
             const sm0_1 = source[segIdx + 16] * s;
@@ -737,50 +750,46 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             target[segIdx + 17] = sm1_1;
             target[segIdx + 20] = sm4_1;
             target[segIdx + 21] = sm5_1;
-            target[segIdx + 22] = m6s;
             target[segIdx + 24] = sm8_1;
             target[segIdx + 25] = sm9_1;
-            target[segIdx + 26] = m10s;
 
             // Arm 2 (120°) = Arm 1 - Arm 0
-            target[segIdx + 32] = sm0_1 - sm0;
-            target[segIdx + 33] = sm1_1 - sm1;
-            target[segIdx + 36] = sm4_1 - sm4;
-            target[segIdx + 37] = sm5_1 - sm5;
-            target[segIdx + 38] = m6s;
-            target[segIdx + 40] = sm8_1 - sm8;
-            target[segIdx + 41] = sm9_1 - sm9;
-            target[segIdx + 42] = m10s;
+            const sm0_2 = sm0_1 - sm0;
+            const sm1_2 = sm1_1 - sm1;
+            const sm4_2 = sm4_1 - sm4;
+            const sm5_2 = sm5_1 - sm5;
+            const sm8_2 = sm8_1 - sm8;
+            const sm9_2 = sm9_1 - sm9;
+            target[segIdx + 32] = sm0_2;
+            target[segIdx + 33] = sm1_2;
+            target[segIdx + 36] = sm4_2;
+            target[segIdx + 37] = sm5_2;
+            target[segIdx + 40] = sm8_2;
+            target[segIdx + 41] = sm9_2;
 
             // Arm 3 (180°) = -Arm 0
             target[segIdx + 48] = -sm0;
             target[segIdx + 49] = -sm1;
             target[segIdx + 52] = -sm4;
             target[segIdx + 53] = -sm5;
-            target[segIdx + 54] = m6s;
             target[segIdx + 56] = -sm8;
             target[segIdx + 57] = -sm9;
-            target[segIdx + 58] = m10s;
 
             // Arm 4 (240°) = -Arm 1
             target[segIdx + 64] = -sm0_1;
             target[segIdx + 65] = -sm1_1;
             target[segIdx + 68] = -sm4_1;
             target[segIdx + 69] = -sm5_1;
-            target[segIdx + 70] = m6s;
             target[segIdx + 72] = -sm8_1;
             target[segIdx + 73] = -sm9_1;
-            target[segIdx + 74] = m10s;
 
-            // Arm 5 (300°) = Arm 0 - Arm 1
-            target[segIdx + 80] = sm0 - sm0_1;
-            target[segIdx + 81] = sm1 - sm1_1;
-            target[segIdx + 84] = sm4 - sm4_1;
-            target[segIdx + 85] = sm5 - sm5_1;
-            target[segIdx + 86] = m6s;
-            target[segIdx + 88] = sm8 - sm8_1;
-            target[segIdx + 89] = sm9 - sm9_1;
-            target[segIdx + 90] = m10s;
+            // Arm 5 (300°) = -Arm 2
+            target[segIdx + 80] = -sm0_2;
+            target[segIdx + 81] = -sm1_2;
+            target[segIdx + 84] = -sm4_2;
+            target[segIdx + 85] = -sm5_2;
+            target[segIdx + 88] = -sm8_2;
+            target[segIdx + 89] = -sm9_2;
 
             segIdx += 96;
           }
