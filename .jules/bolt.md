@@ -165,3 +165,8 @@
 **Learning:** In high-frequency recursive geometry generation, reusing derived products (e.g., `sx * sax`) and simplifying constants (e.g., `vJitter = sax * 0.15`) provides measurable gains by reducing instruction count. Additionally, for buffers with known small bounds (e.g., 10,000 segments), `Uint16Array` is a more cache-efficient choice than `Uint32Array` for index storage. Furthermore, overly aggressive hoisting that increases the number of arguments passed in recursion can sometimes introduce more overhead than it saves due to stack frame pressure.
 **Action:** Favor combining multiplications in hot recursive loops. Use appropriately sized TypedArrays for indices to improve memory density. Monitor recursive argument count to avoid stack frame overhead.
 **Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~20% (from ~0.045ms to ~0.036ms) while reducing the memory footprint of index buffers.
+
+## 2026-07-05 - [DOM Caching & Change Detection Guards]
+**Learning:** High-frequency DOM updates (e.g., `textContent`, `aria-label`, `document.title`) triggered by animation frames or UI sliders cause redundant layout thrashing and unnecessary DOM API calls if values haven't changed. Caching `getElementById` and `closest()` results and gating writes with change detection significantly reduces main thread overhead.
+**Action:** Implement module-level `Map` caches for frequently accessed elements and use state-tracking variables to compare new values against previous values before performing any DOM writes.
+**Impact:** Eliminated thousands of redundant DOM lookups and property assignments per second during interaction, improving main thread availability and responsiveness.
