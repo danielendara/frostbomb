@@ -24,3 +24,11 @@
 ## 2025-01-24 - Interactive Diagram Semantics
 **Learning:** Interactive <canvas> elements that trigger state changes (like the Nakaya Diagram) require explicit ARIA attributes (`aria-expanded`, `aria-pressed`, `aria-controls`) to communicate their current state and relationship to other UI components to screen reader users.
 **Action:** Synchronize ARIA attributes in JavaScript whenever a canvas interaction modifies the global application state.
+
+## 2025-01-24 - Immersive Mode Discoverability & Exit
+**Learning:** Immersive or "Photo" modes that hide the UI solely via keyboard shortcuts are inaccessible to touch-only users and suffer from low discoverability. Providing a visible toggle and an intuitive exit strategy (like clicking the main canvas) ensures the feature is accessible across all devices and easy to escape if accidentally triggered.
+**Action:** Always include a visible UI toggle for immersive modes and implement a "click-to-restore" handler on the primary content area.
+
+## 2025-01-24 - Multi-modal State Feedback
+**Learning:** When a keyboard shortcut (e.g., 'H') triggers a functional state change, users benefit from visual confirmation that matches the mouse-driven interaction. Programmatically triggering the "active" or "pressed" visual state on the corresponding UI button reinforces the mental model of the shortcut's function.
+**Action:** Use a unified visual feedback function (e.g., `visualPress`) that can be called by both keyboard and click listeners.
