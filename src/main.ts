@@ -618,11 +618,18 @@ function toggleAutoRotate() {
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
 
+const btnUI = document.getElementById('btn-ui');
+
 function toggleUI(forceShow?: boolean) {
   isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
 
   const uiElements = document.querySelectorAll('.masthead, .field-notes, .footer, .lab-controls');
   uiElements.forEach((el) => el.classList.toggle('ui-hidden', isUIHidden));
+
+  if (btnUI) {
+    btnUI.setAttribute('aria-pressed', isUIHidden.toString());
+    btnUI.classList.toggle('active', isUIHidden);
+  }
 
   if (isUIHidden) {
     announce('UI hidden. Press H or Esc to show.');
@@ -630,6 +637,11 @@ function toggleUI(forceShow?: boolean) {
     announce('UI visible');
   }
 }
+
+btnUI?.addEventListener('click', () => toggleUI());
+canvas.addEventListener('click', () => {
+  if (isUIHidden) toggleUI(true);
+});
 
 function resetView() {
   scene.resetView();
@@ -692,7 +704,7 @@ window.addEventListener('keydown', (e: Event) => {
     'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
     'l': () => (toggleLabMode(), visualPress('lab-toggle')),
-    'h': () => toggleUI(),
+    'h': () => (toggleUI(), visualPress('btn-ui')),
     'p': () => (togglePinkMode(), visualPress('btn-pink')),
     'm': () => (togglePrismMode(), visualPress('btn-prism')),
     's': () => (saveSnowflake(), visualPress('btn-save')),
