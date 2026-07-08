@@ -27,6 +27,7 @@ let lastTitle = '';
 let isLabMode = false;
 let isGuideOpen = false;
 let isUIHidden = false;
+let guideReturnTarget: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
 let lastHabit: string | null = null;
 let currentSeedLabel: string;
@@ -351,8 +352,12 @@ async function toggleLabMode() {
   }
 }
 
-function toggleFieldGuide() {
+function toggleFieldGuide(target: HTMLElement | null | Event = null) {
   isGuideOpen = !isGuideOpen;
+
+  if (isGuideOpen && target instanceof HTMLElement) {
+    guideReturnTarget = target;
+  }
 
   if (guideToggle) {
     guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
@@ -363,8 +368,10 @@ function toggleFieldGuide() {
     if (isGuideOpen) {
       fieldGuide.scrollTop = 0;
       fieldGuide.focus();
-    } else if (guideToggle) {
-      guideToggle.focus();
+    } else {
+      const restoreTo = guideReturnTarget || guideToggle;
+      requestAnimationFrame(() => restoreTo?.focus());
+      guideReturnTarget = null;
     }
   }
   if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
@@ -386,11 +393,16 @@ document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
     const targetId = targets[label || ''];
 
     if (targetId) {
-      if (!isGuideOpen) toggleFieldGuide();
+      if (!isGuideOpen) {
+        toggleFieldGuide(row as HTMLElement);
+      } else {
+        guideReturnTarget = row as HTMLElement;
+      }
       requestAnimationFrame(() => {
         const el = document.getElementById(targetId);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          el.focus();
           el.classList.remove('section-highlight');
           void el.offsetWidth;
           el.classList.add('section-highlight');
@@ -635,6 +647,8 @@ function toggleUI(forceShow?: boolean) {
     announce('UI hidden. Press H or Esc to show.');
   } else {
     announce('UI visible');
+    // Restoration of focus must happen after transitions/visibility updates to be effective.
+    setTimeout(() => btnUI?.focus(), 50);
   }
 }
 
