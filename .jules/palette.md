@@ -32,3 +32,7 @@
 ## 2025-01-24 - Multi-modal State Feedback
 **Learning:** When a keyboard shortcut (e.g., 'H') triggers a functional state change, users benefit from visual confirmation that matches the mouse-driven interaction. Programmatically triggering the "active" or "pressed" visual state on the corresponding UI button reinforces the mental model of the shortcut's function.
 **Action:** Use a unified visual feedback function (e.g., `visualPress`) that can be called by both keyboard and click listeners.
+
+## 2026-06-11 - Semantic Shortcut Navigation
+**Learning:** Keyboard shortcuts like `?` are most effective when they provide immediate, contextual access to the information requested. Transporting the user to a general "Guide" is helpful, but navigating and focusing the specific "Shortcuts" section within that guide significantly reduces cognitive load and improves accessibility.
+**Action:** Use programmatic focus management (`tabindex="-1"` + `.focus()`) and visual anchoring (highlights/animations) when jumping to specific sections from global keyboard shortcuts.

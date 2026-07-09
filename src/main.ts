@@ -377,6 +377,25 @@ function toggleFieldGuide(target: HTMLElement | null | Event = null) {
   if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
 }
 
+function navigateToGuideSection(targetId: string, returnTarget: HTMLElement | null = null) {
+  if (!isGuideOpen) {
+    toggleFieldGuide(returnTarget);
+  } else if (returnTarget) {
+    guideReturnTarget = returnTarget;
+  }
+
+  requestAnimationFrame(() => {
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.focus();
+      el.classList.remove('section-highlight');
+      void el.offsetWidth;
+      el.classList.add('section-highlight');
+    }
+  });
+}
+
 labToggle?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
 document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
@@ -385,29 +404,15 @@ document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
   const handler = () => {
     const label = row.querySelector('dt')?.textContent?.trim();
     const targets: Record<string, string> = {
-      'Temperature': 'guide-temp',
-      'Supersaturation': 'guide-humid',
-      'Habit': 'guide-habit',
-      'Branches': 'guide-branches',
+      Temperature: 'guide-temp',
+      Supersaturation: 'guide-humid',
+      Habit: 'guide-habit',
+      Branches: 'guide-branches',
     };
     const targetId = targets[label || ''];
 
     if (targetId) {
-      if (!isGuideOpen) {
-        toggleFieldGuide(row as HTMLElement);
-      } else {
-        guideReturnTarget = row as HTMLElement;
-      }
-      requestAnimationFrame(() => {
-        const el = document.getElementById(targetId);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          el.focus();
-          el.classList.remove('section-highlight');
-          void el.offsetWidth;
-          el.classList.add('section-highlight');
-        }
-      });
+      navigateToGuideSection(targetId, row as HTMLElement);
     }
   };
 
@@ -716,7 +721,7 @@ window.addEventListener('keydown', (e: Event) => {
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
     'v': () => (resetView(), visualPress('btn-reset')),
     'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
-    '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
+    '?': () => (navigateToGuideSection('guide-shortcuts'), visualPress('guide-toggle')),
     'l': () => (toggleLabMode(), visualPress('lab-toggle')),
     'h': () => (toggleUI(), visualPress('btn-ui')),
     'p': () => (togglePinkMode(), visualPress('btn-pink')),
