@@ -456,10 +456,10 @@ nakayaCanvas?.addEventListener('pointermove', (e) => {
 
 nakayaCanvas?.addEventListener('keydown', (e: Event) => {
   const { key } = e as KeyboardEvent;
-  const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key);
+  const isNav = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(key);
   const isAction = key === ' ' || key === 'Enter';
 
-  if (isArrow || isAction) {
+  if (isNav || isAction) {
     e.preventDefault();
     e.stopPropagation();
 
@@ -467,7 +467,7 @@ nakayaCanvas?.addEventListener('keydown', (e: Event) => {
       toggleLabMode();
     }
 
-    if (isArrow) {
+    if (isNav) {
       const tStep = 1;
       const ssStep = 5;
 
@@ -475,6 +475,11 @@ nakayaCanvas?.addEventListener('keydown', (e: Event) => {
       if (key === 'ArrowRight') labParams.temperature = Math.min(0, labParams.temperature + tStep);
       if (key === 'ArrowUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + ssStep);
       if (key === 'ArrowDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - ssStep);
+
+      if (key === 'Home') labParams.temperature = -40;
+      if (key === 'End') labParams.temperature = 0;
+      if (key === 'PageUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + 25);
+      if (key === 'PageDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - 25);
 
       visualPress('nakaya-diagram');
       updateFromPane(true);
@@ -712,11 +717,12 @@ window.addEventListener('keydown', (e: Event) => {
   const isDiagramFocused = document.activeElement === nakayaCanvas;
   if (isGuideOpen && !isDiagramFocused && k.startsWith('arrow')) return;
 
+  const delta = ke.shiftKey ? 0.3 : 0.1;
   const actions: Record<string, () => void> = {
-    'arrowup': () => (e.preventDefault(), scene.rotateView(0, -0.1)),
-    'arrowdown': () => (e.preventDefault(), scene.rotateView(0, 0.1)),
-    'arrowleft': () => (e.preventDefault(), scene.rotateView(-0.1, 0)),
-    'arrowright': () => (e.preventDefault(), scene.rotateView(0.1, 0)),
+    'arrowup': () => (e.preventDefault(), scene.rotateView(0, -delta)),
+    'arrowdown': () => (e.preventDefault(), scene.rotateView(0, delta)),
+    'arrowleft': () => (e.preventDefault(), scene.rotateView(-delta, 0)),
+    'arrowright': () => (e.preventDefault(), scene.rotateView(delta, 0)),
     'r': () => (handleRefresh(), visualPress('refresh')),
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
     'v': () => (resetView(), visualPress('btn-reset')),
