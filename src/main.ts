@@ -470,19 +470,22 @@ nakayaCanvas?.addEventListener('keydown', (e: Event) => {
     if (isNav) {
       const tStep = 1;
       const ssStep = 5;
+      let changed = false;
 
-      if (key === 'ArrowLeft') labParams.temperature = Math.max(-40, labParams.temperature - tStep);
-      if (key === 'ArrowRight') labParams.temperature = Math.min(0, labParams.temperature + tStep);
-      if (key === 'ArrowUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + ssStep);
-      if (key === 'ArrowDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - ssStep);
+      if (key === 'ArrowLeft') { labParams.temperature = Math.max(-40, labParams.temperature - tStep); changed = true; }
+      if (key === 'ArrowRight') { labParams.temperature = Math.min(0, labParams.temperature + tStep); changed = true; }
+      if (key === 'ArrowUp') { labParams.supersaturation = Math.min(100, labParams.supersaturation + ssStep); changed = true; }
+      if (key === 'ArrowDown') { labParams.supersaturation = Math.max(0, labParams.supersaturation - ssStep); changed = true; }
 
-      if (key === 'Home') labParams.temperature = -40;
-      if (key === 'End') labParams.temperature = 0;
-      if (key === 'PageUp') labParams.supersaturation = Math.min(100, labParams.supersaturation + 25);
-      if (key === 'PageDown') labParams.supersaturation = Math.max(0, labParams.supersaturation - 25);
+      if (key === 'Home') { labParams.temperature = -40; changed = true; }
+      if (key === 'End') { labParams.temperature = 0; changed = true; }
+      if (key === 'PageUp') { labParams.supersaturation = Math.min(100, labParams.supersaturation + 25); changed = true; }
+      if (key === 'PageDown') { labParams.supersaturation = Math.max(0, labParams.supersaturation - 25); changed = true; }
 
-      visualPress('nakaya-diagram');
-      updateFromPane(true);
+      if (changed) {
+        visualPress('nakaya-diagram');
+        updateFromPane(true);
+      }
     }
   }
 });
@@ -522,43 +525,41 @@ function updateFromPane(shouldAnnounce = false) {
 async function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
 
-  // Immediate visual feedback for better perceived performance
-  setTemporaryLabel('btn-copy', 'Copied!', '✓', false, true);
-  setTemporaryLabel('btn-seed', 'Copied!', '✓', false, true);
-  announce(`Link copied for seed ${currentSeedLabel}`);
-
-  // Small delay to ensure UI has time to paint before potentially blocking clipboard operations
-  setTimeout(async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        throw new Error('Clipboard API unavailable');
-      }
-    } catch (err) {
-      console.warn('Clipboard API failed, trying legacy fallback:', err);
-      try {
-        const textArea = document.createElement('textarea');
-        textArea.value = url;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-9999px';
-        textArea.style.top = '0';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
-        if (!successful) {
-          throw new Error('execCommand copy failed');
-        }
-      } catch (fallbackErr) {
-        console.error('Legacy fallback failed:', fallbackErr);
-        setTemporaryLabel('btn-copy', 'Failed', '✕', true);
-        setTemporaryLabel('btn-seed', 'Failed', '✕', true);
-        announce('Failed to copy link');
-      }
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      throw new Error('Clipboard API unavailable');
     }
-  }, 50);
+    setTemporaryLabel('btn-copy', 'Copied!', '✓', false, true);
+    setTemporaryLabel('btn-seed', 'Copied!', '✓', false, true);
+    announce(`Link copied for seed ${currentSeedLabel}`);
+  } catch (err) {
+    console.warn('Clipboard API failed, trying legacy fallback:', err);
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (!successful) {
+        throw new Error('execCommand copy failed');
+      }
+      setTemporaryLabel('btn-copy', 'Copied!', '✓', false, true);
+      setTemporaryLabel('btn-seed', 'Copied!', '✓', false, true);
+      announce(`Link copied for seed ${currentSeedLabel}`);
+    } catch (fallbackErr) {
+      console.error('Legacy fallback failed:', fallbackErr);
+      setTemporaryLabel('btn-copy', 'Failed', '✕', true);
+      setTemporaryLabel('btn-seed', 'Failed', '✕', true);
+      announce('Failed to copy link');
+    }
+  }
 }
 
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
