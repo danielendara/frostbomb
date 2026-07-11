@@ -128,14 +128,11 @@ export function buildSnowflake(
     const {
       primaryThickness,
       thickness015,
-      thickness04,
-      thickness04_015,
       sideBranchProb,
       sideBranchDecay,
       cosAngle,
       sinAngle,
       maxDepth,
-      hasTip,
     } = params;
 
     const halfLen = length * 0.5;
@@ -165,7 +162,7 @@ export function buildSnowflake(
     const m9 = -m0 * sax;
     const m6 = sax * sy;
     const m10 = cax * sx; // cax * sz, where sz = sx
-    const vJitter = vVarRaw * 0.00225; // jitter constant: 0.15 * 0.1 * 0.15
+    const vJitter = sax * 0.15; // jitter constant: 0.15 * 0.1 * 0.15
     const m12 = midX + vJitter;
     const m13 = midY + vJitter;
     const m14 = vJitter;
@@ -206,18 +203,14 @@ export function buildSnowflake(
     let pIdxFloat = dist * pathScale;
     const pIdxStep = stepDist * pathScale;
 
-    // Pre-calculate additive steps for local probability, side length decay, and noise coordinates.
+    // Pre-calculate additive steps for local probability and side length decay.
     const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
     const probStep = sideBranchProb * lut04;
     const lenStep = INV_STEPS_LUT_05[numSteps] || invNumSteps * 0.5;
     const sideLenMaxStep = sideLenBase * lenStep;
-    const stepX2 = stepX * 2;
-    const stepY2 = stepY * 2;
     let currentLocalProb = sideBranchProb * (1 - lut04);
     let currentLenFactor = 1 - lenStep;
     let sideLenMax = sideLenBase * currentLenFactor;
-    let px2 = (startX + stepX) * 2;
-    let py2 = (startY + stepY) * 2;
 
     const nextDepth = depth + 1;
 
@@ -241,7 +234,7 @@ export function buildSnowflake(
         // Optimization: Prune side branches early before performing lookups and recursive calls.
         if (sideLen >= 0.08) {
           // Real snowflakes: side branches grow at 60° (hexagonal lattice)
-          const noiseVal = noise2D(px2, py2);
+          const noiseVal = noise2D(pointX * 2, pointY * 2);
 
           const angleVariation = noiseVal * 0.1;
           // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
@@ -295,50 +288,41 @@ export function buildSnowflake(
       currentLocalProb -= probStep;
       currentLenFactor -= lenStep;
       sideLenMax -= sideLenMaxStep;
-      px2 += stepX2;
-      py2 += stepY2;
-    }
-
-    // Optional pointed tip extension
-    if (hasTip && depth === 0) {
-      if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
-
-      const tipLen = 0.12;
-      const endX = startX + dirX * length;
-      const endY = startY + dirY * length;
-      const tipMidX = endX + dirX * 0.06; // halfTipLen
-      const tipMidY = endY + dirY * 0.06;
-      const tipVVarRaw = noise2D(tipMidX * 3 + nOffset, tipMidY * 3 + nOffset);
-      const tsax = tipVVarRaw * 0.015;
-      const tsax2 = tsax * tsax;
-      const tcax = 1 - 0.5 * tsax2;
-      const tsx = thickness04 + tipVVarRaw * thickness04_015;
-      const tm0 = -dirY * tsx;
-      const tm1 = dirX * tsx;
-      const tcaxy = tcax * tipLen;
-
-      const tIdx = currentSegmentCount << 4;
-      SEGMENT_BUFFER[tIdx + 0] = tm0;
-      SEGMENT_BUFFER[tIdx + 1] = tm1;
-      SEGMENT_BUFFER[tIdx + 2] = -dirX * tcaxy;
-      SEGMENT_BUFFER[tIdx + 3] = -dirY * tcaxy;
-      // Optimization: Reuse tm1 and tm0 to calculate indices 4 and 5.
-      SEGMENT_BUFFER[tIdx + 4] = tm1 * tsax;
-      SEGMENT_BUFFER[tIdx + 5] = -tm0 * tsax;
-      SEGMENT_BUFFER[tIdx + 6] = tsax * tipLen;
-      SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
-      const tvJitter = tipVVarRaw * 0.00225;
-      SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
-      SEGMENT_BUFFER[tIdx + 9] = tipMidY + tvJitter;
-      SEGMENT_BUFFER[tIdx + 10] = tvJitter;
-      DELAY_BUFFER[currentSegmentCount] = length * 0.15 + 0.1; // depth=0
-
-      currentSegmentCount++;
     }
   }
 
   // Build one primary arm along +X
-  buildArmInternal(0, 0, 1, 0, 0, 3.5, 0, pathParams[0]);
+  const primaryParams = pathParams[0];
+  buildArmInternal(0, 0, 1, 0, 0, 3.5, 0, primaryParams);
+
+  // Optional pointed tip extension for the primary arm
+  if (primaryParams.hasTip && currentSegmentCount < MAX_SEGMENTS_PER_ARM) {
+    const tipLen = 0.12;
+    const tipMidX = 3.56; // endX(3.5) + dirX(1) * 0.06
+    const tipVVarRaw = noise2D(tipMidX * 3 + nOffset, nOffset); // tipMidY is 0
+    const tsax = tipVVarRaw * 0.015;
+    const tsax2 = tsax * tsax;
+    const tcax = 1 - 0.5 * tsax2;
+    const tsx = primaryParams.thickness04 + tipVVarRaw * primaryParams.thickness04_015;
+    const tcaxy = tcax * tipLen;
+
+    const tIdx = currentSegmentCount << 4;
+    SEGMENT_BUFFER[tIdx + 0] = 0; // tm0 = -dirY(0) * tsx
+    SEGMENT_BUFFER[tIdx + 1] = tsx; // tm1 = dirX(1) * tsx
+    SEGMENT_BUFFER[tIdx + 2] = -tcaxy; // -dirX(1) * tcaxy
+    SEGMENT_BUFFER[tIdx + 3] = 0; // -dirY(0) * tcaxy
+    SEGMENT_BUFFER[tIdx + 4] = tsx * tsax; // tm1 * tsax
+    SEGMENT_BUFFER[tIdx + 5] = 0; // -tm0 * tsax
+    SEGMENT_BUFFER[tIdx + 6] = tsax * tipLen;
+    SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
+    const tvJitter = tsax * 0.15;
+    SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
+    SEGMENT_BUFFER[tIdx + 9] = tvJitter; // tipMidY(0) + tvJitter
+    SEGMENT_BUFFER[tIdx + 10] = tvJitter;
+    DELAY_BUFFER[currentSegmentCount] = 0.625; // 3.5 * 0.15 + 0.1
+
+    currentSegmentCount++;
+  }
 
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
