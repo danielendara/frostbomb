@@ -24,3 +24,7 @@
 ## 2025-01-24 - Interactive Diagram Semantics
 **Learning:** Interactive <canvas> elements that trigger state changes (like the Nakaya Diagram) require explicit ARIA attributes (`aria-expanded`, `aria-pressed`, `aria-controls`) to communicate their current state and relationship to other UI components to screen reader users.
 **Action:** Synchronize ARIA attributes in JavaScript whenever a canvas interaction modifies the global application state.
+
+## 2025-05-14 - Visual Anchoring with Existing Design Tokens
+**Learning:** When providing visual feedback for programmatic state changes (like regrowing a snowflake), using existing design tokens (e.g., a `.section-highlight` class) maintains aesthetic consistency while providing immediate focus anchoring. This avoids bloating the CSS with one-off animation classes while still meeting the user's need for interactive confirmation.
+**Action:** Prioritize existing highlight or pulse utility classes for micro-interaction feedback before creating new CSS.

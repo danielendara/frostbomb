@@ -72,11 +72,12 @@ async function ensurePane(): Promise<TweakpanePane> {
 }
 
 function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = true) {
-  if (!keepSeed || !currentSeed) {
+  const isNewSeed = !keepSeed || !currentSeed;
+  if (isNewSeed) {
     currentSeed = resolveSeed();
   }
 
-  const { seed, label } = currentSeed;
+  const { seed, label } = currentSeed!;
   currentSeedLabel = label;
   const rng = mulberry32(seed);
   const rand = new Rand(rng);
@@ -108,13 +109,16 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   setText('stat-humid', humidText);
   setText('stat-habit', habitText);
 
-  if (lastHabit && lastHabit !== habitText) {
-    const habitEl = document.getElementById('stat-habit');
-    if (habitEl) {
-      habitEl.classList.remove('habit-animate');
-      void habitEl.offsetWidth;
-      habitEl.classList.add('habit-animate');
-    }
+  if (animate && (isNewSeed || (lastHabit && lastHabit !== habitText))) {
+    const animateIds = isNewSeed ? ['stat-habit', 'seed-display'] : ['stat-habit'];
+    animateIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('section-highlight');
+        void el.offsetWidth;
+        el.classList.add('section-highlight');
+      }
+    });
   }
   lastHabit = habitText;
 
@@ -131,6 +135,8 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
   labParams.supersaturation = conditions.supersaturation * 100;
   pane?.refresh();
+
+  return { conditions, label };
 }
 
 function setText(id: string, value: string) {
@@ -239,8 +245,8 @@ function handleRefresh(e?: Event) {
     refreshIcon.classList.add('animate-spin-once');
   }
   window.history.replaceState(null, '', window.location.pathname);
-  grow(isLabMode ? currentConditions : undefined);
-  announce(`New snowflake grown: ${habitLabel[currentConditions.habit]}`);
+  const { conditions, label } = grow(isLabMode ? currentConditions : undefined);
+  announce(`New snowflake grown: ${habitLabel[conditions.habit]} (Seed: ${label})`);
 }
 
 document.getElementById('refresh')?.addEventListener('click', handleRefresh);
