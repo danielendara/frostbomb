@@ -18,8 +18,7 @@ test('pressing ? opens field guide and scrolls to shortcuts', async ({ page }) =
   await expect(shortcutsSection).toBeVisible();
 
   // Check if it has focus (programmatic focus via tabindex="-1")
-  const isFocused = await shortcutsSection.evaluate(el => document.activeElement === el);
-  expect(isFocused).toBe(true);
+  await expect(shortcutsSection).toBeFocused();
 
   // Verify highlight animation class was added
   await expect(shortcutsSection).toHaveClass(/section-highlight/);

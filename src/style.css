@@ -107,6 +107,12 @@ body.pink-mode {
   100% { color: hsl(360, 80%, 75%); text-shadow: 0 0 12px hsla(360, 80%, 75%, 0.4); }
 }
 
+@keyframes pulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 var(--accent)); }
+  50% { transform: scale(1.15); filter: drop-shadow(0 0 4px var(--accent)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 var(--accent)); }
+}
+
 .prism-mode .wordmark__accent {
   animation: prism-cycle 10s linear infinite;
 }
@@ -542,6 +548,14 @@ kbd {
   animation: slow-spin 10s linear infinite;
 }
 
+#btn-pink.active .action-btn__icon {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+#btn-prism.active .action-btn__icon {
+  animation: prism-cycle 4s linear infinite;
+}
+
 .btn--error {
   border-color: #ff6b6b !important;
   color: #ff6b6b !important;
@@ -682,7 +696,8 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn-press, .animate-spin-once, #btn-rotate.active .action-btn__icon {
+  .btn-press, .animate-spin-once, #btn-rotate.active .action-btn__icon,
+  #btn-pink.active .action-btn__icon, #btn-prism.active .action-btn__icon {
     animation: none !important;
   }
   .action-btn:active, .refresh:active {
