@@ -108,10 +108,12 @@ test('C key triggers copy feedback on buttons', async ({ page }) => {
 
   await page.keyboard.press('c');
 
-  // Check that either button shows feedback
+  // Check that either button shows feedback.
+  // In CI, clipboard may fail, so "Failed" is also an acceptable state for proving the shortcut triggered the handler.
   await expect(async () => {
     const seedText = await seedDisplay.textContent();
     const copyText = await copyLabel.textContent();
-    expect(seedText === 'Copied!' || copyText === 'Copied!').toBe(true);
+    const isFeedback = (text: string | null) => text === 'Copied!' || text === 'Failed';
+    expect(isFeedback(seedText) || isFeedback(copyText)).toBe(true);
   }).toPass();
 });
