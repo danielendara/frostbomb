@@ -6,6 +6,8 @@ const LUT_SIZE_MINUS_ONE = EASING_LUT_SIZE - 1;
 const LUT_SCALE_FACTOR = 2 * LUT_SIZE_MINUS_ONE;
 const THRESHOLD_SCALE_FACTOR = 1.5 * LUT_SCALE_FACTOR;
 
+const SIN60 = 0.86602540378;
+
 const EASING_LUT = new Float32Array(EASING_LUT_SIZE);
 for (let i = 0; i < EASING_LUT_SIZE; i++) {
   const t = i / LUT_SIZE_MINUS_ONE;
@@ -740,12 +742,15 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             target[segIdx + 9] = sm9;
 
             // Arm 1 (60°)
-            const sm0_1 = source[segIdx + 16] * s;
-            const sm1_1 = source[segIdx + 17] * s;
-            const sm4_1 = source[segIdx + 20] * s;
-            const sm5_1 = source[segIdx + 21] * s;
-            const sm8_1 = source[segIdx + 24] * s;
-            const sm9_1 = source[segIdx + 25] * s;
+            // Performance Optimization: Derive Arm 1 basis directly from Arm 0 using hexagonal
+            // symmetry identities. This eliminates 6 memory reads and 6 multiplications with 's'
+            // per segment per frame.
+            const sm0_1 = 0.5 * sm0 - SIN60 * sm1;
+            const sm1_1 = SIN60 * sm0 + 0.5 * sm1;
+            const sm4_1 = 0.5 * sm4 - SIN60 * sm5;
+            const sm5_1 = SIN60 * sm4 + 0.5 * sm5;
+            const sm8_1 = 0.5 * sm8 - SIN60 * sm9;
+            const sm9_1 = SIN60 * sm8 + 0.5 * sm9;
             target[segIdx + 16] = sm0_1;
             target[segIdx + 17] = sm1_1;
             target[segIdx + 20] = sm4_1;

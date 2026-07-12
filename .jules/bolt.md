@@ -175,3 +175,8 @@
 **Learning:** In high-frequency recursive geometry generation, hoisting logic that only applies to the top-level call (like pointed tip extensions) out of the recursion avoids thousands of redundant branch checks and property lookups. Additionally, pruning redundant loop trackers (e.g., pre-doubled noise coordinates) by deriving them directly in the hot loop reduces the engine's register pressure and improves readability without a performance penalty on modern JITs.
 **Action:** Always identify and hoist base-case or top-level-only logic from recursive hot paths. Eliminate redundant additive trackers in loops when they can be derived cheaply from existing ones.
 **Impact:** Optimization reduced average 'buildSnowflake' generation time for complex dendrites by ~24% (from ~0.0407ms to ~0.031ms) while maintaining identical geometry.
+
+## 2026-07-07 - [Arm 1 Symmetry Derivation in Animation]
+**Learning:** During the growth animation loop, "Arm 1" (60° rotation) was being calculated by re-reading from the source buffer and multiplying by the easing progress. Since Arm 0 is already calculated in the same loop, Arm 1's basis can be derived directly from Arm 0 using hexagonal rotation identities ($x' = 0.5x - sin60 \cdot y$, $y' = sin60 \cdot x + 0.5y$).
+**Action:** Replace buffer reads and multiplications for Arm 1 with direct arithmetic derivation from Arm 0's scaled components. This eliminates 6 memory reads and 6 multiplications per segment per frame.
+**Impact:** Reduces CPU instruction count and memory bus pressure in the hot animation loop, ensuring smoother growth on devices with limited memory bandwidth.
