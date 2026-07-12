@@ -440,6 +440,10 @@ kbd {
   cursor: pointer;
 }
 
+.field-notes__row:active {
+  transform: scale(0.97);
+}
+
 .field-notes__row:hover {
   background-color: rgba(230, 237, 245, 0.05);
 }
@@ -729,7 +733,8 @@ kbd {
   .refresh:active,
   .lab-toggle:active,
   .field-guide__close:active,
-  .wordmark-link:active {
+  .wordmark-link:active,
+  .field-notes__row:active {
     transform: none;
   }
 }
