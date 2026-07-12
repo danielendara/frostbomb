@@ -28,3 +28,19 @@
 ## 2025-05-14 - Visual Anchoring with Existing Design Tokens
 **Learning:** When providing visual feedback for programmatic state changes (like regrowing a snowflake), using existing design tokens (e.g., a `.section-highlight` class) maintains aesthetic consistency while providing immediate focus anchoring. This avoids bloating the CSS with one-off animation classes while still meeting the user's need for interactive confirmation.
 **Action:** Prioritize existing highlight or pulse utility classes for micro-interaction feedback before creating new CSS.
+
+## 2025-05-15 - Focus Management in UI Transitions
+**Learning:** When navigating via programmatic jumps or toggling immersive modes (like a "Photo Mode"), keyboard focus is often lost to the `<body>` element. This breaks the navigation flow for screen reader and keyboard-only users. Furthermore, restoring focus immediately after a visibility change can fail if the element hasn't been fully painted or transitioned into a focusable state.
+**Action:** Always implement explicit focus restoration for overlays and immersive modes. Use `requestAnimationFrame` or a small `setTimeout` (50ms) to ensure the target element is visible and focusable before calling `.focus()`. For jump links, ensure target sections have `tabindex="-1"` to be programmatically focusable.
+
+## 2025-01-24 - Immersive Mode Discoverability & Exit
+**Learning:** Immersive or "Photo" modes that hide the UI solely via keyboard shortcuts are inaccessible to touch-only users and suffer from low discoverability. Providing a visible toggle and an intuitive exit strategy (like clicking the main canvas) ensures the feature is accessible across all devices and easy to escape if accidentally triggered.
+**Action:** Always include a visible UI toggle for immersive modes and implement a "click-to-restore" handler on the primary content area.
+
+## 2025-01-24 - Multi-modal State Feedback
+**Learning:** When a keyboard shortcut (e.g., 'H') triggers a functional state change, users benefit from visual confirmation that matches the mouse-driven interaction. Programmatically triggering the "active" or "pressed" visual state on the corresponding UI button reinforces the mental model of the shortcut's function.
+**Action:** Use a unified visual feedback function (e.g., `visualPress`) that can be called by both keyboard and click listeners.
+
+## 2026-06-11 - Semantic Shortcut Navigation
+**Learning:** Keyboard shortcuts like `?` are most effective when they provide immediate, contextual access to the information requested. Transporting the user to a general "Guide" is helpful, but navigating and focusing the specific "Shortcuts" section within that guide significantly reduces cognitive load and improves accessibility.
+**Action:** Use programmatic focus management (`tabindex="-1"` + `.focus()`) and visual anchoring (highlights/animations) when jumping to specific sections from global keyboard shortcuts.

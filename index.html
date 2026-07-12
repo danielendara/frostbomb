@@ -74,19 +74,19 @@
 
       <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="-1" aria-label="Field Guide">
         <div class="field-guide__content">
-          <section id="guide-temp">
+          <section id="guide-temp" tabindex="-1">
             <h3>Temperature</h3>
             <p>Determines if ice grows into flat plates or long columns. Subtle changes at the molecular level flip the growth between "basal" and "prism" faces.</p>
           </section>
-          <section id="guide-humid">
+          <section id="guide-humid" tabindex="-1">
             <h3>Supersaturation</h3>
             <p>The "fuel" for growth. Low humidity creates simple, solid shapes. High humidity forces unstable, rapid growth that branches into complex dendrites.</p>
           </section>
-          <section id="guide-habit">
+          <section id="guide-habit" tabindex="-1">
             <h3>Habit</h3>
             <p>The resulting morphological category. From simple "plates" to "fern-like dendrites," the habit is a record of the path taken through the atmosphere.</p>
           </section>
-          <section id="guide-branches">
+          <section id="guide-branches" tabindex="-1">
             <h3>Branches</h3>
             <p>The total count of hexagonal ice segments. Higher humidity and longer growth times lead to more intricate, branching structures with thousands of individual segments.</p>
           </section>
@@ -101,7 +101,7 @@
               </div>
             </div>
           </section>
-          <section>
+          <section id="guide-shortcuts" tabindex="-1">
             <h3>Keyboard Shortcuts</h3>
             <dl class="shortcuts-list">
               <div class="shortcut-item"><dt><kbd>R</kbd>, <kbd>Space</kbd></dt><dd>Regrow snowflake</dd></div>
@@ -141,6 +141,10 @@
           <button class="action-btn action-btn--toggle" id="btn-prism" title="Toggle prism mode (M)" aria-pressed="false" aria-keyshortcuts="m">
             <span class="action-btn__icon" aria-hidden="true">🌈</span>
             <span class="action-btn__label">Prism</span>
+          </button>
+          <button class="action-btn action-btn--toggle" id="btn-ui" title="Photo Mode / Toggle UI (H)" aria-pressed="false" aria-keyshortcuts="h">
+            <span class="action-btn__icon" aria-hidden="true">📷</span>
+            <span class="action-btn__label">UI Hide</span>
           </button>
         </div>
         <div class="actions__divider" role="separator" aria-orientation="vertical"></div>

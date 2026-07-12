@@ -13,9 +13,21 @@ const scene = createScene(canvas);
 const nakayaCanvas = document.getElementById('nakaya-diagram') as HTMLCanvasElement;
 const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
+// Performance Optimization: DOM caching and change detection.
+// Drastically reduces layout work and attribute churn during "Lab Mode" slider updates.
+const DOM_CACHE = new Map<string, HTMLElement>();
+const ROW_CACHE = new Map<string, HTMLElement>();
+const LAST_TEXT = new Map<string, string>();
+const LAST_ARIA = new Map<string, string>();
+let lastNakayaAria = '';
+let lastCanvasAria = '';
+let lastSeedAria = '';
+let lastTitle = '';
+
 let isLabMode = false;
 let isGuideOpen = false;
 let isUIHidden = false;
+let guideReturnTarget: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
 let lastHabit: string | null = null;
 let currentSeedLabel: string;
@@ -90,13 +102,26 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   nakayaDiagram?.update(conditions.path);
 
   if (canvas) {
-    canvas.setAttribute('aria-label', `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`);
+    const canvasAria = `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`;
+    if (lastCanvasAria !== canvasAria) {
+      canvas.setAttribute('aria-label', canvasAria);
+      lastCanvasAria = canvasAria;
+    }
   }
 
-  document.title = `${habitLabel[conditions.habit]} — frostbomb`;
+  const title = `${habitLabel[conditions.habit]} — frostbomb`;
+  if (lastTitle !== title) {
+    document.title = title;
+    lastTitle = title;
+  }
+
   const btnSeed = document.getElementById('btn-seed');
   if (btnSeed) {
-    btnSeed.setAttribute('aria-label', `Copy share link for seed ${label}`);
+    const seedAria = `Copy share link for seed ${label}`;
+    if (lastSeedAria !== seedAria) {
+      btnSeed.setAttribute('aria-label', seedAria);
+      lastSeedAria = seedAria;
+    }
   }
 
   const tempF = (conditions.temperatureC * 9 / 5) + 32;
@@ -140,17 +165,37 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
 }
 
 function setText(id: string, value: string) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
+  if (LAST_TEXT.get(id) === value) return;
+
+  let el = DOM_CACHE.get(id);
+  if (!el) {
+    el = document.getElementById(id) || undefined;
+    if (el) DOM_CACHE.set(id, el);
+  }
+
+  if (el) {
+    el.textContent = value;
+    LAST_TEXT.set(id, value);
+  }
 }
 
 function updateRowAria(ddId: string, label: string, value: string) {
-  const dd = document.getElementById(ddId);
-  const row = dd?.closest('.field-notes__row');
+  let row = ROW_CACHE.get(ddId);
+  if (!row) {
+    const dd = document.getElementById(ddId);
+    row = (dd?.closest('.field-notes__row') as HTMLElement) || undefined;
+    if (row) ROW_CACHE.set(ddId, row);
+  }
+
   if (row) {
     const isButton = row.getAttribute('role') === 'button';
     const interactionHint = isButton ? '. Click to learn more in the field guide.' : '.';
-    row.setAttribute('aria-label', `${label}: ${value}${interactionHint}`);
+    const ariaLabel = `${label}: ${value}${interactionHint}`;
+
+    if (LAST_ARIA.get(ddId) !== ariaLabel) {
+      row.setAttribute('aria-label', ariaLabel);
+      LAST_ARIA.set(ddId, ariaLabel);
+    }
   }
 }
 
@@ -313,8 +358,12 @@ async function toggleLabMode() {
   }
 }
 
-function toggleFieldGuide() {
+function toggleFieldGuide(target: HTMLElement | null | Event = null) {
   isGuideOpen = !isGuideOpen;
+
+  if (isGuideOpen && target instanceof HTMLElement) {
+    guideReturnTarget = target;
+  }
 
   if (guideToggle) {
     guideToggle.setAttribute('aria-pressed', isGuideOpen.toString());
@@ -325,11 +374,32 @@ function toggleFieldGuide() {
     if (isGuideOpen) {
       fieldGuide.scrollTop = 0;
       fieldGuide.focus();
-    } else if (guideToggle) {
-      guideToggle.focus();
+    } else {
+      const restoreTo = guideReturnTarget || guideToggle;
+      requestAnimationFrame(() => restoreTo?.focus());
+      guideReturnTarget = null;
     }
   }
   if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
+}
+
+function navigateToGuideSection(targetId: string, returnTarget: HTMLElement | null = null) {
+  if (!isGuideOpen) {
+    toggleFieldGuide(returnTarget);
+  } else if (returnTarget) {
+    guideReturnTarget = returnTarget;
+  }
+
+  requestAnimationFrame(() => {
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.focus();
+      el.classList.remove('section-highlight');
+      void el.offsetWidth;
+      el.classList.add('section-highlight');
+    }
+  });
 }
 
 labToggle?.addEventListener('click', toggleLabMode);
@@ -340,24 +410,15 @@ document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
   const handler = () => {
     const label = row.querySelector('dt')?.textContent?.trim();
     const targets: Record<string, string> = {
-      'Temperature': 'guide-temp',
-      'Supersaturation': 'guide-humid',
-      'Habit': 'guide-habit',
-      'Branches': 'guide-branches',
+      Temperature: 'guide-temp',
+      Supersaturation: 'guide-humid',
+      Habit: 'guide-habit',
+      Branches: 'guide-branches',
     };
     const targetId = targets[label || ''];
 
     if (targetId) {
-      if (!isGuideOpen) toggleFieldGuide();
-      requestAnimationFrame(() => {
-        const el = document.getElementById(targetId);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          el.classList.remove('section-highlight');
-          void el.offsetWidth;
-          el.classList.add('section-highlight');
-        }
-      });
+      navigateToGuideSection(targetId, row as HTMLElement);
     }
   };
 
@@ -434,7 +495,11 @@ function updateFromPane(shouldAnnounce = false) {
   const habitText = habitLabel[habit];
 
   if (nakayaCanvas) {
-    nakayaCanvas.setAttribute('aria-label', `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitText}. Use arrow keys to adjust.`);
+    const nakayaAria = `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labParams.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitText}. Use arrow keys to adjust.`;
+    if (lastNakayaAria !== nakayaAria) {
+      nakayaCanvas.setAttribute('aria-label', nakayaAria);
+      lastNakayaAria = nakayaAria;
+    }
   }
 
   if (shouldAnnounce) {
@@ -576,18 +641,32 @@ function toggleAutoRotate() {
 
 btnRotate?.addEventListener('click', toggleAutoRotate);
 
+const btnUI = document.getElementById('btn-ui');
+
 function toggleUI(forceShow?: boolean) {
   isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
 
   const uiElements = document.querySelectorAll('.masthead, .field-notes, .footer, .lab-controls');
   uiElements.forEach((el) => el.classList.toggle('ui-hidden', isUIHidden));
 
+  if (btnUI) {
+    btnUI.setAttribute('aria-pressed', isUIHidden.toString());
+    btnUI.classList.toggle('active', isUIHidden);
+  }
+
   if (isUIHidden) {
     announce('UI hidden. Press H or Esc to show.');
   } else {
     announce('UI visible');
+    // Restoration of focus must happen after transitions/visibility updates to be effective.
+    setTimeout(() => btnUI?.focus(), 50);
   }
 }
+
+btnUI?.addEventListener('click', () => toggleUI());
+canvas.addEventListener('click', () => {
+  if (isUIHidden) toggleUI(true);
+});
 
 function resetView() {
   scene.resetView();
@@ -648,9 +727,9 @@ window.addEventListener('keydown', (e: Event) => {
     ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
     'v': () => (resetView(), visualPress('btn-reset')),
     'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
-    '?': () => (toggleFieldGuide(), visualPress('guide-toggle')),
+    '?': () => (navigateToGuideSection('guide-shortcuts'), visualPress('guide-toggle')),
     'l': () => (toggleLabMode(), visualPress('lab-toggle')),
-    'h': () => toggleUI(),
+    'h': () => (toggleUI(), visualPress('btn-ui')),
     'p': () => (togglePinkMode(), visualPress('btn-pink')),
     'm': () => (togglePrismMode(), visualPress('btn-prism')),
     's': () => (saveSnowflake(), visualPress('btn-save')),
