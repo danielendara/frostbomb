@@ -664,17 +664,6 @@ kbd {
   to { transform: rotate(360deg); }
 }
 
-@keyframes habit-discover {
-  0% { transform: scale(1); color: var(--ink); }
-  50% { transform: scale(1.1); color: var(--accent); text-shadow: 0 0 8px var(--accent); }
-  100% { transform: scale(1); color: var(--ink); }
-}
-
-.habit-animate {
-  display: inline-block;
-  animation: habit-discover 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
 .animate-spin-once {
   animation: dot-spin 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }

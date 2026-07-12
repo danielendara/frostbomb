@@ -25,6 +25,14 @@
 **Learning:** Interactive <canvas> elements that trigger state changes (like the Nakaya Diagram) require explicit ARIA attributes (`aria-expanded`, `aria-pressed`, `aria-controls`) to communicate their current state and relationship to other UI components to screen reader users.
 **Action:** Synchronize ARIA attributes in JavaScript whenever a canvas interaction modifies the global application state.
 
+## 2025-05-14 - Visual Anchoring with Existing Design Tokens
+**Learning:** When providing visual feedback for programmatic state changes (like regrowing a snowflake), using existing design tokens (e.g., a `.section-highlight` class) maintains aesthetic consistency while providing immediate focus anchoring. This avoids bloating the CSS with one-off animation classes while still meeting the user's need for interactive confirmation.
+**Action:** Prioritize existing highlight or pulse utility classes for micro-interaction feedback before creating new CSS.
+
+## 2025-05-15 - Focus Management in UI Transitions
+**Learning:** When navigating via programmatic jumps or toggling immersive modes (like a "Photo Mode"), keyboard focus is often lost to the `<body>` element. This breaks the navigation flow for screen reader and keyboard-only users. Furthermore, restoring focus immediately after a visibility change can fail if the element hasn't been fully painted or transitioned into a focusable state.
+**Action:** Always implement explicit focus restoration for overlays and immersive modes. Use `requestAnimationFrame` or a small `setTimeout` (50ms) to ensure the target element is visible and focusable before calling `.focus()`. For jump links, ensure target sections have `tabindex="-1"` to be programmatically focusable.
+
 ## 2025-01-24 - Immersive Mode Discoverability & Exit
 **Learning:** Immersive or "Photo" modes that hide the UI solely via keyboard shortcuts are inaccessible to touch-only users and suffer from low discoverability. Providing a visible toggle and an intuitive exit strategy (like clicking the main canvas) ensures the feature is accessible across all devices and easy to escape if accidentally triggered.
 **Action:** Always include a visible UI toggle for immersive modes and implement a "click-to-restore" handler on the primary content area.
