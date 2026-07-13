@@ -324,10 +324,10 @@ async function toggleLabMode() {
   if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
   if (labStatus) {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
-    labStatus.style.color = isLabMode ? 'var(--accent)' : 'var(--ink-dim)';
   }
 
   if (isLabMode) {
+    announce('Lab Mode active');
     if (!pane && labStatus) {
       labStatus.textContent = 'LOADING...';
       if (labToggle instanceof HTMLButtonElement) labToggle.disabled = true;
@@ -358,6 +358,7 @@ async function toggleLabMode() {
     updateFromPane(false);
   } else {
     grow(undefined, true);
+    announce('Lab Mode disabled');
     if (labToggle) labToggle.focus();
   }
 }
