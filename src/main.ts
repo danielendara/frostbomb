@@ -255,11 +255,11 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
   btn.setAttribute('data-timeout-id', timeoutId.toString());
 }
 
-function visualPress(id: string) {
-  const el = document.getElementById(id);
+function visualPress(idOrEl: string | HTMLElement) {
+  const el = typeof idOrEl === 'string' ? document.getElementById(idOrEl) : idOrEl;
   if (!el) return;
   el.classList.remove('btn-press');
-  void el.offsetWidth; // Trigger reflow
+  void (el as HTMLElement).offsetWidth; // Trigger reflow
   el.classList.add('btn-press');
 }
 
@@ -277,6 +277,9 @@ function announce(message: string) {
 function handleRefresh(e?: Event) {
   if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return;
   if (e) e.preventDefault();
+  visualPress('refresh');
+  const wordmark = document.querySelector('.wordmark-link');
+  if (wordmark) visualPress(wordmark as HTMLElement);
   const dot = document.querySelector('.wordmark__accent');
   if (dot) {
     dot.classList.remove('animate-spin-once');
@@ -306,6 +309,7 @@ const labStatus = document.getElementById('lab-status');
 
 async function toggleLabMode() {
   isLabMode = !isLabMode;
+  visualPress('lab-toggle');
   const toggleGeneration = ++labToggleGeneration;
 
   if (labToggle) {
@@ -360,6 +364,7 @@ async function toggleLabMode() {
 
 function toggleFieldGuide(target: HTMLElement | null | Event = null) {
   isGuideOpen = !isGuideOpen;
+  visualPress('guide-toggle');
 
   if (isGuideOpen && target instanceof HTMLElement) {
     guideReturnTarget = target;
@@ -404,10 +409,14 @@ function navigateToGuideSection(targetId: string, returnTarget: HTMLElement | nu
 
 labToggle?.addEventListener('click', toggleLabMode);
 guideToggle?.addEventListener('click', toggleFieldGuide);
-document.getElementById('guide-close')?.addEventListener('click', toggleFieldGuide);
+document.getElementById('guide-close')?.addEventListener('click', (e) => {
+  visualPress('guide-close');
+  toggleFieldGuide(e);
+});
 
 document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
   const handler = () => {
+    visualPress(row as HTMLElement);
     const label = row.querySelector('dt')?.textContent?.trim();
     const targets: Record<string, string> = {
       Temperature: 'guide-temp',
@@ -434,6 +443,9 @@ document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
 
 function handleNakayaPointer(e: PointerEvent) {
   if (!nakayaCanvas) return;
+  if (e.type === 'pointerdown') {
+    visualPress('nakaya-diagram');
+  }
   const rect = nakayaCanvas.getBoundingClientRect();
   const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
@@ -530,6 +542,8 @@ function updateFromPane(shouldAnnounce = false) {
 
 async function copyLink() {
   const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
+  visualPress('btn-copy');
+  visualPress('btn-seed');
 
   try {
     if (navigator.clipboard && window.isSecureContext) {
@@ -573,6 +587,7 @@ document.getElementById('btn-seed')?.addEventListener('click', copyLink);
 
 async function saveSnowflake() {
   setTemporaryLabel('btn-save', 'Saving...', '⌛');
+  visualPress('btn-save');
   announce('Saving snowflake as PNG');
 
   // Delay to ensure UI updates before heavy rendering
@@ -603,6 +618,7 @@ const btnPink = document.getElementById('btn-pink');
 
 function togglePinkMode() {
   const enabled = !scene.isPinkModeEnabled;
+  visualPress('btn-pink');
   if (btnPink) {
     btnPink.setAttribute('aria-pressed', enabled.toString());
     btnPink.classList.toggle('active', enabled);
@@ -618,6 +634,7 @@ const btnPrism = document.getElementById('btn-prism');
 
 function togglePrismMode() {
   const enabled = !scene.isPrismModeEnabled;
+  visualPress('btn-prism');
   if (btnPrism) {
     btnPrism.setAttribute('aria-pressed', enabled.toString());
     btnPrism.classList.toggle('active', enabled);
@@ -637,6 +654,7 @@ if (btnRotate) {
 
 function toggleAutoRotate() {
   const enabled = !scene.isAutoRotateEnabled;
+  visualPress('btn-rotate');
   if (btnRotate) {
     btnRotate.setAttribute('aria-pressed', enabled.toString());
     btnRotate.classList.toggle('active', enabled);
@@ -651,6 +669,7 @@ const btnUI = document.getElementById('btn-ui');
 
 function toggleUI(forceShow?: boolean) {
   isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
+  visualPress('btn-ui');
 
   const uiElements = document.querySelectorAll('.masthead, .field-notes, .footer, .lab-controls');
   uiElements.forEach((el) => el.classList.toggle('ui-hidden', isUIHidden));
@@ -676,6 +695,7 @@ canvas.addEventListener('click', () => {
 
 function resetView() {
   scene.resetView();
+  visualPress('btn-reset');
   setTemporaryLabel('btn-reset', 'Reset!', '⌂', false, true);
   announce('View reset to center');
 }
