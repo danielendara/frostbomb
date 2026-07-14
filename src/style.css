@@ -249,6 +249,15 @@ body.pink-mode {
   color: var(--accent);
 }
 
+.lab-toggle[aria-pressed="true"] #lab-status {
+  color: var(--accent);
+}
+
+#lab-status {
+  color: var(--ink-dim);
+  transition: color 0.3s ease;
+}
+
 .lab-controls {
   display: flex;
   flex-direction: column;
@@ -557,7 +566,15 @@ kbd {
 }
 
 #btn-prism.active .action-btn__icon {
-  animation: prism-cycle 4s linear infinite;
+  animation: prism-cycle 10s linear infinite;
+}
+
+.prism-mode #seed-display {
+  animation: prism-cycle 10s linear infinite;
+}
+
+.prism-mode .lab-toggle[aria-pressed="true"] #lab-status {
+  animation: prism-cycle 10s linear infinite;
 }
 
 .btn--error {
