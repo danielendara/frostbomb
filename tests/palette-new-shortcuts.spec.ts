@@ -16,7 +16,8 @@ test('Nakaya diagram supports Home, End, PageUp, PageDown keys', async ({ page }
 
   // Turn on Lab Mode (Arrow key or Enter)
   await page.keyboard.press('Enter');
-  await expect(page.locator('#lab-status')).toHaveText('ON');
+  // Increase timeout for Lab Mode loading in CI as dynamic import of tweakpane can be slow
+  await expect(page.locator('#lab-status')).toHaveText('ON', { timeout: 15000 });
 
   // Press Home (sets temp to -40)
   await page.keyboard.press('Home');
