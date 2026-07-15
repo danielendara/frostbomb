@@ -134,8 +134,9 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   setText('stat-humid', humidText);
   setText('stat-habit', habitText);
 
-  if (animate && (isNewSeed || (lastHabit && lastHabit !== habitText))) {
-    const animateIds = isNewSeed ? ['stat-habit', 'seed-display'] : ['stat-habit'];
+  const habitChanged = lastHabit && lastHabit !== habitText;
+  if ((animate && isNewSeed) || habitChanged) {
+    const animateIds = (animate && isNewSeed) ? ['stat-habit', 'seed-display'] : ['stat-habit'];
     animateIds.forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
@@ -487,8 +488,10 @@ nakayaCanvas?.addEventListener('keydown', (e: Event) => {
     }
 
     if (isNav) {
-      const tStep = 1;
-      const ssStep = 5;
+      const ke = e as KeyboardEvent;
+      const multiplier = ke.shiftKey ? 3 : 1;
+      const tStep = 1 * multiplier;
+      const ssStep = 5 * multiplier;
       let changed = false;
 
       if (key === 'ArrowLeft') { labParams.temperature = Math.max(-40, labParams.temperature - tStep); changed = true; }
@@ -693,6 +696,7 @@ btnUI?.addEventListener('click', () => toggleUI());
 canvas.addEventListener('click', () => {
   if (isUIHidden) toggleUI(true);
 });
+canvas.addEventListener('dblclick', resetView);
 
 function resetView() {
   scene.resetView();
