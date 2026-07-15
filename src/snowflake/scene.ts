@@ -475,14 +475,18 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         branchMesh.instanceMatrix.needsUpdate = true;
         minAnimatedIndex = data.armCount;
       } else {
-        // Optimization: Pre-fill the instance matrix with the final state but zero out the basis
-        // for all active instances. This avoids needing to zero it every frame during animation.
+        // Performance Optimization: Zero out the basis for all active instances in a single pass
+        // and copy only the translations. This avoids thousands of small fill() calls and
+        // redundant copies of basis data that will be immediately zeroed.
         const target = branchMesh.instanceMatrix.array as Float32Array;
-        target.set(data.matrices);
+        const source = data.matrices;
+        target.fill(0, 0, requiredCount << 4);
         for (let i = 0; i < requiredCount; i++) {
-          // Zero out the 3x3 basis (columns 0-2) and W components (3, 7, 11).
-          // Performance Optimization: Use target.fill() for bulk zeroing instead of 12 individual assignments.
-          target.fill(0, i << 4, (i << 4) + 12);
+          const o = i << 4;
+          target[o + 12] = source[o + 12];
+          target[o + 13] = source[o + 13];
+          target[o + 14] = source[o + 14];
+          target[o + 15] = 1;
         }
         branchMesh.instanceMatrix.clearUpdateRanges();
         branchMesh.instanceMatrix.needsUpdate = true;
