@@ -650,20 +650,40 @@ function togglePrismMode() {
 
 btnPrism?.addEventListener('click', togglePrismMode);
 
-const btnRotate = document.getElementById('btn-rotate');
-if (btnRotate) {
-  btnRotate.setAttribute('aria-pressed', scene.isAutoRotateEnabled.toString());
-  btnRotate.classList.toggle('active', scene.isAutoRotateEnabled);
+const btnRotate = document.getElementById('btn-rotate') as HTMLButtonElement | null;
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function updateRotateButtonUI() {
+  if (!btnRotate) return;
+  const isReduced = motionQuery.matches;
+
+  if (isReduced && scene.isAutoRotateEnabled) {
+    scene.setAutoRotate(false);
+  }
+
+  const isEnabled = scene.isAutoRotateEnabled;
+
+  btnRotate.setAttribute('aria-pressed', isEnabled.toString());
+  btnRotate.classList.toggle('active', isEnabled);
+
+  if (isReduced) {
+    btnRotate.disabled = true;
+    btnRotate.title = 'Auto-rotation disabled (prefers-reduced-motion)';
+  } else {
+    btnRotate.disabled = false;
+    btnRotate.title = 'Toggle auto-rotation (A)';
+  }
 }
 
+updateRotateButtonUI();
+motionQuery.addEventListener('change', updateRotateButtonUI);
+
 function toggleAutoRotate() {
+  if (motionQuery.matches) return;
   const enabled = !scene.isAutoRotateEnabled;
   visualPress('btn-rotate');
-  if (btnRotate) {
-    btnRotate.setAttribute('aria-pressed', enabled.toString());
-    btnRotate.classList.toggle('active', enabled);
-  }
   scene.setAutoRotate(enabled);
+  updateRotateButtonUI();
   announce(`Auto-rotation ${enabled ? 'enabled' : 'disabled'}`);
 }
 
