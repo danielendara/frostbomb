@@ -5,3 +5,7 @@
 ## 2026-07-15 - [Dynamic Accessibility Preference Sync]
 **Learning:** When responding to system-level accessibility preferences like `prefers-reduced-motion`, UI elements must not only provide visual and ARIA feedback (disabling buttons, updating tooltips) but must also explicitly halt any active background logic. Failing to do so can create a "trapped state" where a feature (like auto-rotation) continues without the user being able to stop it via the now-disabled UI.
 **Action:** In media query listeners, ensure that background logic is synchronized with the new UI state (e.g., call `scene.stop()` if the button is being disabled due to reduced motion).
+
+## 2024-05-24 - [Visual Feedback for Static Actions]
+**Learning:** For actions that don't have a visible UI state change (like saving a file or copying to clipboard), a brief "camera flash" or highlight overlay provides satisfying, immediate confirmation. This is especially useful in immersive/fullscreen apps where standard browser notifications might be missed or feel disjointed.
+**Action:** Implement a .flash-overlay with pointer-events: none and respect prefers-reduced-motion to provide non-obstructive success feedback for static actions.
