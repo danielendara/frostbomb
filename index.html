@@ -36,14 +36,14 @@
 
     <header class="masthead">
       <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R, Space)" aria-keyshortcuts="r Space">
-        <div class="wordmark" aria-label="frost·bomb">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
+        <div class="wordmark">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
       <div class="edition" id="edition">
         <button id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-keyshortcuts="c">
           <span class="seed-btn__prefix">Vol.</span>
           <span id="seed-display" aria-live="polite">·····</span>
-          <span class="seed-btn__icon" aria-hidden="true">❏</span>
+          <span class="seed-btn__icon" aria-hidden="true">⎘</span>
         </button>
       </div>
     </header>
@@ -169,6 +169,7 @@
 
     <div class="grain" aria-hidden="true"></div>
 
+    <div id="flash-overlay" class="flash-overlay" aria-hidden="true"></div>
     <div id="a11y-announcer" class="sr-only" aria-live="polite" role="status"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

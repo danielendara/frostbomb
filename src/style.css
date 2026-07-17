@@ -705,6 +705,24 @@ kbd {
   to { transform: rotate(360deg); }
 }
 
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: white;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+}
+
+@keyframes camera-flash {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+.camera-flash {
+  animation: camera-flash 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btn-press, .animate-spin-once, #btn-rotate.active .action-btn__icon,
   #btn-pink.active .action-btn__icon, #btn-prism.active .action-btn__icon {

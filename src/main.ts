@@ -10,6 +10,8 @@ type TweakpanePane = import('tweakpane').Pane;
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 const scene = createScene(canvas);
 
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
 const nakayaCanvas = document.getElementById('nakaya-diagram') as HTMLCanvasElement;
 const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
 
@@ -262,6 +264,15 @@ function visualPress(idOrEl: string | HTMLElement) {
   el.classList.remove('btn-press');
   void (el as HTMLElement).offsetWidth; // Trigger reflow
   el.classList.add('btn-press');
+}
+
+function triggerFlash() {
+  if (motionQuery.matches) return;
+  const el = document.getElementById('flash-overlay');
+  if (!el) return;
+  el.classList.remove('camera-flash');
+  void el.offsetWidth;
+  el.classList.add('camera-flash');
 }
 
 function announce(message: string) {
@@ -597,6 +608,7 @@ async function saveSnowflake() {
   // Delay to ensure UI updates before heavy rendering
   setTimeout(() => {
     try {
+      triggerFlash();
       scene.composer.render();
 
       const dataUrl = canvas.toDataURL('image/png');
@@ -651,7 +663,6 @@ function togglePrismMode() {
 btnPrism?.addEventListener('click', togglePrismMode);
 
 const btnRotate = document.getElementById('btn-rotate') as HTMLButtonElement | null;
-const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 function updateRotateButtonUI() {
   if (!btnRotate) return;
