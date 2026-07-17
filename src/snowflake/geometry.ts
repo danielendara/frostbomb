@@ -95,11 +95,20 @@ export function buildSnowflake(
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
   // Performance Optimization: Use a shared buffer to avoid re-allocating the pathParams array.
+  // Gated with a simple change-detection cache to avoid redundant paramsFor lookup calls.
   const pathLen = Math.min(conditions.path.length, MAX_PATH_LEN);
   const pathParams = SHARED_PATH_PARAMS;
+  let lastP: Params | null = null;
+  let lastT = NaN, lastS = NaN;
   for (let i = 0; i < pathLen; i++) {
     const p = conditions.path[i];
-    pathParams[i] = paramsFor(p.temp, p.ss);
+    if (p.temp === lastT && p.ss === lastS) {
+      pathParams[i] = lastP!;
+    } else {
+      pathParams[i] = lastP = paramsFor(p.temp, p.ss);
+      lastT = p.temp;
+      lastS = p.ss;
+    }
   }
 
   // Optimization: Pre-calculate path sampling scale to save multiplications in recursion.
@@ -138,11 +147,7 @@ export function buildSnowflake(
     const halfLen = length * 0.5;
     const midX = startX + dirX * halfLen;
     const midY = startY + dirY * halfLen;
-    const midX3 = midX * 3;
-    const midY3 = midY * 3;
-    const nx = midX3 + nOffset;
-    const ny = midY3 + nOffset;
-    const vVarRaw = noise2D(nx, ny);
+    const vVarRaw = noise2D(midX * 3 + nOffset, midY * 3 + nOffset);
     const sx = primaryThickness + vVarRaw * thickness015;
 
     // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
