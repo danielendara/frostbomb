@@ -60,3 +60,38 @@ test('Nakaya diagram aria-label updates on interaction', async ({ page }) => {
   const updatedAria = await nakaya.getAttribute('aria-label');
   expect(updatedAria).toMatch(/Nakaya morphology diagram: -?\d+(\.\d+)?°C, \d+% humidity/);
 });
+
+test('Lab Mode allows custom seed input and updates the UI', async ({ page }) => {
+  // Toggle Lab Mode
+  await page.click('#lab-toggle');
+  await expect(page.locator('#lab-status')).toHaveText('ON');
+
+  // Wait for Lab Mode controls to be visible
+  await expect(page.locator('#lab-controls')).toBeVisible();
+
+  // Find the seed input in Tweakpane
+  const seedInput = page.locator('.tp-lblv:has-text("Seed") input');
+  await expect(seedInput).toBeVisible();
+
+  // Initially has some seed
+  const initialSeed = await seedInput.inputValue();
+  expect(initialSeed.length).toBeGreaterThanOrEqual(3);
+
+  // Fill in a custom valid seed
+  await seedInput.fill('abcde');
+  await page.keyboard.press('Enter');
+
+  // Verify the URL query param has changed to "abcde"
+  await expect(page).toHaveURL(/seed=abcde/);
+
+  // Verify that the seed button label displays "abcde"
+  const seedDisplay = page.locator('#seed-display');
+  await expect(seedDisplay).toHaveText('abcde');
+
+  // Fill in an invalid seed (e.g., too short)
+  await seedInput.fill('ab');
+  await page.keyboard.press('Enter');
+
+  // Verify it reverts to the current valid seed "abcde"
+  await expect(seedInput).toHaveValue('abcde');
+});

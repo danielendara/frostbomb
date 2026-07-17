@@ -15,8 +15,8 @@ test('Lab mode slider changes do not trigger growth animation', async ({ page })
 
   // Use more robust locators for Tweakpane inputs
   // Tweakpane inputs are often found by their associated label text
-  const tempInput = page.locator('.tp-lblv_v input').first();
-  const humidityInput = page.locator('.tp-lblv_v input').nth(2); // Skip Temp (F) which is nth(1) and readonly
+  const tempInput = page.locator('.tp-lblv:has-text("Temp (°C)") input');
+  const humidityInput = page.locator('.tp-lblv:has-text("Humidity (%)") input');
 
   const scene = page.locator('#scene');
   const commitPaneInput = async () => {
