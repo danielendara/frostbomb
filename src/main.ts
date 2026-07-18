@@ -2,7 +2,7 @@ import './style.css';
 import { createScene } from './snowflake/scene.ts';
 import { buildSnowflake } from './snowflake/geometry.ts';
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from './snowflake/nakaya.ts';
-import { mulberry32, resolveSeed, Rand } from './snowflake/random.ts';
+import { mulberry32, resolveSeed, hashString, Rand } from './snowflake/random.ts';
 import { initNakayaDiagram } from './snowflake/diagram.ts';
 
 type TweakpanePane = import('tweakpane').Pane;
@@ -36,6 +36,7 @@ let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
 
 const labParams = {
+  seed: '····',
   temperature: -15,
   temperatureF: 5,
   supersaturation: 80,
@@ -55,6 +56,29 @@ async function ensurePane(): Promise<TweakpanePane> {
     const p = new Pane({
       container: paneContainer ?? undefined,
       title: 'Growth parameters',
+    });
+
+    p.addBinding(labParams, 'seed', {
+      label: 'Seed',
+    }).on('change', (ev) => {
+      const val = (ev.value || '').trim().toLowerCase();
+      if (val === currentSeedLabel) return;
+
+      if (/^[a-z0-9]{3,12}$/.test(val)) {
+        currentSeed = {
+          seed: hashString(val),
+          label: val,
+        };
+        const url = new URL(window.location.href);
+        url.searchParams.set('seed', val);
+        window.history.replaceState(null, '', url.pathname + url.search);
+
+        grow(currentConditions, true, false);
+        announce(`Seed changed to ${val}`);
+      } else {
+        labParams.seed = currentSeedLabel;
+        p.refresh();
+      }
     });
 
     p.addBinding(labParams, 'temperature', {
@@ -158,6 +182,7 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   updateRowAria('stat-branches', 'Branches', `${result.branchCount}`);
 
   // Always sync labParams so Lab Mode starts from the current snowflake's conditions
+  labParams.seed = label;
   labParams.habit = habitLabel[conditions.habit];
   labParams.temperature = conditions.temperatureC;
   labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
