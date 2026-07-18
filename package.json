@@ -16,18 +16,18 @@
   },
   "dependencies": {
     "@tweakpane/core": "^2.0.5",
-    "postprocessing": "^6.39.1",
+    "postprocessing": "^6.39.2",
     "simplex-noise": "^4.0.3",
-    "three": "^0.184.0",
+    "three": "^0.185.1",
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.42.1",
-    "@playwright/test": "^1.61.0",
-    "@types/node": "^25.9.4",
-    "@types/three": "^0.184.0",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.16",
-    "wrangler": "^4.103.0"
+    "@cloudflare/vite-plugin": "^1.45.1",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1",
+    "@types/three": "^0.185.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "wrangler": "^4.112.0"
   }
 }
