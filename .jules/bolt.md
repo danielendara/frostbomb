@@ -185,3 +185,8 @@
 **Learning:** In procedural generation along continuous paths (like atmospheric growth conditions), sequential path segments often share identical conditions (temperature, supersaturation). Implementing a simple sequential change-detection cache for lookups avoids redundant high-overhead calculations (like `paramsFor` or `getHabit`). Additionally, inside deep recursive functions, optimizing stack allocation by inlining redundant local variables (reducing temporary storage for intermediate calculations) reduces stack pressure and register usage.
 **Action:** Implement change-detection caches for sequential lookups. In recursive hot paths, inline temporary variables directly into function calls.
 **Impact:** Reduced average `buildSnowflake` time by ~17% (~0.041ms to ~0.034ms) with zero regressions or visual divergence.
+
+## 2026-07-09 - [Animation Pre-filtering & Bulk Copying]
+**Learning:** In high-frequency animation rendering loops, sorting elements by animation delay allows fully grown elements to be pre-filtered sequentially. Instead of using complex multi-branch tracking and loop flushes (such as batching contiguous sections), performing a simple O(1) sequential scan over the elements followed by a single bulk TypedArray copy (`target.set(source.subarray(...))`) avoids check branches, loop tracking variables, and multi-write overhead.
+**Action:** For animation loops processing sequentially completed elements, pre-filter completed elements at the start of the frame, bulk copy them in a single operation, and run a simplified, branchless loop for the active elements.
+**Impact:** Drastically simplified hot animation loop code, eliminated batching state variables, and reduced execution overhead of active animation frames.
