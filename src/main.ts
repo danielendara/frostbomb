@@ -35,6 +35,92 @@ let lastHabit: string | null = null;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
 
+// Recent seeds history tracking state
+const STORAGE_KEY = 'frostbomb-recent-seeds';
+let recentSeeds: string[] = [];
+
+try {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    if (Array.isArray(parsed)) {
+      recentSeeds = parsed.filter(s => typeof s === 'string' && /^[a-z0-9]{3,12}$/i.test(s)).slice(0, 5);
+    }
+  }
+} catch (e) {
+  console.warn('Failed to parse recent seeds from localStorage:', e);
+}
+
+function updateRecentSeedsUI() {
+  const container = document.getElementById('recent-seeds-container');
+  const listEl = document.getElementById('recent-seeds-list');
+  if (!container || !listEl) return;
+
+  // If guide is open or lab mode is active, we can optionally hide it to avoid crowding, or let it adapt.
+  // Standard: show when guide is closed and not in lab mode, or adapt naturally.
+  if (isGuideOpen || isLabMode) {
+    container.style.display = 'none';
+    return;
+  }
+
+  if (recentSeeds.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'flex';
+  listEl.innerHTML = '';
+
+  recentSeeds.forEach((seedVal) => {
+    const btn = document.createElement('button');
+    btn.className = 'seed-btn';
+    btn.style.padding = '0.15rem 0.35rem';
+    btn.style.fontSize = '0.65rem';
+    btn.style.border = '1px solid var(--rule)';
+    btn.style.borderRadius = '4px';
+    btn.style.background = seedVal === currentSeedLabel ? 'rgba(158, 201, 255, 0.15)' : 'transparent';
+    btn.style.color = seedVal === currentSeedLabel ? 'var(--accent)' : 'var(--ink-dim)';
+    btn.style.fontFamily = 'var(--mono)';
+    btn.style.cursor = 'pointer';
+    btn.style.textTransform = 'lowercase';
+    btn.setAttribute('aria-label', `Grow seed ${seedVal}${seedVal === currentSeedLabel ? ' (currently active)' : ''}`);
+    btn.textContent = seedVal;
+
+    btn.addEventListener('click', () => {
+      if (seedVal === currentSeedLabel) return;
+      visualPress(btn);
+      currentSeed = {
+        seed: hashString(seedVal),
+        label: seedVal,
+      };
+      const url = new URL(window.location.href);
+      url.searchParams.set('seed', seedVal);
+      window.history.replaceState(null, '', url.pathname + url.search);
+      grow(undefined, true, true);
+    });
+
+    listEl.appendChild(btn);
+  });
+}
+
+function addRecentSeed(seedVal: string) {
+  if (!seedVal || !/^[a-z0-9]{3,12}$/i.test(seedVal)) return;
+
+  // Performance optimization: prevent layout thrashing and redundant localStorage/DOM writes
+  if (recentSeeds[0] === seedVal) {
+    updateRecentSeedsUI();
+    return;
+  }
+
+  recentSeeds = [seedVal, ...recentSeeds.filter(s => s !== seedVal)].slice(0, 5);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSeeds));
+  } catch (e) {
+    console.warn('Failed to save recent seeds to localStorage:', e);
+  }
+  updateRecentSeedsUI();
+}
+
 const labParams = {
   seed: '····',
   temperature: -15,
@@ -188,6 +274,8 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
   labParams.supersaturation = conditions.supersaturation * 100;
   pane?.refresh();
+
+  addRecentSeed(label);
 
   return { conditions, label };
 }
@@ -363,6 +451,8 @@ async function toggleLabMode() {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
   }
 
+  updateRecentSeedsUI();
+
   if (isLabMode) {
     announce('Lab Mode active');
     if (!pane && labStatus) {
@@ -424,6 +514,8 @@ function toggleFieldGuide(target: HTMLElement | null | Event = null) {
     }
   }
   if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
+
+  updateRecentSeedsUI();
 }
 
 function navigateToGuideSection(targetId: string, returnTarget: HTMLElement | null = null) {
