@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Recent Seeds tracks, persists, displays, and triggers regrowing of previous seeds', async ({ page }) => {
-  // Clear any existing localStorage before starting the test
+  // Clear any existing localStorage before starting the test to ensure isolation
   await page.evaluate(() => {
     localStorage.clear();
   });
@@ -60,18 +60,42 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
 });
 
 test('Recent Seeds is hidden when Lab Mode or Field Guide is active', async ({ page }) => {
+  // Ensure a completely clean slate with a generated seed
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.goto('/');
+
   const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const seedDisplay = page.locator('#seed-display');
+  const labToggle = page.locator('#lab-toggle');
+  const guideToggle = page.locator('#guide-toggle');
+
+  // Wait for seed to generate so container becomes visible
+  await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsContainer).toBeVisible();
 
-  // Activate Lab Mode
-  await page.click('#lab-toggle');
+  // 1. Activate Lab Mode
+  await labToggle.click();
+  // Wait for the UI state to update to active
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'true');
   await expect(recentSeedsContainer).not.toBeVisible();
 
-  // Deactivate Lab Mode
-  await page.click('#lab-toggle');
+  // 2. Deactivate Lab Mode
+  await labToggle.click();
+  // Wait for the UI state to update to inactive
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
   await expect(recentSeedsContainer).toBeVisible();
 
-  // Activate Guide Mode
-  await page.click('#guide-toggle');
+  // 3. Activate Guide Mode
+  await guideToggle.click();
+  // Wait for the UI state to update to active
+  await expect(guideToggle).toHaveAttribute('aria-pressed', 'true');
   await expect(recentSeedsContainer).not.toBeVisible();
+
+  // 4. Deactivate Guide Mode
+  await guideToggle.click();
+  // Wait for the UI state to update to inactive
+  await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(recentSeedsContainer).toBeVisible();
 });
