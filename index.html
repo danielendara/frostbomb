@@ -68,6 +68,11 @@
         <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Branches in the field guide" title="The total number of individual ice segments in this snowflake."><dt>Branches</dt><dd id="stat-branches">—</dd></div>
       </dl>
 
+      <div class="field-notes__history" id="recent-seeds-container" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--rule);">
+        <div style="text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-dim); font-size: 0.55rem; font-weight: bold; margin-bottom: 0.15rem;">Recent Seeds</div>
+        <div id="recent-seeds-list" style="display: flex; gap: 0.35rem; flex-wrap: wrap;" aria-live="polite"></div>
+      </div>
+
       <div class="lab-controls" id="lab-controls" style="display: none;">
         <div id="pane-mount" class="pane-mount" aria-label="Manual growth adjustments"></div>
       </div>
@@ -89,11 +94,6 @@
           <section id="guide-branches" tabindex="-1">
             <h3>Branches</h3>
             <p>The total count of hexagonal ice segments. Higher humidity and longer growth times lead to more intricate, branching structures with thousands of individual segments.</p>
-          </section>
-          <section id="guide-recent" tabindex="-1">
-            <h3>Recent Seeds</h3>
-            <p>Your recently grown snowflakes. Click a seed to load it again.</p>
-            <div id="recent-seeds-container" class="shortcuts-list" style="margin-top: 0.5rem;"></div>
           </section>
           <section>
             <h3>Nakaya Diagram</h3>

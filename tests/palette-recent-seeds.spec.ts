@@ -1,59 +1,101 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Recent Seeds persistence and interaction', () => {
-  test.beforeEach(async ({ page }) => {
-    // Clear localStorage to start fresh
-    await page.addInitScript(() => {
-      window.localStorage.clear();
-    });
-    await page.goto('/');
+test.beforeEach(async ({ page }) => {
+  await page.goto('/');
+});
+
+test('Recent Seeds tracks, persists, displays, and triggers regrowing of previous seeds', async ({ page }) => {
+  // Clear any existing localStorage before starting the test to ensure isolation
+  await page.evaluate(() => {
+    localStorage.clear();
   });
+  await page.goto('/');
 
-  test('generates, persists, and lists recent seeds', async ({ page }) => {
-    // Open the field guide to see the Recent Seeds section
-    const guideToggle = page.locator('#guide-toggle');
-    await guideToggle.click();
-    await expect(page.locator('#field-guide')).toBeVisible();
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
 
-    // Verify recent seeds container exists
-    const recentContainer = page.locator('#recent-seeds-container');
-    await expect(recentContainer).toBeVisible();
+  // Let first seed load
+  await expect(seedDisplay).not.toHaveText('·····');
+  const firstSeed = (await seedDisplay.textContent())?.trim() || '';
+  expect(firstSeed).toMatch(/^[a-z0-9]{5}$/i);
 
-    // On initial load, a seed is generated, so it should be listed in recent seeds
-    const seedDisplay = page.locator('#seed-display');
-    const initialSeed = await seedDisplay.textContent();
-    expect(initialSeed).toBeTruthy();
+  // Growth should trigger adding to recent seeds
+  await expect(recentSeedsContainer).toBeVisible();
+  const seedButtonsBefore = recentSeedsList.locator('button');
+  await expect(seedButtonsBefore).toHaveCount(1);
+  await expect(seedButtonsBefore.first()).toHaveText(firstSeed);
 
-    const recentButtons = recentContainer.locator('.recent-seed-btn');
-    await expect(recentButtons).toHaveCount(1);
-    await expect(recentButtons.first()).toContainText(initialSeed!);
+  // Grow another one by clicking the refresh button
+  const refreshBtn = page.locator('#refresh');
+  await refreshBtn.click();
 
-    // Grow a new snowflake using 'r' key
-    await page.keyboard.press('r');
+  // Wait for new seed
+  await expect(async () => {
+    const currentSeed = (await seedDisplay.textContent())?.trim() || '';
+    expect(currentSeed).not.toBe(firstSeed);
+  }).toPass({ timeout: 5000 });
 
-    // Wait for a second seed to appear in the list
-    await expect(async () => {
-      const count = await recentButtons.count();
-      expect(count).toBe(2);
-    }).toPass();
+  const secondSeed = (await seedDisplay.textContent())?.trim() || '';
+  expect(secondSeed).toMatch(/^[a-z0-9]{5}$/i);
 
-    const secondSeed = await seedDisplay.textContent();
-    expect(secondSeed).not.toBe(initialSeed);
+  // Now container should have both seeds in the correct order (most recent first)
+  const seedButtonsAfter = recentSeedsList.locator('button');
+  await expect(seedButtonsAfter).toHaveCount(2);
+  await expect(seedButtonsAfter.first()).toHaveText(secondSeed);
+  await expect(seedButtonsAfter.nth(1)).toHaveText(firstSeed);
 
-    // The second (newer) seed should be at the top/first in the list
-    await expect(recentButtons.nth(0)).toContainText(secondSeed!);
-    await expect(recentButtons.nth(1)).toContainText(initialSeed!);
+  // Test clicking the first seed button restores it
+  await seedButtonsAfter.nth(1).click();
+  await expect(seedDisplay).toHaveText(firstSeed);
 
-    // Click the first seed (initialSeed) to load it again
-    const firstSeedBtn = recentButtons.nth(1);
-    await firstSeedBtn.click();
+  // Test persistence across reloads
+  await page.reload();
+  await expect(seedDisplay).not.toHaveText('·····');
+  await expect(recentSeedsContainer).toBeVisible();
+  await expect(recentSeedsList.locator('button')).toHaveCount(2);
 
-    // Verify URL and display updated to initialSeed
-    await expect(page).toHaveURL(new RegExp(`seed=${initialSeed}`));
-    await expect(seedDisplay).toHaveText(initialSeed!);
+  // The first button in list should be the active one
+  await expect(recentSeedsList.locator('button').first()).toHaveText(firstSeed);
+});
 
-    // Clicking it should also move it to the top of the list
-    await expect(recentButtons.nth(0)).toContainText(initialSeed!);
-    await expect(recentButtons.nth(1)).toContainText(secondSeed!);
+test('Recent Seeds is hidden when Lab Mode or Field Guide is active', async ({ page }) => {
+  // Ensure a completely clean slate with a generated seed
+  await page.evaluate(() => {
+    localStorage.clear();
   });
+  await page.goto('/');
+
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const seedDisplay = page.locator('#seed-display');
+  const labToggle = page.locator('#lab-toggle');
+  const guideToggle = page.locator('#guide-toggle');
+
+  // Wait for seed to generate so container becomes visible
+  await expect(seedDisplay).not.toHaveText('·····');
+  await expect(recentSeedsContainer).toBeVisible();
+
+  // 1. Activate Lab Mode
+  await labToggle.click();
+  // Wait for the UI state to update to active
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(recentSeedsContainer).not.toBeVisible();
+
+  // 2. Deactivate Lab Mode
+  await labToggle.click();
+  // Wait for the UI state to update to inactive
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(recentSeedsContainer).toBeVisible();
+
+  // 3. Activate Guide Mode
+  await guideToggle.click();
+  // Wait for the UI state to update to active
+  await expect(guideToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(recentSeedsContainer).not.toBeVisible();
+
+  // 4. Deactivate Guide Mode
+  await guideToggle.click();
+  // Wait for the UI state to update to inactive
+  await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(recentSeedsContainer).toBeVisible();
 });
