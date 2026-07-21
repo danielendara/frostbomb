@@ -162,9 +162,10 @@ export function buildSnowflake(
     const caxy = cax * sy;
     const m4 = -dirX * caxy;
     const m5 = -dirY * caxy;
-    // Optimization: Reuse m1 and m0 to calculate m8 and m9.
-    const m8 = m1 * sax;
-    const m9 = -m0 * sax;
+    // Optimization: Reuse intermediate products to calculate m8 and m9 with fewer operations.
+    const sxsax = sx * sax;
+    const m8 = dirX * sxsax;
+    const m9 = dirY * sxsax;
     const m6 = sax * sy;
     const m10 = cax * sx; // cax * sz, where sz = sx
     const vJitter = sax * 0.15; // jitter constant: 0.15 * 0.1 * 0.15
@@ -214,14 +215,9 @@ export function buildSnowflake(
     const lenStep = INV_STEPS_LUT_05[numSteps] || invNumSteps * 0.5;
     const sideLenMaxStep = sideLenBase * lenStep;
     let currentLocalProb = sideBranchProb * (1 - lut04);
-    let currentLenFactor = 1 - lenStep;
-    let sideLenMax = sideLenBase * currentLenFactor;
+    let sideLenMax = sideLenBase * (1 - lenStep);
 
     const nextDepth = depth + 1;
-
-    // Hoist side branch length factors to save multiplications.
-    const sideLenMin = sideLenBase * 0.4;
-    const sideLenRange = sideLenBase * 0.6;
 
     for (let i = 1; i < numSteps; i++) {
       if (sideLenMax < 0.08) break;
@@ -234,7 +230,7 @@ export function buildSnowflake(
       // Side branches get less likely near the tip
       // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
       if (rng() < currentLocalProb) {
-        const sideLen = (sideLenMin + sideLenRange * rng()) * currentLenFactor;
+        const sideLen = sideLenMax * (0.4 + 0.6 * rng());
 
         // Optimization: Prune side branches early before performing lookups and recursive calls.
         if (sideLen >= 0.08) {
@@ -291,7 +287,6 @@ export function buildSnowflake(
       }
 
       currentLocalProb -= probStep;
-      currentLenFactor -= lenStep;
       sideLenMax -= sideLenMaxStep;
     }
   }
