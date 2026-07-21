@@ -415,8 +415,10 @@ export function buildSnowflake(
     const m1_1 = SIN60 * m0 + 0.5 * m1;
     const m4_1 = 0.5 * m4 - SIN60 * m5;
     const m5_1 = SIN60 * m4 + 0.5 * m5;
-    const m8_1 = 0.5 * m8 - SIN60 * m9;
-    const m9_1 = SIN60 * m8 + 0.5 * m9;
+    // Performance Optimization: Derive m8_1 and m9_1 directly using the rotated m0_1 and m1_1 components and sax.
+    // This avoids multi-term rotation math (0.5 * m8 - SIN60 * m9) and saves multiple floating-point operations.
+    const m8_1 = m1_1 * sax;
+    const m9_1 = -m0_1 * sax;
     const m12_1 = 0.5 * m12 - SIN60 * m13;
     const m13_1 = SIN60 * m12 + 0.5 * m13;
 
@@ -434,8 +436,10 @@ export function buildSnowflake(
     const m1_2 = m1_1 - m1;
     const m4_2 = m4_1 - m4;
     const m5_2 = m5_1 - m5;
-    const m8_2 = m8_1 - m8;
-    const m9_2 = m9_1 - m9;
+    // Performance Optimization: Derive m8_2 and m9_2 directly using the derived m0_2 and m1_2 components and sax.
+    // This avoids subtracting m8/m9 and saves multiple operations.
+    const m8_2 = m1_2 * sax;
+    const m9_2 = -m0_2 * sax;
     const m12_2 = m12_1 - m12;
     const m13_2 = m13_1 - m13;
     matrices[offset + 32] = m0_2;
