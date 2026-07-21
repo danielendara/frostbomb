@@ -316,8 +316,7 @@ export function buildSnowflake(
     SEGMENT_BUFFER[tIdx + 1] = tsx; // tm1 = dirX(1) * tsx
     SEGMENT_BUFFER[tIdx + 2] = -tcaxy; // -dirX(1) * tcaxy
     SEGMENT_BUFFER[tIdx + 3] = 0; // -dirY(0) * tcaxy
-    SEGMENT_BUFFER[tIdx + 4] = tsx * tsax; // tm1 * tsax
-    SEGMENT_BUFFER[tIdx + 5] = 0; // -tm0 * tsax
+    SEGMENT_BUFFER[tIdx + 4] = tsax; // Store tsax directly as sax
     SEGMENT_BUFFER[tIdx + 6] = tsax * tipLen;
     SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
     const tvJitter = tsax * 0.15;
@@ -363,13 +362,16 @@ export function buildSnowflake(
     const m1 = SEGMENT_BUFFER[bIdx + 1];
     const m4 = SEGMENT_BUFFER[bIdx + 2];
     const m5 = SEGMENT_BUFFER[bIdx + 3];
-    const m8 = SEGMENT_BUFFER[bIdx + 4];
-    const m9 = SEGMENT_BUFFER[bIdx + 5];
+    const sax = SEGMENT_BUFFER[bIdx + 4]; // packed sax directly
     const m6 = SEGMENT_BUFFER[bIdx + 6];
     const m10 = SEGMENT_BUFFER[bIdx + 7];
     const m12 = SEGMENT_BUFFER[bIdx + 8];
     const m13 = SEGMENT_BUFFER[bIdx + 9];
     const m14 = SEGMENT_BUFFER[bIdx + 10];
+
+    // Derive m8 and m9 on-the-fly to save 2 Float32Array lookups and writes in buildArmInternal
+    const m8 = m1 * sax;
+    const m9 = -m0 * sax;
 
     // Apply rotation for each of the 6 symmetry instances
     // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5, seg1_arm0, ...]
