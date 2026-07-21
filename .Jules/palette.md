@@ -9,3 +9,7 @@
 ## 2024-05-24 - [Visual Feedback for Static Actions]
 **Learning:** For actions that don't have a visible UI state change (like saving a file or copying to clipboard), a brief "camera flash" or highlight overlay provides satisfying, immediate confirmation. This is especially useful in immersive/fullscreen apps where standard browser notifications might be missed or feel disjointed.
 **Action:** Implement a .flash-overlay with pointer-events: none and respect prefers-reduced-motion to provide non-obstructive success feedback for static actions.
+
+## 2025-02-12 - [DOM-based XSS Prevention and Performance Optimization in Dynamic History Lists]
+**Learning:** Parsing dynamic strings from local storage or unverified origins (like user-generated seeds) into innerHTML poses a DOM-based XSS hazard. Additionally, repeatedly appending identical values can cause layout thrashing and redundant rendering.
+**Action:** Always sanitize and validate local storage payloads with rigorous regex (e.g. `/^[a-z0-9]{3,12}$/i`) before constructing HTML, and add an early-exit check to prevent layout recalculation when saving identical consecutive entries.
