@@ -189,7 +189,74 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   labParams.supersaturation = conditions.supersaturation * 100;
   pane?.refresh();
 
+  addToRecentSeeds(label);
+
   return { conditions, label };
+}
+
+function addToRecentSeeds(label: string) {
+  try {
+    const stored = localStorage.getItem('recent_seeds');
+    let list: string[] = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(list)) list = [];
+    if (list[0] === label) return; // Optimization: early return if already top seed
+    list = list.filter((s) => s !== label);
+    list.unshift(label);
+    if (list.length > 5) {
+      list = list.slice(0, 5);
+    }
+    localStorage.setItem('recent_seeds', JSON.stringify(list));
+    renderRecentSeeds();
+  } catch (e) {
+    console.warn('Failed to access localStorage for recent seeds:', e);
+  }
+}
+
+function renderRecentSeeds() {
+  const container = document.getElementById('recent-seeds-container');
+  if (!container) return;
+
+  try {
+    const stored = localStorage.getItem('recent_seeds');
+    const list: string[] = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(list) || list.length === 0) {
+      container.innerHTML = '<p class="colophon" style="text-align: left; font-style: italic; opacity: 0.7; margin: 0;">No recent seeds yet.</p>';
+      return;
+    }
+
+    container.innerHTML = list
+      .map((seed) => {
+        // Sanitize and validate seed format to prevent DOM-based XSS
+        if (typeof seed !== 'string' || !/^[a-z0-9]{3,12}$/i.test(seed)) {
+          return '';
+        }
+        const cleanSeed = seed.toLowerCase();
+        return `
+          <div class="shortcut-item" style="align-items: center; justify-content: flex-start; gap: 0.5rem; margin: 0.2rem 0;">
+            <button class="seed-btn recent-seed-btn" data-seed="${cleanSeed}" title="Load seed ${cleanSeed}">
+              <span class="seed-btn__prefix">Vol.</span>
+              <span class="seed-btn__label" style="font-family: var(--mono); color: var(--ink);">${cleanSeed}</span>
+            </button>
+          </div>
+        `;
+      })
+      .join('');
+  } catch (e) {
+    console.warn('Failed to render recent seeds:', e);
+  }
+}
+
+function loadRecentSeed(label: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('seed', label);
+  window.history.replaceState(null, '', url.pathname + url.search);
+
+  currentSeed = {
+    seed: hashString(label),
+    label: label,
+  };
+  grow(isLabMode ? currentConditions : undefined, true, true);
+  announce(`Loaded recent seed ${label}`);
 }
 
 function setText(id: string, value: string) {
@@ -763,6 +830,16 @@ function resetView() {
 
 document.getElementById('btn-reset')?.addEventListener('click', resetView);
 
+document.getElementById('recent-seeds-container')?.addEventListener('click', (e) => {
+  const target = (e.target as HTMLElement).closest('.recent-seed-btn');
+  if (!target) return;
+  visualPress(target as HTMLElement);
+  const seed = target.getAttribute('data-seed');
+  if (seed) {
+    loadRecentSeed(seed);
+  }
+});
+
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
@@ -828,4 +905,5 @@ window.addEventListener('keydown', (e: Event) => {
 });
 
 grow();
+renderRecentSeeds();
 scene.start();
