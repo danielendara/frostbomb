@@ -5,12 +5,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Recent Seeds tracks, persists, displays, and triggers regrowing of previous seeds', async ({ page }) => {
-  // Clear any existing localStorage before starting the test to ensure isolation
-  await page.evaluate(() => {
-    localStorage.clear();
-  });
-  await page.goto('/');
-
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
@@ -60,12 +54,6 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
 });
 
 test('Recent Seeds is hidden when Lab Mode or Field Guide is active', async ({ page }) => {
-  // Ensure a completely clean slate with a generated seed
-  await page.evaluate(() => {
-    localStorage.clear();
-  });
-  await page.goto('/');
-
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const seedDisplay = page.locator('#seed-display');
   const labToggle = page.locator('#lab-toggle');
@@ -101,12 +89,6 @@ test('Recent Seeds is hidden when Lab Mode or Field Guide is active', async ({ p
 });
 
 test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guide toggle', async ({ page }) => {
-  // Clear any existing localStorage before starting the test to ensure isolation
-  await page.evaluate(() => {
-    localStorage.clear();
-  });
-  await page.goto('/');
-
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
