@@ -48,3 +48,7 @@
 ## 2027-02-14 - Power-user Canvas Navigation
 **Learning:** For complex, canvas-based interactive diagrams (like the Nakaya Diagram), mouse-driven interaction can be imprecise or inaccessible. Mapping semantic keys like `Home`/`End` (to boundaries) and `PageUp`/`PageDown` (to large-percentage jumps) provides an efficient, accessible alternative for parameter manipulation that mirrors standard document navigation expectations.
 **Action:** Always provide "jump" keyboard shortcuts for interactive diagrams that allow users to reach boundary states or make large, predictable adjustments to parameters.
+
+## 2026-10-19 - [Skip-to-Content / Bypass Blocks Pattern]
+**Learning:** For interactive web applications with immersive 3D/canvas environments and persistent header banners, keyboard-only and screen reader users must navigate past multiple heavy components to reach the core settings block. Implementing a styled, keyboard-accessible "Skip to controls" bypass link as the first document child allows instant interaction.
+**Action:** Always place skip links targeting critical interactive containers (with `tabindex="-1"`) at the very top of `<body>`. Style them so they remain hidden off-screen until receiving `focus-visible`, utilizing design system tokens for cohesive aesthetics.

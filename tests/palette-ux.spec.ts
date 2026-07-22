@@ -95,3 +95,19 @@ test('Lab Mode allows custom seed input and updates the UI', async ({ page }) =>
   // Verify it reverts to the current valid seed "abcde"
   await expect(seedInput).toHaveValue('abcde');
 });
+
+test('Skip link is the first focusable element and shifts focus to #field-notes', async ({ page }) => {
+  // Focus the page body/initial area, then Tab
+  await page.keyboard.press('Tab');
+
+  const skipLink = page.locator('.skip-link');
+  // Check if skip-link is focused
+  await expect(skipLink).toBeFocused();
+
+  // Press Enter to activate the link
+  await page.keyboard.press('Enter');
+
+  // The field-notes element should receive focus
+  const fieldNotes = page.locator('#field-notes');
+  await expect(fieldNotes).toBeFocused();
+});
