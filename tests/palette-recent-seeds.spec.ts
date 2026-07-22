@@ -99,3 +99,38 @@ test('Recent Seeds is hidden when Lab Mode or Field Guide is active', async ({ p
   await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
   await expect(recentSeedsContainer).toBeVisible();
 });
+
+test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guide toggle', async ({ page }) => {
+  // Clear any existing localStorage before starting the test to ensure isolation
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.goto('/');
+
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+  const clearBtn = page.locator('#btn-clear-history');
+  const guideToggle = page.locator('#guide-toggle');
+
+  // Wait for seed to generate so container becomes visible
+  await expect(seedDisplay).not.toHaveText('·····');
+  await expect(recentSeedsContainer).toBeVisible();
+
+  // Initially there should be 1 seed
+  const seedButtonsBefore = recentSeedsList.locator('button');
+  await expect(seedButtonsBefore).toHaveCount(1);
+
+  // Click the clear button
+  await clearBtn.click();
+
+  // Container should now be hidden
+  await expect(recentSeedsContainer).not.toBeVisible();
+
+  // guide-toggle should receive focus
+  await expect(guideToggle).toBeFocused();
+
+  // Verify localStorage has been cleared
+  const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
+  expect(storedValue).toBeNull();
+});

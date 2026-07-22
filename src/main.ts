@@ -544,6 +544,23 @@ document.getElementById('guide-close')?.addEventListener('click', (e) => {
   toggleFieldGuide(e);
 });
 
+document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+  visualPress('btn-clear-history');
+  recentSeeds = [];
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    console.warn('Failed to remove recent seeds from localStorage:', e);
+  }
+  updateRecentSeedsUI();
+  announce('Recent seeds history cleared');
+
+  const focusTarget = document.getElementById('guide-toggle');
+  if (focusTarget) {
+    focusTarget.focus();
+  }
+});
+
 document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
   const handler = () => {
     visualPress(row as HTMLElement);
