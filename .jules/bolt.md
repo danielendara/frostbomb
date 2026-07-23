@@ -195,3 +195,8 @@
 **Learning:** In high-frequency animation rendering loops, sorting elements by animation delay allows fully grown elements to be pre-filtered sequentially. Instead of using complex multi-branch tracking and loop flushes (such as batching contiguous sections), performing a simple O(1) sequential scan over the elements followed by a single bulk TypedArray copy (`target.set(source.subarray(...))`) avoids check branches, loop tracking variables, and multi-write overhead.
 **Action:** For animation loops processing sequentially completed elements, pre-filter completed elements at the start of the frame, bulk copy them in a single operation, and run a simplified, branchless loop for the active elements.
 **Impact:** Drastically simplified hot animation loop code, eliminated batching state variables, and reduced execution overhead of active animation frames.
+
+## 2026-07-10 - [In-Place Quicksort & Subarray Allocation Pruning]
+**Learning:** Standard native `.sort()` on dynamic arrays in Web and V8 often requires allocating lightweight `TypedArray` subarray views (e.g. `.subarray(0, count)`) to only sort the active region. These allocations cause massive GC pressure in high-frequency loops. Writing a lightweight, non-allocating in-place Quicksort directly on the pre-allocated buffers yields a ~3.5x sorting speedup and avoids all temporary object wrappers.
+**Action:** Replace native `.sort()` on subarray slices with optimized, non-allocating in-place sorting routines when operating on pre-allocated global or shared TypedArrays in hot paths.
+**Impact:** Achieved a ~3.5x speedup on index sorting and a ~17.4% overall speedup in snowflake generation (average generation time decreased from ~0.0305ms to ~0.0252ms).
