@@ -111,3 +111,30 @@ test('Skip link is the first focusable element and shifts focus to #field-notes'
   const fieldNotes = page.locator('#field-notes');
   await expect(fieldNotes).toBeFocused();
 });
+
+test('Nakaya diagram displays live-hover preview and reverts on leave', async ({ page }) => {
+  const guideToggle = page.locator('#guide-toggle');
+  const fieldGuide = page.locator('#field-guide');
+  const nakaya = page.locator('#nakaya-diagram');
+  const status = page.locator('#nakaya-status');
+
+  // Open guide
+  await guideToggle.click();
+  await expect(fieldGuide).toBeVisible();
+
+  // Initially, status should show Active state
+  await expect(status).toBeVisible();
+  await expect(status).toContainText('Active:');
+
+  // Hover over Nakaya diagram
+  await nakaya.hover({ position: { x: 150, y: 100 } });
+
+  // Status should change to Preview mode
+  await expect(status).toContainText('Preview:');
+
+  // Move cursor away (hover back to guideToggle)
+  await guideToggle.hover();
+
+  // Status should revert to Active mode
+  await expect(status).toContainText('Active:');
+});
