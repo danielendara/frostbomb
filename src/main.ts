@@ -195,6 +195,22 @@ async function ensurePane(): Promise<TweakpanePane> {
   return panePromise;
 }
 
+function updateNakayaStatus(temp: number, ss: number, isPreview: boolean) {
+  const statusEl = document.getElementById('nakaya-status');
+  if (!statusEl) return;
+  const habit = getHabit(temp, ss);
+  const habitText = habitLabel[habit];
+  const humPct = Math.round(ss * 100);
+  const tempStr = temp.toFixed(1);
+  if (isPreview) {
+    statusEl.setAttribute('aria-live', 'off');
+    statusEl.innerHTML = `Preview: <span style="color: var(--accent);">${tempStr}°C</span>, <span style="color: var(--accent);">${humPct}%</span> • <em>${habitText}</em>`;
+  } else {
+    statusEl.setAttribute('aria-live', 'polite');
+    statusEl.innerHTML = `Active: <span style="color: var(--accent-hot);">${tempStr}°C</span>, <span style="color: var(--accent-hot);">${humPct}%</span> • <strong>${habitText}</strong>`;
+  }
+}
+
 function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = true) {
   const isNewSeed = !keepSeed || !currentSeed;
   if (isNewSeed) {
@@ -276,6 +292,8 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   pane?.refresh();
 
   addRecentSeed(label);
+
+  updateNakayaStatus(conditions.temperatureC, conditions.supersaturation, false);
 
   return { conditions, label };
 }
@@ -616,7 +634,23 @@ nakayaCanvas?.addEventListener('pointerdown', (e) => {
 });
 
 nakayaCanvas?.addEventListener('pointermove', (e) => {
-  if (e.buttons > 0) handleNakayaPointer(e);
+  if (e.buttons > 0) {
+    handleNakayaPointer(e);
+  } else {
+    const rect = nakayaCanvas.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+    const t = x * 40 - 40;
+    const ss = 1 - y;
+    updateNakayaStatus(t, ss, true);
+  }
+});
+
+nakayaCanvas?.addEventListener('pointerleave', () => {
+  if (currentConditions) {
+    updateNakayaStatus(currentConditions.temperatureC, currentConditions.supersaturation, false);
+  }
 });
 
 nakayaCanvas?.addEventListener('keydown', (e: Event) => {
