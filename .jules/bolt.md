@@ -200,3 +200,8 @@
 **Learning:** Standard native `.sort()` on dynamic arrays in Web and V8 often requires allocating lightweight `TypedArray` subarray views (e.g. `.subarray(0, count)`) to only sort the active region. These allocations cause massive GC pressure in high-frequency loops. Writing a lightweight, non-allocating in-place Quicksort directly on the pre-allocated buffers yields a ~3.5x sorting speedup and avoids all temporary object wrappers.
 **Action:** Replace native `.sort()` on subarray slices with optimized, non-allocating in-place sorting routines when operating on pre-allocated global or shared TypedArrays in hot paths.
 **Impact:** Achieved a ~3.5x speedup on index sorting and a ~17.4% overall speedup in snowflake generation (average generation time decreased from ~0.0305ms to ~0.0252ms).
+
+## 2026-07-11 - [Bulk Index Initialization & Side-Branch Decay Simplification]
+**Learning:** In high-frequency recursive geometry generation, initializing array segments with a manual `for` loop on every generation adds avoidable CPU cycles. Leveraging low-level `.set()` on native TypedArrays with a pre-allocated IDENTITY_INDICES subarray is significantly faster. Additionally, replacing multiplicative decay tracking (`sideBranchProb * (1 - lut04)`) with direct subtraction of pre-computed step values reduces arithmetic instruction density in the recursion loop.
+**Action:** Always utilize `.set()` for bulk TypedArray copies. Replace multiplicative scaling with direct additive/subtractive tracking when pre-computed step parameters are available.
+**Impact:** Optimizations streamline register pressure and instruction execution, ensuring maximum performance of procedural snowflake generation.
