@@ -227,8 +227,8 @@ export function buildSnowflake(
     const probStep = sideBranchProb * lut04;
     const lenStep = INV_STEPS_LUT_05[numSteps] || invNumSteps * 0.5;
     const sideLenMaxStep = sideLenBase * lenStep;
-    let currentLocalProb = sideBranchProb * (1 - lut04);
-    let sideLenMax = sideLenBase * (1 - lenStep);
+    let currentLocalProb = sideBranchProb - probStep;
+    let sideLenMax = sideLenBase - sideLenMaxStep;
 
     const nextDepth = depth + 1;
 
@@ -339,10 +339,8 @@ export function buildSnowflake(
   // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
   // render loop to break early once it reaches segments that haven't started growing yet.
   const armLen = currentSegmentCount;
-  // Performance Optimization: Initialize the indices in-place without subarray allocations.
-  for (let i = 0; i < armLen; i++) {
-    SEGMENT_INDICES[i] = i;
-  }
+  // Performance Optimization: Initialize the indices using bulk set of a pre-allocated IDENTITY_INDICES subarray.
+  SEGMENT_INDICES.set(IDENTITY_INDICES.subarray(0, armLen));
   // Performance Optimization: Sort indices in-place using our highly optimized, non-allocating Quicksort.
   if (armLen > 1) {
     quicksort(SEGMENT_INDICES, 0, armLen - 1);
