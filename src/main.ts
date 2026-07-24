@@ -162,6 +162,8 @@ async function ensurePane(): Promise<TweakpanePane> {
         grow(currentConditions, true, false);
         announce(`Seed changed to ${val}`);
       } else {
+        announce("Invalid seed. Seeds must be 3 to 12 alphanumeric characters.");
+        setTemporaryLabel('btn-seed', '3-12 chars', '✕', true);
         labParams.seed = currentSeedLabel;
         p.refresh();
       }

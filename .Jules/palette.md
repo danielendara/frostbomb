@@ -9,3 +9,7 @@
 ## 2027-02-15 - [Dynamic Preview Live Region Management]
 **Learning:** For dense interactive visualizations like the Nakaya Diagram canvas hover tracking, screen reader users can experience auditory overload if every high-frequency mouse hover triggers an ARIA live-region announcement. Setting `aria-live="off"` during pointermove / preview events, and restoring `aria-live="polite"` only upon a stable state or user selection, maintains visibility without keyboard/screen reader spam.
 **Action:** Always suppress `aria-live` during live-preview/hover interactions and only re-enable it when the state stabilizes or on explicit user confirmation.
+
+## 2027-02-16 - [Dynamic Seed Validation and Assistive Technology Sync]
+**Learning:** In text inputs mapping directly to procedural seed values (such as Lab Mode custom seeds), user-entered validation failures should never silently fail or quietly revert. Instead, combining an explicit, spoken screen reader warning (`aria-live` announcement) with visual error badges on the main display ensures all users can identify and correct erroneous inputs seamlessly.
+**Action:** Always pair custom procedural input validation checks with descriptive live-region announcements and temporary visual error cues rather than silent value rollbacks.
