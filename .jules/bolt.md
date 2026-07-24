@@ -205,3 +205,8 @@
 **Learning:** In high-frequency recursive geometry generation, initializing array segments with a manual `for` loop on every generation adds avoidable CPU cycles. Leveraging low-level `.set()` on native TypedArrays with a pre-allocated IDENTITY_INDICES subarray is significantly faster. Additionally, replacing multiplicative decay tracking (`sideBranchProb * (1 - lut04)`) with direct subtraction of pre-computed step values reduces arithmetic instruction density in the recursion loop.
 **Action:** Always utilize `.set()` for bulk TypedArray copies. Replace multiplicative scaling with direct additive/subtractive tracking when pre-computed step parameters are available.
 **Impact:** Optimizations streamline register pressure and instruction execution, ensuring maximum performance of procedural snowflake generation.
+
+## 2026-07-12 - [On-Demand Multiplicative Tracking & Parameter Pruning]
+**Learning:** In recursive tree/procedural generators, carrying and additively updating tracking variables (such as animation delay or path coordinate index) inside loops on every iteration incurs avoidable register pressure and arithmetic overhead. Since side branches are spawned occasionally, calculating these trackers on-demand as a function of the loop index (`delay + i * delayStep`) only when a branch is actually created completely eliminates thousands of per-frame additions.
+**Action:** Derive loop trackers on-demand based on loop indices inside conditional spawning blocks to keep high-frequency paths lean.
+**Impact:** Optimization simplifies the recursion loop and eliminates hundreds of thousand redundant additions in standard/large snowflake generations.
