@@ -53,11 +53,11 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
   await expect(recentSeedsList.locator('button').first()).toHaveText(firstSeed);
 });
 
-test('Recent Seeds is hidden when Lab Mode or Field Guide is active', async ({ page }) => {
+test('Recent Seeds is hidden when Lab Mode is active', async ({ page }) => {
+  test.slow();
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const seedDisplay = page.locator('#seed-display');
   const labToggle = page.locator('#lab-toggle');
-  const guideToggle = page.locator('#guide-toggle');
 
   // Wait for seed to generate so container becomes visible
   await expect(seedDisplay).not.toHaveText('·····');
@@ -74,14 +74,25 @@ test('Recent Seeds is hidden when Lab Mode or Field Guide is active', async ({ p
   // Wait for the UI state to update to inactive
   await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
   await expect(recentSeedsContainer).toBeVisible();
+});
 
-  // 3. Activate Guide Mode
+test('Recent Seeds is hidden when Field Guide is active', async ({ page }) => {
+  test.slow();
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const seedDisplay = page.locator('#seed-display');
+  const guideToggle = page.locator('#guide-toggle');
+
+  // Wait for seed to generate so container becomes visible
+  await expect(seedDisplay).not.toHaveText('·····');
+  await expect(recentSeedsContainer).toBeVisible();
+
+  // 1. Activate Guide Mode
   await guideToggle.click();
   // Wait for the UI state to update to active
   await expect(guideToggle).toHaveAttribute('aria-pressed', 'true');
   await expect(recentSeedsContainer).not.toBeVisible();
 
-  // 4. Deactivate Guide Mode
+  // 2. Deactivate Guide Mode
   await guideToggle.click();
   // Wait for the UI state to update to inactive
   await expect(guideToggle).toHaveAttribute('aria-pressed', 'false');
