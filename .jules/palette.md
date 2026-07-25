@@ -56,3 +56,7 @@
 ## 2027-02-15 - Dynamic Preview Live Region Management
 **Learning:** For dense interactive visualizations like the Nakaya Diagram canvas hover tracking, screen reader users can experience auditory overload if every high-frequency mouse hover triggers an ARIA live-region announcement. Setting `aria-live="off"` during pointermove / preview events, and restoring `aria-live="polite"` only upon a stable state or user selection, maintains visibility without keyboard/screen reader spam.
 **Action:** Always suppress `aria-live` during live-preview/hover interactions and only re-enable it when the state stabilizes or on explicit user confirmation.
+
+## 2027-10-23 - Intercepted Scroll Keys in Overlays
+**Learning:** Global keydown handlers (e.g., using `Space` or `PageDown` as triggers) can inadvertently block native browser accessibility and reading tools. When an overlay, guide, or modal is open, global shortcuts must be carefully gated or disabled so that keyboard users can scroll and read the overlay text without triggering unintended background actions.
+**Action:** Always check the visibility or open state of active overlays/modals before allowing non-modified keys (like `Space`) to trigger global state-changing actions.
