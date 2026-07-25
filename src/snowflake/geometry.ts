@@ -143,7 +143,8 @@ export function buildSnowflake(
     startY: number,
     dirX: number,
     dirY: number,
-    dist: number,
+    pIdxFloat: number,
+    delay: number,
     length: number,
     depth: number,
     params: Params,
@@ -198,7 +199,7 @@ export function buildSnowflake(
     SEGMENT_BUFFER[bIdx + 8] = m12;
     SEGMENT_BUFFER[bIdx + 9] = m13;
     SEGMENT_BUFFER[bIdx + 10] = m14;
-    DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
+    DELAY_BUFFER[currentSegmentCount] = delay;
 
     currentSegmentCount++;
 
@@ -215,12 +216,11 @@ export function buildSnowflake(
     const sideLenBase = length * sideBranchDecay;
     let pointX = startX;
     let pointY = startY;
-    let currentDist = dist;
 
-    // Performance Optimization: Use additive tracking for atmospheric path sampling to avoid
+    // Performance Optimization: Use additive/multiplicative tracking for atmospheric path sampling and delays to avoid
     // multiplications and divisions in the hot loop.
-    let pIdxFloat = dist * pathScale;
     const pIdxStep = stepDist * pathScale;
+    const delayStep = stepDist * 0.15;
 
     // Pre-calculate additive steps for local probability and side length decay.
     const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
@@ -237,8 +237,6 @@ export function buildSnowflake(
 
       pointX += stepX;
       pointY += stepY;
-      currentDist += stepDist;
-      pIdxFloat += pIdxStep;
 
       // Side branches get less likely near the tip
       // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
@@ -261,7 +259,8 @@ export function buildSnowflake(
           const cosA = cosAngle - vSin - vHalf * vCos;
           const sinA = sinAngle + vCos - vHalf * vSin;
           // Optimization: Pre-sample parameters for the side branch only when it's created.
-          const pIdx = pIdxFloat | 0;
+          const sidePIdxFloat = pIdxFloat + i * pIdxStep;
+          const pIdx = sidePIdxFloat | 0;
           const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
           const nextParams = pathParams[pathIdx];
 
@@ -271,13 +270,16 @@ export function buildSnowflake(
             const dxsa = dirX * sinA;
             const dyca = dirY * cosA;
 
+            const sideDelay = delay + i * delayStep;
+
             // Right side branch (sign = 1)
             buildArmInternal(
               pointX,
               pointY,
               dxca - dysa,
               dxsa + dyca,
-              currentDist,
+              sidePIdxFloat,
+              sideDelay + 0.1,
               sideLen,
               nextDepth,
               nextParams,
@@ -290,7 +292,8 @@ export function buildSnowflake(
               pointY,
               dxca + dysa,
               -dxsa + dyca,
-              currentDist,
+              sidePIdxFloat,
+              sideDelay + 0.1,
               sideLen,
               nextDepth,
               nextParams,
@@ -306,7 +309,7 @@ export function buildSnowflake(
 
   // Build one primary arm along +X
   const primaryParams = pathParams[0];
-  buildArmInternal(0, 0, 1, 0, 0, 3.5, 0, primaryParams);
+  buildArmInternal(0, 0, 1, 0, 0, 0, 3.5, 0, primaryParams);
 
   // Optional pointed tip extension for the primary arm
   if (primaryParams.hasTip && currentSegmentCount < MAX_SEGMENTS_PER_ARM) {
