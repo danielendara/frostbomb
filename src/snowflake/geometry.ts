@@ -38,7 +38,6 @@ const INV_STEPS_LUT = new Float32Array([
   0, 1, 0.5, 0.33333334, 0.25, 0.2, 0.16666667, 0.14285715, 0.125, 0.11111111, 0.1,
 ]);
 const INV_STEPS_LUT_04 = INV_STEPS_LUT.map((v) => v * 0.4);
-const INV_STEPS_LUT_05 = INV_STEPS_LUT.map((v) => v * 0.5);
 
 // Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
@@ -161,6 +160,7 @@ export function buildSnowflake(
       cosAngle,
       sinAngle,
       maxDepth,
+      decay05,
     } = params;
 
     const halfLen = length * 0.5;
@@ -225,8 +225,7 @@ export function buildSnowflake(
     // Pre-calculate additive steps for local probability and side length decay.
     const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
     const probStep = sideBranchProb * lut04;
-    const lenStep = INV_STEPS_LUT_05[numSteps] || invNumSteps * 0.5;
-    const sideLenMaxStep = sideLenBase * lenStep;
+    const sideLenMaxStep = stepDist * decay05;
     let currentLocalProb = sideBranchProb - probStep;
     let sideLenMax = sideLenBase - sideLenMaxStep;
 
@@ -548,6 +547,7 @@ interface Params {
   habit: Habit;
   hasRidges: boolean;
   hasTip: boolean;
+  decay05: number;
 }
 
 // Performance Optimization: Cache for static Params to avoid repeated allocations.
@@ -575,6 +575,7 @@ const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
   habit: 'stellar_dendrite' as Habit,
   hasRidges: true,
   hasTip: true,
+  decay05: 0.3,
 }));
 let stellarPoolIdx = 0;
 
@@ -600,6 +601,7 @@ function paramsFor(temp: number, ss: number): Params {
         habit,
         hasRidges: true,
         hasTip: true,
+        decay05: 0.3,
       };
     }
     const p = STELLAR_PARAMS_POOL[stellarPoolIdx++];
@@ -610,7 +612,7 @@ function paramsFor(temp: number, ss: number): Params {
   const cached = PARAMS_CACHE[habit];
   if (cached) return cached;
 
-  let p: Omit<Params, 'cosAngle' | 'sinAngle' | 'thickness015' | 'thickness04' | 'thickness04_015'>;
+  let p: Omit<Params, 'cosAngle' | 'sinAngle' | 'thickness015' | 'thickness04' | 'thickness04_015' | 'decay05'>;
   switch (habit) {
     case 'fernlike_dendrite':
       p = {
@@ -711,6 +713,7 @@ function paramsFor(temp: number, ss: number): Params {
     thickness04_015: p.primaryThickness * 0.4 * 0.15,
     cosAngle: Math.cos(p.sideBranchAngle),
     sinAngle: Math.sin(p.sideBranchAngle),
+    decay05: p.sideBranchDecay * 0.5,
   };
   PARAMS_CACHE[habit] = result;
   return result;
