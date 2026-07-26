@@ -950,6 +950,9 @@ window.addEventListener('keydown', (e: Event) => {
   const isDiagramFocused = document.activeElement === nakayaCanvas;
   if (isGuideOpen && !isDiagramFocused && k.startsWith('arrow')) return;
 
+  // Space should scroll down the guide instead of refreshing if guide is open and active
+  if (k === ' ' && isGuideOpen && !isDiagramFocused) return;
+
   const delta = ke.shiftKey ? 0.3 : 0.1;
   const actions: Record<string, () => void> = {
     'arrowup': () => (e.preventDefault(), scene.rotateView(0, -delta)),
