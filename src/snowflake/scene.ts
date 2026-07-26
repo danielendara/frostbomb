@@ -121,7 +121,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     emissiveIntensity: 0.25,
   });
 
-  const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
+  // Performance Optimization: Use openEnded = true for CylinderGeometry.
+  // This removes top and bottom caps, reducing vertex attribute count from 40 to 14 (~65% reduction)
+  // and index count from 72 to 36 (50% reduction) per cylinder instance.
+  const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, true);
 
   // Snowfall particles
   const particleCount = prefersReducedMotion ? 80 : 200;
