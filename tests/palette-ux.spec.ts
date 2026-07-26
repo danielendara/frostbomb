@@ -147,3 +147,36 @@ test('Nakaya diagram displays live-hover preview and reverts on leave', async ({
   // Status should revert to Active mode
   await expect(status).toContainText('Active:');
 });
+
+test('Close Lab Mode button in Lab controls works', async ({ page }) => {
+  const labToggle = page.locator('#lab-toggle');
+  const labControls = page.locator('#lab-controls');
+  const labClose = page.locator('#lab-close');
+
+  // Activate Lab Mode
+  await labToggle.click();
+  await expect(labControls).toBeVisible();
+
+  // Close Lab Mode using the new button
+  await labClose.click();
+  await expect(labControls).not.toBeVisible();
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(labToggle).toBeFocused();
+});
+
+test('Recent seed buttons have correct title attributes', async ({ page }) => {
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+
+  // Wait for seed to display
+  await expect(seedDisplay).not.toHaveText('·····');
+  const seedVal = (await seedDisplay.textContent())?.trim() || '';
+
+  // Get the first button in recent seeds
+  const firstSeedBtn = recentSeedsList.locator('button').first();
+  await expect(firstSeedBtn).toBeVisible();
+
+  // It should have title attribute matching the expected tooltip pattern
+  const title = await firstSeedBtn.getAttribute('title');
+  expect(title).toContain(`Grow seed ${seedVal}`);
+});

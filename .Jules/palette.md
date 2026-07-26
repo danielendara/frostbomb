@@ -13,3 +13,7 @@
 ## 2027-02-16 - [Dynamic Seed Validation and Assistive Technology Sync]
 **Learning:** In text inputs mapping directly to procedural seed values (such as Lab Mode custom seeds), user-entered validation failures should never silently fail or quietly revert. Instead, combining an explicit, spoken screen reader warning (`aria-live` announcement) with visual error badges on the main display ensures all users can identify and correct erroneous inputs seamlessly.
 **Action:** Always pair custom procedural input validation checks with descriptive live-region announcements and temporary visual error cues rather than silent value rollbacks.
+
+## 2027-02-17 - [Symmetric Panel Navigation and Keyboard Focus Restoration]
+**Learning:** For interactive web applications with multiple deep/immersive overlay panes (e.g., Field Guide and Lab Mode), providing symmetrical "Close" actions inside both overlay panels significantly improves keyboard and mobile discoverability. When a panel is closed from its inner dismiss button, focus must be cleanly restored to its opening toggle while triggering appropriate visual/tactile press animations to avoid focus loss.
+**Action:** When creating any toggleable panel or overlay, always place a visible "Close" button inside the panel (especially for mobile/scroll containment), and restore focus to the trigger element on close.
