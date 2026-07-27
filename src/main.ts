@@ -83,7 +83,9 @@ function updateRecentSeedsUI() {
     btn.style.fontFamily = 'var(--mono)';
     btn.style.cursor = 'pointer';
     btn.style.textTransform = 'lowercase';
-    btn.setAttribute('aria-label', `Grow seed ${seedVal}${seedVal === currentSeedLabel ? ' (currently active)' : ''}`);
+    const tooltipText = `Grow seed ${seedVal}${seedVal === currentSeedLabel ? ' (currently active)' : ''}`;
+    btn.setAttribute('aria-label', tooltipText);
+    btn.title = tooltipText;
     btn.textContent = seedVal;
 
     btn.addEventListener('click', () => {
@@ -562,6 +564,10 @@ guideToggle?.addEventListener('click', toggleFieldGuide);
 document.getElementById('guide-close')?.addEventListener('click', (e) => {
   visualPress('guide-close');
   toggleFieldGuide(e);
+});
+document.getElementById('lab-close')?.addEventListener('click', () => {
+  visualPress('lab-close');
+  toggleLabMode();
 });
 
 document.getElementById('btn-clear-history')?.addEventListener('click', () => {
