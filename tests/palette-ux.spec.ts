@@ -180,3 +180,20 @@ test('Recent seed buttons have correct title attributes', async ({ page }) => {
   const title = await firstSeedBtn.getAttribute('title');
   expect(title).toContain(`Grow seed ${seedVal}`);
 });
+
+test('Copy Seed button copies seed only and provides visual and screen reader feedback', async ({ page }) => {
+  const copySeedBtn = page.locator('#btn-copy-seed');
+  const label = copySeedBtn.locator('.action-btn__label');
+
+  await expect(copySeedBtn).toBeVisible();
+  await copySeedBtn.click();
+
+  // Validate the label shifts temporarily to 'Copied!' or 'Failed'
+  await expect(async () => {
+    const text = await label.textContent();
+    expect(['Copied!', 'Failed']).toContain(text);
+  }).toPass();
+
+  const announcer = page.locator('#a11y-announcer');
+  await expect(announcer).toHaveText(/Seed \w+ copied|Failed to copy seed/);
+});

@@ -773,8 +773,47 @@ async function copyLink() {
   }
 }
 
+async function copySeedOnly() {
+  const seed = currentSeedLabel;
+  visualPress('btn-copy-seed');
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(seed);
+    } else {
+      throw new Error('Clipboard API unavailable');
+    }
+    setTemporaryLabel('btn-copy-seed', 'Copied!', '✓', false, true);
+    announce(`Seed ${seed} copied`);
+  } catch (err) {
+    console.warn('Clipboard API failed, trying legacy fallback:', err);
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = seed;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (!successful) {
+        throw new Error('execCommand copy failed');
+      }
+      setTemporaryLabel('btn-copy-seed', 'Copied!', '✓', false, true);
+      announce(`Seed ${seed} copied`);
+    } catch (fallbackErr) {
+      console.error('Legacy fallback failed:', fallbackErr);
+      setTemporaryLabel('btn-copy-seed', 'Failed', '✕', true);
+      announce('Failed to copy seed');
+    }
+  }
+}
+
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 document.getElementById('btn-seed')?.addEventListener('click', copyLink);
+document.getElementById('btn-copy-seed')?.addEventListener('click', copySeedOnly);
 
 async function saveSnowflake() {
   setTemporaryLabel('btn-save', 'Saving...', '⌛');
