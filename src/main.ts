@@ -78,15 +78,35 @@ function updateRecentSeedsUI() {
     btn.style.fontSize = '0.65rem';
     btn.style.border = '1px solid var(--rule)';
     btn.style.borderRadius = '4px';
-    btn.style.background = seedVal === currentSeedLabel ? 'rgba(158, 201, 255, 0.15)' : 'transparent';
-    btn.style.color = seedVal === currentSeedLabel ? 'var(--accent)' : 'var(--ink-dim)';
+    const isActive = seedVal === currentSeedLabel;
+    btn.style.background = isActive ? 'rgba(158, 201, 255, 0.15)' : 'transparent';
+    btn.style.color = isActive ? 'var(--accent)' : 'var(--ink-dim)';
     btn.style.fontFamily = 'var(--mono)';
     btn.style.cursor = 'pointer';
     btn.style.textTransform = 'lowercase';
-    const tooltipText = `Grow seed ${seedVal}${seedVal === currentSeedLabel ? ' (currently active)' : ''}`;
+    const tooltipText = `Grow seed ${seedVal}${isActive ? ' (currently active)' : ''}`;
     btn.setAttribute('aria-label', tooltipText);
     btn.title = tooltipText;
     btn.textContent = seedVal;
+
+    if (!isActive) {
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'rgba(230, 237, 245, 0.1)';
+        btn.style.color = 'var(--ink)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--ink-dim)';
+      });
+      btn.addEventListener('focus', () => {
+        btn.style.background = 'rgba(230, 237, 245, 0.1)';
+        btn.style.color = 'var(--ink)';
+      });
+      btn.addEventListener('blur', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--ink-dim)';
+      });
+    }
 
     btn.addEventListener('click', () => {
       if (seedVal === currentSeedLabel) return;
@@ -1016,6 +1036,7 @@ window.addEventListener('keydown', (e: Event) => {
     's': () => (saveSnowflake(), visualPress('btn-save')),
     'a': () => (toggleAutoRotate(), visualPress('btn-rotate')),
     'c': () => (copyLink(), visualPress('btn-copy'), visualPress('btn-seed')),
+    'k': () => (copySeedOnly(), visualPress('btn-copy-seed')),
   };
   actions[k]?.();
 });
