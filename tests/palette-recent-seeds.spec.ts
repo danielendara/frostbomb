@@ -127,3 +127,49 @@ test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guid
   const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
   expect(storedValue).toBeNull();
 });
+
+test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page }) => {
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+
+  // Let first seed load
+  await expect(seedDisplay).not.toHaveText('·····');
+  const firstSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  // Grow another one by clicking the refresh button
+  const refreshBtn = page.locator('#refresh');
+  await refreshBtn.click();
+
+  // Wait for new seed
+  await expect(async () => {
+    const currentSeed = (await seedDisplay.textContent())?.trim() || '';
+    expect(currentSeed).not.toBe(firstSeed);
+  }).toPass({ timeout: 5000 });
+
+  const secondSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  // Ensure both buttons are present
+  const seedButtons = recentSeedsList.locator('button');
+  await expect(seedButtons).toHaveCount(2);
+
+  // Focus the first button
+  await seedButtons.first().focus();
+  await expect(seedButtons.first()).toBeFocused();
+
+  // ArrowRight/ArrowDown should move focus to the second button
+  await page.keyboard.press('ArrowRight');
+  await expect(seedButtons.nth(1)).toBeFocused();
+
+  // ArrowRight/ArrowDown should wrap focus back to the first button
+  await page.keyboard.press('ArrowDown');
+  await expect(seedButtons.first()).toBeFocused();
+
+  // ArrowLeft/ArrowUp should wrap focus to the second button
+  await page.keyboard.press('ArrowLeft');
+  await expect(seedButtons.nth(1)).toBeFocused();
+
+  // ArrowLeft/ArrowUp should move focus back to the first button
+  await page.keyboard.press('ArrowUp');
+  await expect(seedButtons.first()).toBeFocused();
+});
