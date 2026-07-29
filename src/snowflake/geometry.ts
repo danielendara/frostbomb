@@ -269,7 +269,9 @@ export function buildSnowflake(
             const dxsa = dirX * sinA;
             const dyca = dirY * cosA;
 
-            const sideDelay = delay + i * delayStep;
+            // Performance Optimization: Pre-calculate the next side-branch delay once instead of
+            // evaluating the addition twice per branch pair.
+            const nextDelay = delay + i * delayStep + 0.1;
 
             // Right side branch (sign = 1)
             buildArmInternal(
@@ -278,7 +280,7 @@ export function buildSnowflake(
               dxca - dysa,
               dxsa + dyca,
               sidePIdxFloat,
-              sideDelay + 0.1,
+              nextDelay,
               sideLen,
               nextDepth,
               nextParams,
@@ -292,7 +294,7 @@ export function buildSnowflake(
               dxca + dysa,
               -dxsa + dyca,
               sidePIdxFloat,
-              sideDelay + 0.1,
+              nextDelay,
               sideLen,
               nextDepth,
               nextParams,
@@ -451,10 +453,10 @@ export function buildSnowflake(
     const m1_2 = m1_1 - m1;
     const m4_2 = m4_1 - m4;
     const m5_2 = m5_1 - m5;
-    // Performance Optimization: Derive m8_2 and m9_2 directly using the derived m0_2 and m1_2 components and sax.
-    // This avoids subtracting m8/m9 and saves multiple operations.
-    const m8_2 = m1_2 * sax;
-    const m9_2 = -m0_2 * sax;
+    // Performance Optimization: Derive m8_2 and m9_2 directly using Arm 1 - Arm 0 identities.
+    // This replaces 2 multiplications and a negation with 2 subtractions.
+    const m8_2 = m8_1 - m8;
+    const m9_2 = m9_1 - m9;
     const m12_2 = m12_1 - m12;
     const m13_2 = m13_1 - m13;
     matrices[offset + 32] = m0_2;
