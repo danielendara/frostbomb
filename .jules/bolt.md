@@ -219,3 +219,7 @@
 ## 2026-07-14 - [Direct Hexagonal Symmetry Subtraction & Pre-calculated Branch Delay]
 **Learning:** In 6-fold symmetry matrix population loops, deriving the Arm 2 components using the algebraic identity `Arm 2 = Arm 1 - Arm 0` replaces multiplication operations (like `m1_2 * sax` and `-m0_2 * sax`) with direct floating-point subtractions (`m8_1 - m8` and `m9_1 - m9`). Additionally, pre-calculating the side-branch delay (`nextDelay = delay + i * delayStep + 0.1`) once instead of evaluating `sideDelay + 0.1` twice per branch pair reduces floating-point addition overhead in the hot recursive path.
 **Action:** Use direct subtraction/addition for derived hexagonal symmetry elements to eliminate CPU-intensive multiplications in hot symmetry loops. Always identify and hoist duplicated recursive calculations across branch pairs.
+
+## 2026-07-15 - [Morphology Region Single-Value Caching]
+**Learning:** In highly nested, multi-branch conditional mappings (such as the Nakaya diagram's `getHabit` function), executing multiple floating-point comparisons on every call adds avoidable instruction latency. Since consecutive calls often query identical atmospheric parameters (T, SS) during diagram drawing and state updates, a single-value change-detection cache offers a clean, O(1) shortcut that bypasses all branches.
+**Action:** Implement a lightweight, synchronous, single-value cache for high-frequency mapping functions with high input locality.

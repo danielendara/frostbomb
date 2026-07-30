@@ -18,6 +18,9 @@ function benchmark() {
   const iterations = 100000;
   console.log(`Running benchmark with ${iterations} iterations...`);
 
+  const sampleResult = buildSnowflake(conditions, rand);
+  console.log(`Sample snowflake branchCount: ${sampleResult.branchCount}, armCount: ${sampleResult.armCount}`);
+
   const start = performance.now();
   for (let i = 0; i < iterations; i++) {
     buildSnowflake(conditions, rand);
