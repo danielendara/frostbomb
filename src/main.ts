@@ -108,6 +108,25 @@ function updateRecentSeedsUI() {
       });
     }
 
+    btn.addEventListener('keydown', (e: KeyboardEvent) => {
+      const buttons = Array.from(listEl.querySelectorAll('button'));
+      const idx = buttons.indexOf(btn);
+      if (idx === -1) return;
+
+      let nextIdx: number | null = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextIdx = (idx + 1) % buttons.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIdx = (idx - 1 + buttons.length) % buttons.length;
+      }
+
+      if (nextIdx !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        buttons[nextIdx].focus();
+      }
+    });
+
     btn.addEventListener('click', () => {
       if (seedVal === currentSeedLabel) return;
       visualPress(btn);
