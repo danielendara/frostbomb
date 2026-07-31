@@ -393,29 +393,28 @@ export function buildSnowflake(
     // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
     // and eliminate multiplications.
 
-    // Performance Optimization: Use chained assignments for invariant matrix components
-    // across all 6 symmetry instances. This reduces index lookups and writes.
-    matrices[offset + 6] =
-      matrices[offset + 22] =
-      matrices[offset + 38] =
-      matrices[offset + 54] =
-      matrices[offset + 70] =
-      matrices[offset + 86] =
-        m6;
-    matrices[offset + 10] =
-      matrices[offset + 26] =
-      matrices[offset + 42] =
-      matrices[offset + 58] =
-      matrices[offset + 74] =
-      matrices[offset + 90] =
-        m10;
-    matrices[offset + 14] =
-      matrices[offset + 30] =
-      matrices[offset + 46] =
-      matrices[offset + 62] =
-      matrices[offset + 78] =
-      matrices[offset + 94] =
-        m14;
+    // Performance Optimization: Use flat direct assignments for invariant matrix components
+    // across all 6 symmetry instances. This is more efficient inside V8 than chained assignments.
+    matrices[offset + 6] = m6;
+    matrices[offset + 22] = m6;
+    matrices[offset + 38] = m6;
+    matrices[offset + 54] = m6;
+    matrices[offset + 70] = m6;
+    matrices[offset + 86] = m6;
+
+    matrices[offset + 10] = m10;
+    matrices[offset + 26] = m10;
+    matrices[offset + 42] = m10;
+    matrices[offset + 58] = m10;
+    matrices[offset + 74] = m10;
+    matrices[offset + 90] = m10;
+
+    matrices[offset + 14] = m14;
+    matrices[offset + 30] = m14;
+    matrices[offset + 46] = m14;
+    matrices[offset + 62] = m14;
+    matrices[offset + 78] = m14;
+    matrices[offset + 94] = m14;
 
     // Performance Optimization: Use explicit initialization for all potential non-zero indices
     // to ensure safety when reusing the shared MATRICES_BUFFER across generations.
