@@ -78,15 +78,54 @@ function updateRecentSeedsUI() {
     btn.style.fontSize = '0.65rem';
     btn.style.border = '1px solid var(--rule)';
     btn.style.borderRadius = '4px';
-    btn.style.background = seedVal === currentSeedLabel ? 'rgba(158, 201, 255, 0.15)' : 'transparent';
-    btn.style.color = seedVal === currentSeedLabel ? 'var(--accent)' : 'var(--ink-dim)';
+    const isActive = seedVal === currentSeedLabel;
+    btn.style.background = isActive ? 'rgba(158, 201, 255, 0.15)' : 'transparent';
+    btn.style.color = isActive ? 'var(--accent)' : 'var(--ink-dim)';
     btn.style.fontFamily = 'var(--mono)';
     btn.style.cursor = 'pointer';
     btn.style.textTransform = 'lowercase';
-    const tooltipText = `Grow seed ${seedVal}${seedVal === currentSeedLabel ? ' (currently active)' : ''}`;
+    const tooltipText = `Grow seed ${seedVal}${isActive ? ' (currently active)' : ''}`;
     btn.setAttribute('aria-label', tooltipText);
     btn.title = tooltipText;
     btn.textContent = seedVal;
+
+    if (!isActive) {
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'rgba(230, 237, 245, 0.1)';
+        btn.style.color = 'var(--ink)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--ink-dim)';
+      });
+      btn.addEventListener('focus', () => {
+        btn.style.background = 'rgba(230, 237, 245, 0.1)';
+        btn.style.color = 'var(--ink)';
+      });
+      btn.addEventListener('blur', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--ink-dim)';
+      });
+    }
+
+    btn.addEventListener('keydown', (e: KeyboardEvent) => {
+      const buttons = Array.from(listEl.querySelectorAll('button'));
+      const idx = buttons.indexOf(btn);
+      if (idx === -1) return;
+
+      let nextIdx: number | null = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextIdx = (idx + 1) % buttons.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIdx = (idx - 1 + buttons.length) % buttons.length;
+      }
+
+      if (nextIdx !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        buttons[nextIdx].focus();
+      }
+    });
 
     btn.addEventListener('click', () => {
       if (seedVal === currentSeedLabel) return;
@@ -773,8 +812,47 @@ async function copyLink() {
   }
 }
 
+async function copySeedOnly() {
+  const seed = currentSeedLabel;
+  visualPress('btn-copy-seed');
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(seed);
+    } else {
+      throw new Error('Clipboard API unavailable');
+    }
+    setTemporaryLabel('btn-copy-seed', 'Copied!', '✓', false, true);
+    announce(`Seed ${seed} copied`);
+  } catch (err) {
+    console.warn('Clipboard API failed, trying legacy fallback:', err);
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = seed;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (!successful) {
+        throw new Error('execCommand copy failed');
+      }
+      setTemporaryLabel('btn-copy-seed', 'Copied!', '✓', false, true);
+      announce(`Seed ${seed} copied`);
+    } catch (fallbackErr) {
+      console.error('Legacy fallback failed:', fallbackErr);
+      setTemporaryLabel('btn-copy-seed', 'Failed', '✕', true);
+      announce('Failed to copy seed');
+    }
+  }
+}
+
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 document.getElementById('btn-seed')?.addEventListener('click', copyLink);
+document.getElementById('btn-copy-seed')?.addEventListener('click', copySeedOnly);
 
 async function saveSnowflake() {
   setTemporaryLabel('btn-save', 'Saving...', '⌛');
@@ -977,6 +1055,7 @@ window.addEventListener('keydown', (e: Event) => {
     's': () => (saveSnowflake(), visualPress('btn-save')),
     'a': () => (toggleAutoRotate(), visualPress('btn-rotate')),
     'c': () => (copyLink(), visualPress('btn-copy'), visualPress('btn-seed')),
+    'k': () => (copySeedOnly(), visualPress('btn-copy-seed')),
   };
   actions[k]?.();
 });

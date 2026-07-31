@@ -17,3 +17,11 @@
 ## 2027-02-17 - [Symmetric Panel Navigation and Keyboard Focus Restoration]
 **Learning:** For interactive web applications with multiple deep/immersive overlay panes (e.g., Field Guide and Lab Mode), providing symmetrical "Close" actions inside both overlay panels significantly improves keyboard and mobile discoverability. When a panel is closed from its inner dismiss button, focus must be cleanly restored to its opening toggle while triggering appropriate visual/tactile press animations to avoid focus loss.
 **Action:** When creating any toggleable panel or overlay, always place a visible "Close" button inside the panel (especially for mobile/scroll containment), and restore focus to the trigger element on close.
+
+## 2027-02-18 - [Granular Action Controls and Grid Symmetry]
+**Learning:** For complex procedural or seeded random applications, copy-to-clipboard behaviors often conflate complete URLs with raw configuration strings (like seeds). Providing a secondary, dedicated "Copy Seed only" button alongside the full "Copy Link" action provides precise control for power users while maintaining layout balance (an even button count) on mobile grid layouts.
+**Action:** Provide dedicated, granular buttons with explicit ARIA descriptions and temporary "Copied!" status visual badges for distinct export behaviors, ensuring they gracefully adapt to responsive action grids.
+
+## 2027-02-19 - [Sub-menu Arrow-Key List Navigation and Focus Wrapping]
+**Learning:** For lists of interactive controls inside dense visual environments (like recent seed history list slots), tab-key navigation alone can feel tedious and break natural keyboard layouts. Implementing custom Arrow key navigation (ArrowRight/ArrowDown to move forward, ArrowLeft/ArrowUp to move backward) with wrapping, combined with event propagation interception to prevent side effects on global keyboard shortcuts (like camera rotation), delivers an incredibly fluid and accessible experience.
+**Action:** When designing nested lists of compact visual buttons, always implement bidirectional arrow-key selection with seamless index wrapping, while explicitly stopping keyboard event bubbling to protect parent controls.

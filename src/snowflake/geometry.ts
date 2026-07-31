@@ -34,9 +34,11 @@ const INV_MAX_DIST = 1 / 3.5;
 const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 
 // Performance Optimization: Pre-calculated inverse steps to avoid division in the recursion loop.
-const INV_STEPS_LUT = new Float32Array([
-  0, 1, 0.5, 0.33333334, 0.25, 0.2, 0.16666667, 0.14285715, 0.125, 0.11111111, 0.1,
-]);
+// Pre-calculating up to size 32 covers all possible branching steps for the maximum arm length.
+const INV_STEPS_LUT = new Float32Array(32);
+for (let i = 1; i < 32; i++) {
+  INV_STEPS_LUT[i] = 1 / i;
+}
 const INV_STEPS_LUT_04 = INV_STEPS_LUT.map((v) => v * 0.4);
 
 // Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
@@ -209,7 +211,7 @@ export function buildSnowflake(
     const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
     if (numSteps <= 1) return;
 
-    const invNumSteps = INV_STEPS_LUT[numSteps] || 1 / numSteps;
+    const invNumSteps = INV_STEPS_LUT[numSteps];
     const stepDist = length * invNumSteps;
     const stepX = dirX * stepDist;
     const stepY = dirY * stepDist;
@@ -223,7 +225,7 @@ export function buildSnowflake(
     const delayStep = stepDist * 0.15;
 
     // Pre-calculate additive steps for local probability and side length decay.
-    const lut04 = INV_STEPS_LUT_04[numSteps] || invNumSteps * 0.4;
+    const lut04 = INV_STEPS_LUT_04[numSteps];
     const probStep = sideBranchProb * lut04;
     const sideLenMaxStep = stepDist * decay05;
     let currentLocalProb = sideBranchProb - probStep;
@@ -269,6 +271,8 @@ export function buildSnowflake(
             const dxsa = dirX * sinA;
             const dyca = dirY * cosA;
 
+            // Performance Optimization: Pre-calculate the next side-branch delay once instead of
+            // evaluating the addition twice per branch pair.
             const nextDelay = delay + i * delayStep + 0.1;
 
             // Right side branch (sign = 1)
@@ -450,10 +454,10 @@ export function buildSnowflake(
     const m1_2 = m1_1 - m1;
     const m4_2 = m4_1 - m4;
     const m5_2 = m5_1 - m5;
-    // Performance Optimization: Derive m8_2 and m9_2 directly using the derived m0_2 and m1_2 components and sax.
-    // This avoids subtracting m8/m9 and saves multiple operations.
-    const m8_2 = m1_2 * sax;
-    const m9_2 = -m0_2 * sax;
+    // Performance Optimization: Derive m8_2 and m9_2 directly using Arm 1 - Arm 0 identities.
+    // This replaces 2 multiplications and a negation with 2 subtractions.
+    const m8_2 = m8_1 - m8;
+    const m9_2 = m9_1 - m9;
     const m12_2 = m12_1 - m12;
     const m13_2 = m13_1 - m13;
     matrices[offset + 32] = m0_2;

@@ -71,10 +71,10 @@
 
       <div class="field-notes__history" id="recent-seeds-container" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--rule);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem;">
-          <div style="text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-dim); font-size: 0.55rem; font-weight: bold;">Recent Seeds</div>
+          <h3 id="recent-seeds-label" style="text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-dim); font-size: 0.55rem; font-weight: bold; margin: 0;">Recent Seeds</h3>
           <button id="btn-clear-history" class="lab-toggle" style="font-size: 0.55rem; text-transform: uppercase;" title="Clear seed history" aria-label="Clear seed history">Clear</button>
         </div>
-        <div id="recent-seeds-list" style="display: flex; gap: 0.35rem; flex-wrap: wrap;" aria-live="polite"></div>
+        <div id="recent-seeds-list" style="display: flex; gap: 0.35rem; flex-wrap: wrap;" aria-live="polite" aria-labelledby="recent-seeds-label"></div>
       </div>
 
       <div class="lab-controls" id="lab-controls" style="display: none;">
@@ -124,6 +124,7 @@
               <div class="shortcut-item"><dt><kbd>S</kbd></dt><dd>Save as PNG</dd></div>
               <div class="shortcut-item"><dt><kbd>A</kbd></dt><dd>Toggle Auto-rotate</dd></div>
               <div class="shortcut-item"><dt><kbd>C</kbd></dt><dd>Copy share link</dd></div>
+              <div class="shortcut-item"><dt><kbd>K</kbd></dt><dd>Copy seed string only</dd></div>
               <div class="shortcut-item"><dt><kbd>V</kbd></dt><dd>Reset 3D view</dd></div>
               <div class="shortcut-item"><dt><kbd>Arrows</kbd></dt><dd>Rotate camera (Shift for fast)</dd></div>
               <div class="shortcut-item"><dt><kbd>Home</kbd>, <kbd>End</kbd> / <kbd>PgUp</kbd>, <kbd>PgDn</kbd></dt><dd>Navigate Nakaya diagram</dd></div>
@@ -163,6 +164,10 @@
         <button class="action-btn" id="btn-copy" title="Copy share link (C)" aria-keyshortcuts="c">
           <span class="action-btn__icon" aria-hidden="true">⎘</span>
           <span class="action-btn__label">Copy Link</span>
+        </button>
+        <button class="action-btn" id="btn-copy-seed" title="Copy active seed string only (K)" aria-label="Copy active seed string only (K)" aria-keyshortcuts="k">
+          <span class="action-btn__icon" aria-hidden="true">#</span>
+          <span class="action-btn__label">Copy Seed</span>
         </button>
         <button class="action-btn" id="btn-save" title="Save as PNG (S)" aria-keyshortcuts="s">
           <span class="action-btn__icon" aria-hidden="true">↓</span>

@@ -54,7 +54,7 @@
 **Impact:** Ensures rendering correctness across multiple snowflake regenerations without compromising the performance gains of manual matrix construction.
 
 ## 2026-05-20 - [Data-Oriented Segment Buffer & Trig Approximations]
-**Learning:** Procedural generation of tree-like structures (like snowflake arms) using recursive functions that return or allocate objects causes significant GC pressure. Transitioning to a Data-Oriented Design (DOD) with pre-allocated `Float32Array` buffers eliminates this churn. Furthermore, for small-angle jitter or perturbations, 2nd-order Taylor expansions are a faster alternative to standard `Math.sin`/`Math.cos` calls.
+**Learning:** Procedural generation of tree-like structures (like snowflake arms) using recursive functions that return or allocate objects causes significant GC pressure. Transitioning to a Data-Orient Design (DOD) with pre-allocated `Float32Array` buffers eliminates this churn. Furthermore, for small-angle jitter or perturbations, 2nd-order Taylor expansions are a faster alternative to standard `Math.sin`/`Math.cos` calls.
 **Action:** Refactor recursive generation to write directly into a flat `Float32Array` (the `SEGMENT_BUFFER`) with a fixed stride (e.g., 8). Use 2nd-order Taylor series approximations for small-angle trigonometric perturbations in hot recursive paths.
 **Impact:** Eliminated thousands of short-lived object allocations per snowflake generation, significantly reducing garbage collection overhead. Improved cache locality for subsequent sorting and matrix population phases.
 
@@ -215,3 +215,15 @@
 **Learning:** In deep recursive procedural generators, performing lookup calculations (like `INV_STEPS_LUT_05[numSteps]`) and multiplications (`sideLenBase * lenStep`) to calculate step-wise geometric decays (like side-branch lengths) adds measurable CPU latency when scaled over thousands of branches. Hoisting this decay ratio into the pre-calculated, structured `Params` object completely eliminates the need for array lookup and division/multiplication with variable steps inside the recursion.
 **Action:** Identify step-wise parameters that scale geometrically with branch levels, and factor out loop-dependent decay step factors into pre-calculated constant multipliers in the parameters configuration phase.
 **Impact:** Measurably accelerated snowflake generation, reducing average execution time from ~0.0248ms to ~0.0242ms.
+
+## 2026-07-14 - [Direct Hexagonal Symmetry Subtraction & Pre-calculated Branch Delay]
+**Learning:** In 6-fold symmetry matrix population loops, deriving the Arm 2 components using the algebraic identity `Arm 2 = Arm 1 - Arm 0` replaces multiplication operations (like `m1_2 * sax` and `-m0_2 * sax`) with direct floating-point subtractions (`m8_1 - m8` and `m9_1 - m9`). Additionally, pre-calculating the side-branch delay (`nextDelay = delay + i * delayStep + 0.1`) once instead of evaluating `sideDelay + 0.1` twice per branch pair reduces floating-point addition overhead in the hot recursive path.
+**Action:** Use direct subtraction/addition for derived hexagonal symmetry elements to eliminate CPU-intensive multiplications in hot symmetry loops. Always identify and hoist duplicated recursive calculations across branch pairs.
+
+## 2026-07-15 - [Morphology Region Single-Value Caching]
+**Learning:** In highly nested, multi-branch conditional mappings (such as the Nakaya diagram's `getHabit` function), executing multiple floating-point comparisons on every call adds avoidable instruction latency. Since consecutive calls often query identical atmospheric parameters (T, SS) during diagram drawing and state updates, a single-value change-detection cache offers a clean, O(1) shortcut that bypasses all branches.
+**Action:** Implement a lightweight, synchronous, single-value cache for high-frequency mapping functions with high input locality.
+
+## 2026-07-16 - [Branch Elimination via Extended Step LUTs]
+**Learning:** Small look-up tables with limited bounds (e.g., size 11) force redundant logical fallback checks (like `|| 1 / numSteps` and `|| invNumSteps * 0.4`) inside hot recursive loops to guard against index out-of-bounds. Increasing the static LUT bounds to a larger safe limit (e.g., 32) guarantees safe array indexing and completely eliminates the branch check and division/multiplication fallbacks in the recursive hot path.
+**Action:** Always pre-allocate and expand the boundaries of static look-up tables to completely bypass out-of-bounds fallback logic and division checks in recursive procedurals.
