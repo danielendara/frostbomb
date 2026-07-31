@@ -38,6 +38,8 @@ let currentSeed: { seed: number; label: string } | null = null;
 // Recent seeds history tracking state
 const STORAGE_KEY = 'frostbomb-recent-seeds';
 let recentSeeds: string[] = [];
+let backupRecentSeeds: string[] | null = null;
+let undoTimeoutId: number | null = null;
 
 try {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -64,6 +66,74 @@ function updateRecentSeedsUI() {
   }
 
   if (recentSeeds.length === 0) {
+    if (backupRecentSeeds && backupRecentSeeds.length > 0) {
+      container.style.display = 'flex';
+      listEl.innerHTML = '';
+
+      const infoSpan = document.createElement('span');
+      infoSpan.style.color = 'var(--ink-dim)';
+      infoSpan.style.fontSize = '0.65rem';
+      infoSpan.textContent = 'History cleared. ';
+
+      const undoBtn = document.createElement('button');
+      undoBtn.id = 'btn-undo-history';
+      undoBtn.className = 'seed-btn';
+      undoBtn.style.padding = '0.15rem 0.35rem';
+      undoBtn.style.fontSize = '0.65rem';
+      undoBtn.style.border = '1px solid var(--rule)';
+      undoBtn.style.borderRadius = '4px';
+      undoBtn.style.background = 'transparent';
+      undoBtn.style.color = 'var(--accent)';
+      undoBtn.style.fontFamily = 'var(--mono)';
+      undoBtn.style.cursor = 'pointer';
+      undoBtn.style.textTransform = 'lowercase';
+      undoBtn.title = 'Undo clearing seed history';
+      undoBtn.setAttribute('aria-label', 'Undo clearing seed history');
+      undoBtn.textContent = 'undo';
+
+      undoBtn.addEventListener('mouseenter', () => {
+        undoBtn.style.background = 'rgba(230, 237, 245, 0.1)';
+        undoBtn.style.color = 'var(--ink)';
+      });
+      undoBtn.addEventListener('mouseleave', () => {
+        undoBtn.style.background = 'transparent';
+        undoBtn.style.color = 'var(--accent)';
+      });
+      undoBtn.addEventListener('focus', () => {
+        undoBtn.style.background = 'rgba(230, 237, 245, 0.1)';
+        undoBtn.style.color = 'var(--ink)';
+      });
+      undoBtn.addEventListener('blur', () => {
+        undoBtn.style.background = 'transparent';
+        undoBtn.style.color = 'var(--accent)';
+      });
+
+      undoBtn.addEventListener('click', () => {
+        visualPress(undoBtn);
+        recentSeeds = backupRecentSeeds || [];
+        backupRecentSeeds = null;
+        if (undoTimeoutId !== null) {
+          clearTimeout(undoTimeoutId);
+          undoTimeoutId = null;
+        }
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSeeds));
+        } catch (e) {
+          console.warn('Failed to save recent seeds to localStorage:', e);
+        }
+        updateRecentSeedsUI();
+        announce('Recent seeds history restored');
+
+        setTimeout(() => {
+          document.getElementById('btn-clear-history')?.focus();
+        }, 50);
+      });
+
+      listEl.appendChild(infoSpan);
+      listEl.appendChild(undoBtn);
+      return;
+    }
+
     container.style.display = 'none';
     return;
   }
@@ -152,6 +222,12 @@ function addRecentSeed(seedVal: string) {
     updateRecentSeedsUI();
     return;
   }
+
+  if (undoTimeoutId !== null) {
+    clearTimeout(undoTimeoutId);
+    undoTimeoutId = null;
+  }
+  backupRecentSeeds = null;
 
   recentSeeds = [seedVal, ...recentSeeds.filter(s => s !== seedVal)].slice(0, 5);
   try {
@@ -611,19 +687,50 @@ document.getElementById('lab-close')?.addEventListener('click', () => {
 
 document.getElementById('btn-clear-history')?.addEventListener('click', () => {
   visualPress('btn-clear-history');
+
+  if (undoTimeoutId !== null) {
+    clearTimeout(undoTimeoutId);
+    undoTimeoutId = null;
+  }
+
+  backupRecentSeeds = [...recentSeeds];
   recentSeeds = [];
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (e) {
     console.warn('Failed to remove recent seeds from localStorage:', e);
   }
-  updateRecentSeedsUI();
-  announce('Recent seeds history cleared');
 
-  const focusTarget = document.getElementById('guide-toggle');
-  if (focusTarget) {
-    focusTarget.focus();
-  }
+  updateRecentSeedsUI();
+  announce('Recent seeds history cleared. You can undo this action.');
+
+  requestAnimationFrame(() => {
+    const undoBtn = document.getElementById('btn-undo-history');
+    if (undoBtn) {
+      undoBtn.focus();
+    } else {
+      const focusTarget = document.getElementById('guide-toggle');
+      if (focusTarget) {
+        focusTarget.focus();
+      }
+    }
+  });
+
+  const timeoutDuration = (window as any).__FROSTBOMB_UNDO_TIMEOUT__ !== undefined
+    ? (window as any).__FROSTBOMB_UNDO_TIMEOUT__
+    : 10000;
+
+  undoTimeoutId = window.setTimeout(() => {
+    backupRecentSeeds = null;
+    undoTimeoutId = null;
+    updateRecentSeedsUI();
+    if (document.activeElement?.id === 'btn-undo-history') {
+      const focusTarget = document.getElementById('guide-toggle');
+      if (focusTarget) {
+        focusTarget.focus();
+      }
+    }
+  }, timeoutDuration);
 });
 
 document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {

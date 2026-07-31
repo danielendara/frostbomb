@@ -60,3 +60,7 @@
 ## 2027-10-23 - Intercepted Scroll Keys in Overlays
 **Learning:** Global keydown handlers (e.g., using `Space` or `PageDown` as triggers) can inadvertently block native browser accessibility and reading tools. When an overlay, guide, or modal is open, global shortcuts must be carefully gated or disabled so that keyboard users can scroll and read the overlay text without triggering unintended background actions.
 **Action:** Always check the visibility or open state of active overlays/modals before allowing non-modified keys (like `Space`) to trigger global state-changing actions.
+
+## 2027-10-24 - [Non-destructive History Purging]
+**Learning:** Destructive actions like clearing history or lists can be frustrating if done accidentally. Providing a temporary inline "Undo" flow in place of the list, styled as a standard interactive element with custom hover/focus states, keeps the action non-destructive, provides clear accessibility feedback, and preserves visual balance.
+**Action:** Always implement a temporary inline undo option with a timeout (e.g. 10s) and programmatic focus management when providing history clearance features.

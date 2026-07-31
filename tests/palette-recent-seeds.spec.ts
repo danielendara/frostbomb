@@ -114,6 +114,9 @@ test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guid
   const seedButtonsBefore = recentSeedsList.locator('button');
   await expect(seedButtonsBefore).toHaveCount(1);
 
+  // Set the undo timeout to 0 for this test so the history is immediately fully cleared
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 0; });
+
   // Click the clear button
   await clearBtn.click();
 
@@ -126,6 +129,44 @@ test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guid
   // Verify localStorage has been cleared
   const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
   expect(storedValue).toBeNull();
+});
+
+test('Recent Seeds clearing can be undone, restoring items and focusing clear button', async ({ page }) => {
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+  const clearBtn = page.locator('#btn-clear-history');
+
+  // Wait for seed to generate so container becomes visible
+  await expect(seedDisplay).not.toHaveText('·····');
+  const activeSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  // Click the clear button
+  await clearBtn.click();
+
+  // Container should remain visible and show 'Undo' button
+  await expect(recentSeedsContainer).toBeVisible();
+  const undoBtn = page.locator('#btn-undo-history');
+  await expect(undoBtn).toBeVisible();
+
+  // Undo button should receive focus
+  await expect(undoBtn).toBeFocused();
+
+  // Click the undo button
+  await undoBtn.click();
+
+  // Seed history should be restored, showing the button back
+  const seedButtons = recentSeedsList.locator('button');
+  await expect(seedButtons).toHaveCount(1);
+  await expect(seedButtons.first()).toHaveText(activeSeed);
+
+  // Clear button should receive focus
+  await expect(clearBtn).toBeFocused();
+
+  // Verify localStorage has been restored
+  const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
+  expect(storedValue).not.toBeNull();
+  expect(JSON.parse(storedValue || '[]')).toContain(activeSeed);
 });
 
 test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page }) => {
