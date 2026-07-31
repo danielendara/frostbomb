@@ -223,3 +223,7 @@
 ## 2026-07-15 - [Morphology Region Single-Value Caching]
 **Learning:** In highly nested, multi-branch conditional mappings (such as the Nakaya diagram's `getHabit` function), executing multiple floating-point comparisons on every call adds avoidable instruction latency. Since consecutive calls often query identical atmospheric parameters (T, SS) during diagram drawing and state updates, a single-value change-detection cache offers a clean, O(1) shortcut that bypasses all branches.
 **Action:** Implement a lightweight, synchronous, single-value cache for high-frequency mapping functions with high input locality.
+
+## 2026-07-16 - [Branch Elimination via Extended Step LUTs]
+**Learning:** Small look-up tables with limited bounds (e.g., size 11) force redundant logical fallback checks (like `|| 1 / numSteps` and `|| invNumSteps * 0.4`) inside hot recursive loops to guard against index out-of-bounds. Increasing the static LUT bounds to a larger safe limit (e.g., 32) guarantees safe array indexing and completely eliminates the branch check and division/multiplication fallbacks in the recursive hot path.
+**Action:** Always pre-allocate and expand the boundaries of static look-up tables to completely bypass out-of-bounds fallback logic and division checks in recursive procedurals.
