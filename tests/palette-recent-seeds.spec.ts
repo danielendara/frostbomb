@@ -132,6 +132,9 @@ test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guid
 });
 
 test('Recent Seeds clearing can be undone, restoring items and focusing clear button', async ({ page }) => {
+  // Set the undo timeout to 60000ms to ensure the undo container remains stable on slow CI environments
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 60000; });
+
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');

@@ -486,6 +486,10 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
   const existingTimeout = btn.getAttribute('data-timeout-id');
   if (existingTimeout) clearTimeout(parseInt(existingTimeout));
 
+  const labelDuration = (window as any).__FROSTBOMB_LABEL_TIMEOUT__ !== undefined
+    ? (window as any).__FROSTBOMB_LABEL_TIMEOUT__
+    : 2000;
+
   const timeoutId = window.setTimeout(() => {
     const originalLabel = labelEl.getAttribute('data-original');
     if (originalLabel !== null) {
@@ -503,7 +507,7 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
     btn.classList.remove('btn--error');
     btn.classList.remove('btn--success');
     btn.removeAttribute('data-timeout-id');
-  }, 2000);
+  }, labelDuration);
 
   btn.setAttribute('data-timeout-id', timeoutId.toString());
 }
