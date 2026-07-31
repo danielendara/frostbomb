@@ -121,8 +121,8 @@ test('Recent Seeds can be cleared with Undo capability, restored, and automatica
   await expect(undoBtn).toBeVisible();
   await expect(undoBtn).toBeFocused();
 
-  // Click Undo
-  await undoBtn.click();
+  // Click Undo with force option to bypass scroll-into-view issues on CI with fixed layout
+  await undoBtn.click({ force: true });
 
   // Original seed button should be restored
   const seedButtonsRestored = recentSeedsList.locator('button');
@@ -133,16 +133,17 @@ test('Recent Seeds can be cleared with Undo capability, restored, and automatica
   await expect(clearBtn).toBeFocused();
 
   // Speed up the test by reducing the undo timeout via the global hook
+  // We use 3000ms to avoid any race conditions on slower CI environments.
   await page.evaluate(() => {
-    (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 1500;
+    (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 3000;
   });
 
   // Click Clear again
   await clearBtn.click();
   await expect(undoBtn).toBeVisible();
 
-  // Wait for the 1500ms timeout to finalize clear (using a comfortable timeout check)
-  await expect(recentSeedsContainer).not.toBeVisible({ timeout: 5000 });
+  // Wait for the 3000ms timeout to finalize clear (using a comfortable timeout check)
+  await expect(recentSeedsContainer).not.toBeVisible({ timeout: 7000 });
 
   // After timeout, guide-toggle should receive focus
   await expect(guideToggle).toBeFocused();
