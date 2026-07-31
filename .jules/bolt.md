@@ -227,3 +227,7 @@
 ## 2026-07-16 - [Branch Elimination via Extended Step LUTs]
 **Learning:** Small look-up tables with limited bounds (e.g., size 11) force redundant logical fallback checks (like `|| 1 / numSteps` and `|| invNumSteps * 0.4`) inside hot recursive loops to guard against index out-of-bounds. Increasing the static LUT bounds to a larger safe limit (e.g., 32) guarantees safe array indexing and completely eliminates the branch check and division/multiplication fallbacks in the recursive hot path.
 **Action:** Always pre-allocate and expand the boundaries of static look-up tables to completely bypass out-of-bounds fallback logic and division checks in recursive procedurals.
+
+## 2026-07-17 - [GC Overhead Mitigation in High-Frequency Input Loops]
+**Learning:** Constructing dynamic lookup dictionary objects (e.g. `const actions: Record<string, () => void> = { ... }`) along with multiple closure definitions inside high-frequency event handlers (like global `keydown` listeners triggered during keyboard repetition or arrow key camera rotation) creates significant GC allocation churn and pressure on the JS main thread.
+**Action:** Replace dynamic lookup dictionaries with static `switch` statements inside global keyboard and mouse event handlers to achieve O(1) jump table dispatching with zero garbage collection allocations.
