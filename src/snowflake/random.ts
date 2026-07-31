@@ -39,7 +39,10 @@ export function resolveSeed(): { seed: number; label: string } {
 
 // Convenience helpers bound to an rng instance
 export class Rand {
-  constructor(public readonly rng: () => number) {}
+  public readonly rng: () => number;
+  constructor(rng: () => number) {
+    this.rng = rng;
+  }
   next(): number {
     return this.rng();
   }
