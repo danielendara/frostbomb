@@ -65,7 +65,6 @@ function updateRecentSeedsUI() {
     } else {
       container.style.display = 'flex';
     }
-    return;
   }
 
   // If guide is open or lab mode is active, we can optionally hide it to avoid crowding, or let it adapt.
