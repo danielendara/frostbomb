@@ -152,17 +152,11 @@ export function buildSnowflake(
   ) {
     if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
-    // Performance Optimization: Destructure params once per call to minimize property lookups
-    // in the hot recursion path.
+    // Performance Optimization: Destructure params as-needed to minimize property lookups
+    // for leaf segments and non-branching nodes.
     const {
       primaryThickness,
       thickness015,
-      sideBranchProb,
-      sideBranchDecay,
-      cosAngle,
-      sinAngle,
-      maxDepth,
-      decay05,
     } = params;
 
     const halfLen = length * 0.5;
@@ -205,11 +199,20 @@ export function buildSnowflake(
 
     currentSegmentCount++;
 
-    if (depth >= maxDepth || sideBranchProb <= 0) return;
+    if (depth >= params.maxDepth || params.sideBranchProb <= 0) return;
 
     // Walk along the main branch, occasionally spawning side branches
     const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
     if (numSteps <= 1) return;
+
+    // Destructure properties needed for side branches only when spawning them.
+    const {
+      sideBranchProb,
+      sideBranchDecay,
+      cosAngle,
+      sinAngle,
+      decay05,
+    } = params;
 
     const invNumSteps = INV_STEPS_LUT[numSteps];
     const stepDist = length * invNumSteps;
