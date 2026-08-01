@@ -1045,9 +1045,11 @@ function updateRotateButtonUI() {
   if (isReduced) {
     btnRotate.disabled = true;
     btnRotate.title = 'Auto-rotation disabled (prefers-reduced-motion)';
+    btnRotate.setAttribute('aria-label', 'Auto-Rotate (disabled because prefers-reduced-motion is active)');
   } else {
     btnRotate.disabled = false;
     btnRotate.title = 'Toggle auto-rotation (A)';
+    btnRotate.removeAttribute('aria-label');
   }
 }
 

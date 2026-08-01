@@ -64,3 +64,7 @@
 ## 2027-10-24 - [Non-destructive History Purging]
 **Learning:** Destructive actions like clearing history or lists can be frustrating if done accidentally. Providing a temporary inline "Undo" flow in place of the list, styled as a standard interactive element with custom hover/focus states, keeps the action non-destructive, provides clear accessibility feedback, and preserves visual balance.
 **Action:** Always implement a temporary inline undo option with a timeout (e.g. 10s) and programmatic focus management when providing history clearance features.
+
+## 2027-10-25 - [Dynamic Media Query Sync / Disabled Button ARIA]
+**Learning:** When interactive controls are dynamically disabled based on persistent system preferences (like the auto-rotate button under `prefers-reduced-motion`), screen reader and keyboard-only users need explicit context on why the control cannot be interacted with. Syncing the media query state to set a explanatory `aria-label` (and removing it when not active) prevents confusion.
+**Action:** Always pair disabled elements matching system media query overrides with an explicit, descriptive `aria-label` to convey the exact context to assistive technologies.
