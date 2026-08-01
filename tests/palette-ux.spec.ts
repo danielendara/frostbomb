@@ -182,6 +182,9 @@ test('Recent seed buttons have correct title attributes', async ({ page }) => {
 });
 
 test('Copy Seed button copies seed only and provides visual and screen reader feedback', async ({ page }) => {
+  // Set the temporary label timeout to 60000ms to ensure the "Copied!" text remains stable on slow CI environments
+  await page.evaluate(() => { (window as any).__FROSTBOMB_LABEL_TIMEOUT__ = 60000; });
+
   const copySeedBtn = page.locator('#btn-copy-seed');
   const label = copySeedBtn.locator('.action-btn__label');
 

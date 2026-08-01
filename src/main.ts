@@ -38,8 +38,8 @@ let currentSeed: { seed: number; label: string } | null = null;
 // Recent seeds history tracking state
 const STORAGE_KEY = 'frostbomb-recent-seeds';
 let recentSeeds: string[] = [];
-let clearedSeedsBackup: string[] | null = null;
-let clearHistoryTimeoutId: number | null = null;
+let backupRecentSeeds: string[] | null = null;
+let undoTimeoutId: number | null = null;
 
 try {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -58,16 +58,6 @@ function updateRecentSeedsUI() {
   const listEl = document.getElementById('recent-seeds-list');
   if (!container || !listEl) return;
 
-  // If we are currently in an active Undo clear state, preserve the Undo UI
-  if (clearHistoryTimeoutId) {
-    if (isGuideOpen || isLabMode) {
-      container.style.display = 'none';
-    } else {
-      container.style.display = 'flex';
-    }
-    return;
-  }
-
   // If guide is open or lab mode is active, we can optionally hide it to avoid crowding, or let it adapt.
   // Standard: show when guide is closed and not in lab mode, or adapt naturally.
   if (isGuideOpen || isLabMode) {
@@ -76,6 +66,74 @@ function updateRecentSeedsUI() {
   }
 
   if (recentSeeds.length === 0) {
+    if (backupRecentSeeds && (backupRecentSeeds as string[]).length > 0) {
+      container.style.display = 'flex';
+      listEl.innerHTML = '';
+
+      const infoSpan = document.createElement('span');
+      infoSpan.style.color = 'var(--ink-dim)';
+      infoSpan.style.fontSize = '0.65rem';
+      infoSpan.textContent = 'History cleared. ';
+
+      const undoBtn = document.createElement('button');
+      undoBtn.id = 'btn-undo-history';
+      undoBtn.className = 'seed-btn';
+      undoBtn.style.padding = '0.15rem 0.35rem';
+      undoBtn.style.fontSize = '0.65rem';
+      undoBtn.style.border = '1px solid var(--rule)';
+      undoBtn.style.borderRadius = '4px';
+      undoBtn.style.background = 'transparent';
+      undoBtn.style.color = 'var(--accent)';
+      undoBtn.style.fontFamily = 'var(--mono)';
+      undoBtn.style.cursor = 'pointer';
+      undoBtn.style.textTransform = 'lowercase';
+      undoBtn.title = 'Undo clearing seed history';
+      undoBtn.setAttribute('aria-label', 'Undo clearing seed history');
+      undoBtn.textContent = 'undo';
+
+      undoBtn.addEventListener('mouseenter', () => {
+        undoBtn.style.background = 'rgba(230, 237, 245, 0.1)';
+        undoBtn.style.color = 'var(--ink)';
+      });
+      undoBtn.addEventListener('mouseleave', () => {
+        undoBtn.style.background = 'transparent';
+        undoBtn.style.color = 'var(--accent)';
+      });
+      undoBtn.addEventListener('focus', () => {
+        undoBtn.style.background = 'rgba(230, 237, 245, 0.1)';
+        undoBtn.style.color = 'var(--ink)';
+      });
+      undoBtn.addEventListener('blur', () => {
+        undoBtn.style.background = 'transparent';
+        undoBtn.style.color = 'var(--accent)';
+      });
+
+      undoBtn.addEventListener('click', () => {
+        visualPress(undoBtn);
+        recentSeeds = backupRecentSeeds || [];
+        backupRecentSeeds = null;
+        if (undoTimeoutId !== null) {
+          clearTimeout(undoTimeoutId);
+          undoTimeoutId = null;
+        }
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSeeds));
+        } catch (e) {
+          console.warn('Failed to save recent seeds to localStorage:', e);
+        }
+        updateRecentSeedsUI();
+        announce('Recent seeds history restored');
+
+        setTimeout(() => {
+          document.getElementById('btn-clear-history')?.focus();
+        }, 50);
+      });
+
+      listEl.appendChild(infoSpan);
+      listEl.appendChild(undoBtn);
+      return;
+    }
+
     container.style.display = 'none';
     return;
   }
@@ -159,17 +217,17 @@ function updateRecentSeedsUI() {
 function addRecentSeed(seedVal: string) {
   if (!seedVal || !/^[a-z0-9]{3,12}$/i.test(seedVal)) return;
 
-  if (clearHistoryTimeoutId) {
-    clearTimeout(clearHistoryTimeoutId);
-    clearHistoryTimeoutId = null;
-    clearedSeedsBackup = null;
-  }
-
   // Performance optimization: prevent layout thrashing and redundant localStorage/DOM writes
   if (recentSeeds[0] === seedVal) {
     updateRecentSeedsUI();
     return;
   }
+
+  if (undoTimeoutId !== null) {
+    clearTimeout(undoTimeoutId);
+    undoTimeoutId = null;
+  }
+  backupRecentSeeds = null;
 
   recentSeeds = [seedVal, ...recentSeeds.filter(s => s !== seedVal)].slice(0, 5);
   try {
@@ -428,6 +486,10 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
   const existingTimeout = btn.getAttribute('data-timeout-id');
   if (existingTimeout) clearTimeout(parseInt(existingTimeout));
 
+  const labelDuration = (window as any).__FROSTBOMB_LABEL_TIMEOUT__ !== undefined
+    ? (window as any).__FROSTBOMB_LABEL_TIMEOUT__
+    : 2000;
+
   const timeoutId = window.setTimeout(() => {
     const originalLabel = labelEl.getAttribute('data-original');
     if (originalLabel !== null) {
@@ -445,7 +507,7 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
     btn.classList.remove('btn--error');
     btn.classList.remove('btn--success');
     btn.removeAttribute('data-timeout-id');
-  }, 2000);
+  }, labelDuration);
 
   btn.setAttribute('data-timeout-id', timeoutId.toString());
 }
@@ -629,11 +691,13 @@ document.getElementById('lab-close')?.addEventListener('click', () => {
 
 document.getElementById('btn-clear-history')?.addEventListener('click', () => {
   visualPress('btn-clear-history');
-  if (clearHistoryTimeoutId) {
-    clearTimeout(clearHistoryTimeoutId);
-    clearHistoryTimeoutId = null;
+
+  if (undoTimeoutId !== null) {
+    clearTimeout(undoTimeoutId);
+    undoTimeoutId = null;
   }
-  clearedSeedsBackup = [...recentSeeds];
+
+  backupRecentSeeds = [...recentSeeds];
   recentSeeds = [];
   try {
     localStorage.removeItem(STORAGE_KEY);
@@ -641,79 +705,36 @@ document.getElementById('btn-clear-history')?.addEventListener('click', () => {
     console.warn('Failed to remove recent seeds from localStorage:', e);
   }
 
-  // Render the Undo UI inline inside the list element
-  const listEl = document.getElementById('recent-seeds-list');
-  if (listEl) {
-    listEl.innerHTML = '';
-    const undoSpan = document.createElement('span');
-    undoSpan.style.fontSize = '0.65rem';
-    undoSpan.style.color = 'var(--ink-dim)';
-    undoSpan.style.display = 'flex';
-    undoSpan.style.alignItems = 'center';
-    undoSpan.style.gap = '0.5rem';
-    undoSpan.textContent = 'History cleared. ';
+  updateRecentSeedsUI();
+  announce('Recent seeds history cleared. You can undo this action.');
 
-    const undoBtn = document.createElement('button');
-    undoBtn.id = 'btn-undo-clear';
-    undoBtn.className = 'lab-toggle';
-    undoBtn.style.fontSize = '0.55rem';
-    undoBtn.style.textTransform = 'uppercase';
-    undoBtn.style.padding = '0.1rem 0.3rem';
-    undoBtn.setAttribute('aria-label', 'Undo clearing history');
-    undoBtn.title = 'Undo clearing history';
-    undoBtn.textContent = 'Undo';
-
-    undoBtn.addEventListener('click', () => {
-      visualPress(undoBtn);
-      if (clearHistoryTimeoutId) {
-        clearTimeout(clearHistoryTimeoutId);
-        clearHistoryTimeoutId = null;
+  requestAnimationFrame(() => {
+    const undoBtn = document.getElementById('btn-undo-history');
+    if (undoBtn) {
+      undoBtn.focus();
+    } else {
+      const focusTarget = document.getElementById('guide-toggle');
+      if (focusTarget) {
+        focusTarget.focus();
       }
-      if (clearedSeedsBackup) {
-        recentSeeds = [...clearedSeedsBackup];
-        clearedSeedsBackup = null;
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSeeds));
-        } catch (e) {
-          console.warn('Failed to save recent seeds to localStorage:', e);
-        }
-        updateRecentSeedsUI();
-        announce('History restored');
-        // Restore focus to clear button
-        const clearBtn = document.getElementById('btn-clear-history');
-        if (clearBtn) {
-          clearBtn.focus();
-        }
-      }
-    });
-
-    undoSpan.appendChild(undoBtn);
-    listEl.appendChild(undoSpan);
-
-    // Shift focus to the Undo button so keyboard/screen reader users can activate it immediately
-    setTimeout(() => {
-      const btn = document.getElementById('btn-undo-clear');
-      if (btn) btn.focus();
-    }, 50);
-  }
-
-  announce('Recent seeds history cleared. Undo option available.');
+    }
+  });
 
   const timeoutDuration = (window as any).__FROSTBOMB_UNDO_TIMEOUT__ !== undefined
     ? (window as any).__FROSTBOMB_UNDO_TIMEOUT__
     : 10000;
 
-  if (timeoutDuration > 0) {
-    clearHistoryTimeoutId = window.setTimeout(() => {
-      clearedSeedsBackup = null;
-      clearHistoryTimeoutId = null;
-      updateRecentSeedsUI();
+  undoTimeoutId = window.setTimeout(() => {
+    backupRecentSeeds = null;
+    undoTimeoutId = null;
+    updateRecentSeedsUI();
+    if (document.activeElement?.id === 'btn-undo-history') {
       const focusTarget = document.getElementById('guide-toggle');
       if (focusTarget) {
         focusTarget.focus();
       }
-    }, timeoutDuration);
-  }
+    }
+  }, timeoutDuration);
 });
 
 document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
@@ -1128,81 +1149,26 @@ window.addEventListener('keydown', (e: Event) => {
   if (k === ' ' && isGuideOpen && !isDiagramFocused) return;
 
   const delta = ke.shiftKey ? 0.3 : 0.1;
-  // Performance Optimization: Use a highly-efficient switch block instead of constructing
-  // a short-lived actions mapping object and 17 inline closures on every keydown event.
-  // This completely removes allocation overhead and garbage collection pressure during rapid interaction.
-  switch (k) {
-    case 'arrowup':
-      e.preventDefault();
-      scene.rotateView(0, -delta);
-      break;
-    case 'arrowdown':
-      e.preventDefault();
-      scene.rotateView(0, delta);
-      break;
-    case 'arrowleft':
-      e.preventDefault();
-      scene.rotateView(-delta, 0);
-      break;
-    case 'arrowright':
-      e.preventDefault();
-      scene.rotateView(delta, 0);
-      break;
-    case 'r':
-      handleRefresh();
-      visualPress('refresh');
-      break;
-    case ' ':
-      e.preventDefault();
-      handleRefresh();
-      visualPress('refresh');
-      break;
-    case 'v':
-      resetView();
-      visualPress('btn-reset');
-      break;
-    case 'g':
-      toggleFieldGuide();
-      visualPress('guide-toggle');
-      break;
-    case '?':
-      navigateToGuideSection('guide-shortcuts');
-      visualPress('guide-toggle');
-      break;
-    case 'l':
-      toggleLabMode();
-      visualPress('lab-toggle');
-      break;
-    case 'h':
-      toggleUI();
-      visualPress('btn-ui');
-      break;
-    case 'p':
-      togglePinkMode();
-      visualPress('btn-pink');
-      break;
-    case 'm':
-      togglePrismMode();
-      visualPress('btn-prism');
-      break;
-    case 's':
-      saveSnowflake();
-      visualPress('btn-save');
-      break;
-    case 'a':
-      toggleAutoRotate();
-      visualPress('btn-rotate');
-      break;
-    case 'c':
-      copyLink();
-      visualPress('btn-copy');
-      visualPress('btn-seed');
-      break;
-    case 'k':
-      copySeedOnly();
-      visualPress('btn-copy-seed');
-      break;
-  }
+  const actions: Record<string, () => void> = {
+    'arrowup': () => (e.preventDefault(), scene.rotateView(0, -delta)),
+    'arrowdown': () => (e.preventDefault(), scene.rotateView(0, delta)),
+    'arrowleft': () => (e.preventDefault(), scene.rotateView(-delta, 0)),
+    'arrowright': () => (e.preventDefault(), scene.rotateView(delta, 0)),
+    'r': () => (handleRefresh(), visualPress('refresh')),
+    ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
+    'v': () => (resetView(), visualPress('btn-reset')),
+    'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
+    '?': () => (navigateToGuideSection('guide-shortcuts'), visualPress('guide-toggle')),
+    'l': () => (toggleLabMode(), visualPress('lab-toggle')),
+    'h': () => (toggleUI(), visualPress('btn-ui')),
+    'p': () => (togglePinkMode(), visualPress('btn-pink')),
+    'm': () => (togglePrismMode(), visualPress('btn-prism')),
+    's': () => (saveSnowflake(), visualPress('btn-save')),
+    'a': () => (toggleAutoRotate(), visualPress('btn-rotate')),
+    'c': () => (copyLink(), visualPress('btn-copy'), visualPress('btn-seed')),
+    'k': () => (copySeedOnly(), visualPress('btn-copy-seed')),
+  };
+  actions[k]?.();
 });
 
 grow();

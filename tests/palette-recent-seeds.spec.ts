@@ -99,7 +99,7 @@ test('Recent Seeds is hidden when Field Guide is active', async ({ page }) => {
   await expect(recentSeedsContainer).toBeVisible();
 });
 
-test('Recent Seeds can be cleared with Undo capability, restored, and automatically hidden after timeout', async ({ page }) => {
+test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guide toggle', async ({ page }) => {
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
@@ -110,46 +110,66 @@ test('Recent Seeds can be cleared with Undo capability, restored, and automatica
   await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsContainer).toBeVisible();
 
-  // Get original seed text
-  const originalSeedText = (await seedDisplay.textContent())?.trim() || '';
+  // Initially there should be 1 seed
+  const seedButtonsBefore = recentSeedsList.locator('button');
+  await expect(seedButtonsBefore).toHaveCount(1);
+
+  // Set the undo timeout to 0 for this test so the history is immediately fully cleared
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 0; });
 
   // Click the clear button
   await clearBtn.click();
 
-  // Undo button should be rendered and focused
-  const undoBtn = page.locator('#btn-undo-clear');
-  await expect(undoBtn).toBeVisible();
-  await expect(undoBtn).toBeFocused();
+  // Container should now be hidden
+  await expect(recentSeedsContainer).not.toBeVisible();
 
-  // Click Undo with dispatchEvent to completely bypass scroll-into-view issues on CI with fixed layout
-  await undoBtn.dispatchEvent('click');
-
-  // Original seed button should be restored
-  const seedButtonsRestored = recentSeedsList.locator('button');
-  await expect(seedButtonsRestored).toHaveCount(1);
-  await expect(seedButtonsRestored.first()).toHaveText(originalSeedText);
-
-  // Focus should shift back to the Clear button
-  await expect(clearBtn).toBeFocused();
-
-  // Speed up the test by reducing the undo timeout via the global hook
-  // We use 500ms so it hides quickly on the second clear, and we wait for the auto-hide.
-  await page.evaluate(() => {
-    (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 500;
-  });
-
-  // Click Clear again
-  await clearBtn.click();
-
-  // Wait for the 500ms timeout to finalize clear (using a comfortable timeout check)
-  await expect(recentSeedsContainer).not.toBeVisible({ timeout: 5000 });
-
-  // After timeout, guide-toggle should receive focus
+  // guide-toggle should receive focus
   await expect(guideToggle).toBeFocused();
 
   // Verify localStorage has been cleared
   const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
   expect(storedValue).toBeNull();
+});
+
+test('Recent Seeds clearing can be undone, restoring items and focusing clear button', async ({ page }) => {
+  // Set the undo timeout to 60000ms to ensure the undo container remains stable on slow CI environments
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 60000; });
+
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+  const clearBtn = page.locator('#btn-clear-history');
+
+  // Wait for seed to generate so container becomes visible
+  await expect(seedDisplay).not.toHaveText('·····');
+  const activeSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  // Click the clear button
+  await clearBtn.click();
+
+  // Container should remain visible and show 'Undo' button
+  await expect(recentSeedsContainer).toBeVisible();
+  const undoBtn = page.locator('#btn-undo-history');
+  await expect(undoBtn).toBeVisible();
+
+  // Undo button should receive focus
+  await expect(undoBtn).toBeFocused();
+
+  // Click the undo button
+  await undoBtn.click();
+
+  // Seed history should be restored, showing the button back
+  const seedButtons = recentSeedsList.locator('button');
+  await expect(seedButtons).toHaveCount(1);
+  await expect(seedButtons.first()).toHaveText(activeSeed);
+
+  // Clear button should receive focus
+  await expect(clearBtn).toBeFocused();
+
+  // Verify localStorage has been restored
+  const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
+  expect(storedValue).not.toBeNull();
+  expect(JSON.parse(storedValue || '[]')).toContain(activeSeed);
 });
 
 test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page }) => {
