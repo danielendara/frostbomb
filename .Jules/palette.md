@@ -25,3 +25,7 @@
 ## 2027-02-19 - [Sub-menu Arrow-Key List Navigation and Focus Wrapping]
 **Learning:** For lists of interactive controls inside dense visual environments (like recent seed history list slots), tab-key navigation alone can feel tedious and break natural keyboard layouts. Implementing custom Arrow key navigation (ArrowRight/ArrowDown to move forward, ArrowLeft/ArrowUp to move backward) with wrapping, combined with event propagation interception to prevent side effects on global keyboard shortcuts (like camera rotation), delivers an incredibly fluid and accessible experience.
 **Action:** When designing nested lists of compact visual buttons, always implement bidirectional arrow-key selection with seamless index wrapping, while explicitly stopping keyboard event bubbling to protect parent controls.
+
+## 2027-10-25 - [Dynamic Media Query Sync / Disabled Button ARIA]
+**Learning:** When interactive controls are dynamically disabled based on persistent system preferences (like the auto-rotate button under `prefers-reduced-motion`), screen reader and keyboard-only users need explicit context on why the control cannot be interacted with. Syncing the media query state to set a explanatory `aria-label` (and removing it when not active) prevents confusion.
+**Action:** Always pair disabled elements matching system media query overrides with an explicit, descriptive `aria-label` to convey the exact context to assistive technologies.
