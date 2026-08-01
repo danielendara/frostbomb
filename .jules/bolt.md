@@ -227,3 +227,7 @@
 ## 2026-07-16 - [Branch Elimination via Extended Step LUTs]
 **Learning:** Small look-up tables with limited bounds (e.g., size 11) force redundant logical fallback checks (like `|| 1 / numSteps` and `|| invNumSteps * 0.4`) inside hot recursive loops to guard against index out-of-bounds. Increasing the static LUT bounds to a larger safe limit (e.g., 32) guarantees safe array indexing and completely eliminates the branch check and division/multiplication fallbacks in the recursive hot path.
 **Action:** Always pre-allocate and expand the boundaries of static look-up tables to completely bypass out-of-bounds fallback logic and division checks in recursive procedurals.
+
+## 2026-07-17 - [Deferred Parameter Destructuring in Hot Recursion]
+**Learning:** Destructuring entire parameter configurations at the very beginning of a deep recursive hot path (like `buildArmInternal`) introduces redundant property lookup overhead for leaf nodes and branches that exit early. Deferring the destructuring of properties that are only required during child branching until after base-case and early-exit checks are completed avoids thousands of property accesses across the call tree.
+**Action:** Only destructure the minimum set of properties required for immediate node initialization at the start of recursive functions, and defer the rest until after early exits or inside branching conditions where they are actually consumed.
