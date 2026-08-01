@@ -99,7 +99,7 @@ test('Recent Seeds is hidden when Field Guide is active', async ({ page }) => {
   await expect(recentSeedsContainer).toBeVisible();
 });
 
-test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guide toggle', async ({ page }) => {
+test('Recent Seeds can be cleared with Undo capability, restored, and automatically hidden after timeout', async ({ page }) => {
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
@@ -110,17 +110,41 @@ test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guid
   await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsContainer).toBeVisible();
 
-  // Initially there should be 1 seed
-  const seedButtonsBefore = recentSeedsList.locator('button');
-  await expect(seedButtonsBefore).toHaveCount(1);
+  // Get original seed text
+  const originalSeedText = (await seedDisplay.textContent())?.trim() || '';
 
   // Click the clear button
   await clearBtn.click();
 
-  // Container should now be hidden
-  await expect(recentSeedsContainer).not.toBeVisible();
+  // Undo button should be rendered and focused
+  const undoBtn = page.locator('#btn-undo-clear');
+  await expect(undoBtn).toBeVisible();
+  await expect(undoBtn).toBeFocused();
 
-  // guide-toggle should receive focus
+  // Click Undo with dispatchEvent to completely bypass scroll-into-view issues on CI with fixed layout
+  await undoBtn.dispatchEvent('click');
+
+  // Original seed button should be restored
+  const seedButtonsRestored = recentSeedsList.locator('button');
+  await expect(seedButtonsRestored).toHaveCount(1);
+  await expect(seedButtonsRestored.first()).toHaveText(originalSeedText);
+
+  // Focus should shift back to the Clear button
+  await expect(clearBtn).toBeFocused();
+
+  // Speed up the test by reducing the undo timeout via the global hook
+  // We use 500ms so it hides quickly on the second clear, and we wait for the auto-hide.
+  await page.evaluate(() => {
+    (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 500;
+  });
+
+  // Click Clear again
+  await clearBtn.click();
+
+  // Wait for the 500ms timeout to finalize clear (using a comfortable timeout check)
+  await expect(recentSeedsContainer).not.toBeVisible({ timeout: 5000 });
+
+  // After timeout, guide-toggle should receive focus
   await expect(guideToggle).toBeFocused();
 
   // Verify localStorage has been cleared
