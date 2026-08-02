@@ -48,3 +48,23 @@
 ## 2027-02-14 - Power-user Canvas Navigation
 **Learning:** For complex, canvas-based interactive diagrams (like the Nakaya Diagram), mouse-driven interaction can be imprecise or inaccessible. Mapping semantic keys like `Home`/`End` (to boundaries) and `PageUp`/`PageDown` (to large-percentage jumps) provides an efficient, accessible alternative for parameter manipulation that mirrors standard document navigation expectations.
 **Action:** Always provide "jump" keyboard shortcuts for interactive diagrams that allow users to reach boundary states or make large, predictable adjustments to parameters.
+
+## 2026-10-19 - [Skip-to-Content / Bypass Blocks Pattern]
+**Learning:** For interactive web applications with immersive 3D/canvas environments and persistent header banners, keyboard-only and screen reader users must navigate past multiple heavy components to reach the core settings block. Implementing a styled, keyboard-accessible "Skip to controls" bypass link as the first document child allows instant interaction.
+**Action:** Always place skip links targeting critical interactive containers (with `tabindex="-1"`) at the very top of `<body>`. Style them so they remain hidden off-screen until receiving `focus-visible`, utilizing design system tokens for cohesive aesthetics.
+
+## 2027-02-15 - Dynamic Preview Live Region Management
+**Learning:** For dense interactive visualizations like the Nakaya Diagram canvas hover tracking, screen reader users can experience auditory overload if every high-frequency mouse hover triggers an ARIA live-region announcement. Setting `aria-live="off"` during pointermove / preview events, and restoring `aria-live="polite"` only upon a stable state or user selection, maintains visibility without keyboard/screen reader spam.
+**Action:** Always suppress `aria-live` during live-preview/hover interactions and only re-enable it when the state stabilizes or on explicit user confirmation.
+
+## 2027-10-23 - Intercepted Scroll Keys in Overlays
+**Learning:** Global keydown handlers (e.g., using `Space` or `PageDown` as triggers) can inadvertently block native browser accessibility and reading tools. When an overlay, guide, or modal is open, global shortcuts must be carefully gated or disabled so that keyboard users can scroll and read the overlay text without triggering unintended background actions.
+**Action:** Always check the visibility or open state of active overlays/modals before allowing non-modified keys (like `Space`) to trigger global state-changing actions.
+
+## 2027-10-24 - [Non-destructive History Purging]
+**Learning:** Destructive actions like clearing history or lists can be frustrating if done accidentally. Providing a temporary inline "Undo" flow in place of the list, styled as a standard interactive element with custom hover/focus states, keeps the action non-destructive, provides clear accessibility feedback, and preserves visual balance.
+**Action:** Always implement a temporary inline undo option with a timeout (e.g. 10s) and programmatic focus management when providing history clearance features.
+
+## 2027-10-25 - [Dynamic Media Query Sync / Disabled Button ARIA]
+**Learning:** When interactive controls are dynamically disabled based on persistent system preferences (like the auto-rotate button under `prefers-reduced-motion`), screen reader and keyboard-only users need explicit context on why the control cannot be interacted with. Syncing the media query state to set a explanatory `aria-label` (and removing it when not active) prevents confusion.
+**Action:** Always pair disabled elements matching system media query overrides with an explicit, descriptive `aria-label` to convey the exact context to assistive technologies.

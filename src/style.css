@@ -851,6 +851,32 @@ kbd {
   }
 }
 
+/* --- Skip Link --- */
+.skip-link {
+  position: absolute;
+  top: -9999px;
+  left: var(--pad);
+  z-index: 10000;
+  background: var(--paper-lift);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0.5rem 1rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: opacity 0.15s ease-in-out;
+  opacity: 0;
+}
+
+.skip-link:focus-visible {
+  top: var(--pad);
+  opacity: 1;
+  outline: none;
+}
+
 /* --- Focus States --- */
 button:focus-visible,
 a:focus-visible,

@@ -115,26 +115,37 @@ export const habitLabel: Record<Habit, string> = {
   capped_column: 'Capped column',
 };
 
+// Performance Optimization: Cache the last evaluated getHabit input/output to avoid redundant branch evaluations.
+let cachedTemp = NaN;
+let cachedSS = NaN;
+let cachedHabit: Habit = 'plate';
+
 /**
  * Deterministically maps (T, SS) to a crystal habit based on the Nakaya diagram.
  */
 export function getHabit(temp: number, ss: number): Habit {
+  if (temp === cachedTemp && ss === cachedSS) {
+    return cachedHabit;
+  }
+  cachedTemp = temp;
+  cachedSS = ss;
+
   // Simplified Nakaya morphology mapping
   if (temp > -4) {
-    return ss > 0.5 ? 'stellar_dendrite' : 'plate';
+    return cachedHabit = ss > 0.5 ? 'stellar_dendrite' : 'plate';
   }
   if (temp > -9) {
-    if (ss > 0.5) return 'needle';
-    if (ss > 0.25) return 'capped_column';
-    return 'column';
+    if (ss > 0.5) return cachedHabit = 'needle';
+    if (ss > 0.25) return cachedHabit = 'capped_column';
+    return cachedHabit = 'column';
   }
   if (temp > -12) {
-    return ss > 0.4 ? 'sector_plate' : 'plate';
+    return cachedHabit = ss > 0.4 ? 'sector_plate' : 'plate';
   }
   if (temp > -22) {
-    if (ss > 0.8) return 'fernlike_dendrite';
-    if (ss > 0.5) return 'stellar_dendrite';
-    return 'sector_plate';
+    if (ss > 0.8) return cachedHabit = 'fernlike_dendrite';
+    if (ss > 0.5) return cachedHabit = 'stellar_dendrite';
+    return cachedHabit = 'sector_plate';
   }
-  return ss > 0.4 ? 'plate' : 'column';
+  return cachedHabit = ss > 0.4 ? 'plate' : 'column';
 }
