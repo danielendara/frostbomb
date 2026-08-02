@@ -81,6 +81,16 @@ async function ensurePane(): Promise<TweakpanePane> {
       }
     });
 
+    p.addButton({
+      title: 'Randomize Seed',
+    }).on('click', () => {
+      const result = grow(currentConditions, false, false);
+      const url = new URL(window.location.href);
+      url.searchParams.set('seed', result.label);
+      window.history.replaceState(null, '', url.pathname + url.search);
+      announce(`Randomized seed to ${result.label}`);
+    });
+
     p.addBinding(labParams, 'temperature', {
       min: -40,
       max: 0,

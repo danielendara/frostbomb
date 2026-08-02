@@ -95,3 +95,39 @@ test('Lab Mode allows custom seed input and updates the UI', async ({ page }) =>
   // Verify it reverts to the current valid seed "abcde"
   await expect(seedInput).toHaveValue('abcde');
 });
+
+test('Lab Mode Randomize Seed button updates the seed and UI', async ({ page }) => {
+  // Toggle Lab Mode
+  await page.click('#lab-toggle');
+  await expect(page.locator('#lab-status')).toHaveText('ON');
+
+  // Wait for Lab Mode controls to be visible
+  await expect(page.locator('#lab-controls')).toBeVisible();
+
+  // Find the seed input in Tweakpane
+  const seedInput = page.locator('.tp-lblv:has-text("Seed") input');
+  await expect(seedInput).toBeVisible();
+
+  const initialSeed = await seedInput.inputValue();
+
+  // Click the "Randomize Seed" button in Tweakpane
+  const randomizeBtn = page.locator('button:has-text("Randomize Seed")');
+  await expect(randomizeBtn).toBeVisible();
+  await randomizeBtn.click();
+
+  // Verify the seed input has a new value
+  await expect(async () => {
+    const currentSeed = await seedInput.inputValue();
+    expect(currentSeed).not.toBe(initialSeed);
+  }).toPass({ timeout: 10000 });
+
+  const newSeed = await seedInput.inputValue();
+  expect(newSeed.length).toBeGreaterThanOrEqual(3);
+
+  // Verify that the URL query param has changed to the new seed
+  await expect(page).toHaveURL(new RegExp(`seed=${newSeed}`));
+
+  // Verify that the seed button label displays the new seed
+  const seedDisplay = page.locator('#seed-display');
+  await expect(seedDisplay).toHaveText(newSeed);
+});

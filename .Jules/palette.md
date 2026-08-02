@@ -9,3 +9,7 @@
 ## 2024-05-24 - [Visual Feedback for Static Actions]
 **Learning:** For actions that don't have a visible UI state change (like saving a file or copying to clipboard), a brief "camera flash" or highlight overlay provides satisfying, immediate confirmation. This is especially useful in immersive/fullscreen apps where standard browser notifications might be missed or feel disjointed.
 **Action:** Implement a .flash-overlay with pointer-events: none and respect prefers-reduced-motion to provide non-obstructive success feedback for static actions.
+
+## 2026-08-15 - [Procedural Control Exploration and Accessibility]
+**Learning:** In procedural generation UI control panels (like Tweakpane), providing an explicit randomization button alongside the seed input drastically increases user discoverability and ease of exploration. For complete UX, the randomization must preserve the user's other customized parameters, synchronize with the browser address bar (URL query parameters) to retain shareability, and immediately announce the newly selected seed to assistive technologies (via ARIA live regions) so keyboard/screen-reader users are not left guessing what state was generated.
+**Action:** When adding randomized parameters to complex control panels, always bind state synchronization to the browser history/URL and trigger programmatic screen-reader announcements on state change.
