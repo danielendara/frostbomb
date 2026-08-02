@@ -465,8 +465,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
       branchMesh.count = requiredCount;
 
-      if (!animate) {
-        // Fast-path for non-animated updates (e.g. Lab Mode): directly copy the pre-computed
+      const shouldAnimate = animate && !prefersReducedMotion;
+
+      if (!shouldAnimate) {
+        // Fast-path for non-animated updates (e.g. Lab Mode or prefersReducedMotion): directly copy the pre-computed
         // matrices to the GPU buffer and skip the basis-zeroing loop.
         branchMesh.instanceMatrix.array.set(data.matrices);
         if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
@@ -506,14 +508,19 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         flakeHolder.add(coreMesh);
       }
 
-      needsMatrixUpdate = true;
-
-      if (animate && !prefersReducedMotion) {
-        startEntryTween();
-      } else {
+      if (!shouldAnimate) {
+        // Performance Optimization: When not animating (such as slider drags in Lab Mode or prefers-reduced-motion),
+        // apply the final scale and position offsets immediately and set needsMatrixUpdate to false.
+        // This avoids any extra matrix copies or redundant GPU buffer uploads in subsequent animation frames.
+        coreMesh.scale.set(coreData.scale[0], coreData.scale[1], coreData.scale[2]);
+        flakeHolder.position.y = 0;
+        needsMatrixUpdate = false;
         entryState.progress = 1;
         entryActive = false;
         syncEntryState();
+      } else {
+        needsMatrixUpdate = true;
+        startEntryTween();
       }
     },
   };
