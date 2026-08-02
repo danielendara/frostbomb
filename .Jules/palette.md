@@ -68,3 +68,7 @@
 ## 2027-10-25 - [Dynamic Media Query Sync / Disabled Button ARIA]
 **Learning:** When interactive controls are dynamically disabled based on persistent system preferences (like the auto-rotate button under `prefers-reduced-motion`), screen reader and keyboard-only users need explicit context on why the control cannot be interacted with. Syncing the media query state to set a explanatory `aria-label` (and removing it when not active) prevents confusion.
 **Action:** Always pair disabled elements matching system media query overrides with an explicit, descriptive `aria-label` to convey the exact context to assistive technologies.
+
+## 2027-11-01 - [Direct Dynamic Visual Feedback on GUI Validation Failures]
+**Learning:** Third-party GUI libraries (like Tweakpane) often handle invalid inputs by silently reverting back to the last valid state without any visual alerts on the text input element itself. When custom input validation is intercepted, programmatically querying the input DOM element and applying temporary high-contrast visual cues (such as a 1.5-second red outline and background tint, with a clean transition and subsequent cleanup) bridges the feedback gap and provides immediate inline context to sighted users.
+**Action:** On custom input validation failures within third-party widgets, manually query the underlying input elements to apply and cleanly tear down temporary warning styles in synchrony with screen reader live region announcements.
