@@ -1,30 +1,69 @@
-## 2026-10-18 - [Seed Persistence & Active Highlighting]
-**Learning:** In procedural generation applications, refreshing can cause users to lose interesting variations. Storing and displaying a list of the last 5 seeds in `localStorage` provides an elegant history fallback. To prevent unnecessary layout thrashing or redundant DOM and storage writes, implement an early exit if the newly generated/selected seed is already at the top of the history list.
-**Action:** When adding elements to persistent visual history slots, always validate their structures (e.g. via an alphanumeric regex) before dynamic insertion, run change-detection early exits to prevent thrashing, and dynamically show/hide the container to keep the layout uncluttered during modes like Lab Mode or Field Guide.
+## 2025-01-24 - Accessible UI Transitions
+**Learning:** Using `opacity: 0` alone to hide UI elements (like in a "Photo Mode") is insufficient for accessibility as the elements remain in the tab order. Combining `opacity` with `visibility: hidden` and including `visibility` in the `transition` property ensures elements are removed from the accessibility tree when the animation completes, preventing "phantom" keyboard focus.
+**Action:** Always pair `opacity` transitions with `visibility` for UI hiding utilities to maintain accessible focus management.
+
+**Learning:** Power users appreciate keyboard shortcuts, but they are often "hidden" features. Appending shortcut keys to the `title` attribute of buttons is a low-effort, high-impact way to improve discoverability without cluttering the UI.
+**Action:** Use the `(Key)` convention in button titles for all implemented keyboard shortcuts.
+
+## 2025-05-15 - Dismissing overlays with Escape
+**Learning:** Global key listeners for modal/overlay dismissal should handle focus carefully. Even if an input field within the overlay has focus, the 'Escape' key should still trigger the dismissal of the entire overlay to meet user expectations for standard modal behavior.
+**Action:** Place 'Escape' dismissal logic before checks that block other shortcuts when an editable element is focused.
+
+## 2026-06-11 - Bridging the Keyboard Feedback Gap
+**Learning:** Keyboard shortcuts often feel "disconnected" because they lack the tactile visual feedback (active states, scale changes) of mouse clicks. Bridging this gap by programmatically triggering "press" animations for keyboard actions creates a more unified and responsive-feeling interface.
+**Action:** Route both keyboard and mouse events through unified handlers that trigger the same visual feedback logic. Use a dedicated CSS class (e.g., .btn-press) and a JS helper that forces a reflow to allow immediate re-triggering of one-shot animations.
+
+## 2025-05-15 - Centralized keyboard shortcut documentation
+**Learning:** While `title` attributes are great for contextual hints, a centralized "Keyboard Shortcuts" list in a help or guide section provides a clear reference for users to learn all capabilities at once, especially for "hidden" shortcuts like `Esc` or `?`.
+**Action:** Always include a dedicated shortcuts section in the primary documentation or help overlay of the application.
+
+## 2026-06-11 - Modal Focus Parity
+**Learning:** For users navigating via screen readers or keyboards, a modal or overlay is "invisible" unless focus is explicitly moved into it upon opening. Returning focus to the original trigger upon closing is equally critical to prevent the user from losing their place in the DOM.
+**Action:** Implement programmatic `.focus()` calls on modal containers (with `tabindex="-1"`) and store the last-focused element to restore it on dismissal.
+
+## 2025-01-24 - Interactive Diagram Semantics
+**Learning:** Interactive <canvas> elements that trigger state changes (like the Nakaya Diagram) require explicit ARIA attributes (`aria-expanded`, `aria-pressed`, `aria-controls`) to communicate their current state and relationship to other UI components to screen reader users.
+**Action:** Synchronize ARIA attributes in JavaScript whenever a canvas interaction modifies the global application state.
+
+## 2025-05-14 - Visual Anchoring with Existing Design Tokens
+**Learning:** When providing visual feedback for programmatic state changes (like regrowing a snowflake), using existing design tokens (e.g., a `.section-highlight` class) maintains aesthetic consistency while providing immediate focus anchoring. This avoids bloating the CSS with one-off animation classes while still meeting the user's need for interactive confirmation.
+**Action:** Prioritize existing highlight or pulse utility classes for micro-interaction feedback before creating new CSS.
+
+## 2025-05-15 - Focus Management in UI Transitions
+**Learning:** When navigating via programmatic jumps or toggling immersive modes (like a "Photo Mode"), keyboard focus is often lost to the `<body>` element. This breaks the navigation flow for screen reader and keyboard-only users. Furthermore, restoring focus immediately after a visibility change can fail if the element hasn't been fully painted or transitioned into a focusable state.
+**Action:** Always implement explicit focus restoration for overlays and immersive modes. Use `requestAnimationFrame` or a small `setTimeout` (50ms) to ensure the target element is visible and focusable before calling `.focus()`. For jump links, ensure target sections have `tabindex="-1"` to be programmatically focusable.
+
+## 2025-01-24 - Immersive Mode Discoverability & Exit
+**Learning:** Immersive or "Photo" modes that hide the UI solely via keyboard shortcuts are inaccessible to touch-only users and suffer from low discoverability. Providing a visible toggle and an intuitive exit strategy (like clicking the main canvas) ensures the feature is accessible across all devices and easy to escape if accidentally triggered.
+**Action:** Always include a visible UI toggle for immersive modes and implement a "click-to-restore" handler on the primary content area.
+
+## 2025-01-24 - Multi-modal State Feedback
+**Learning:** When a keyboard shortcut (e.g., 'H') triggers a functional state change, users benefit from visual confirmation that matches the mouse-driven interaction. Programmatically triggering the "active" or "pressed" visual state on the corresponding UI button reinforces the mental model of the shortcut's function.
+**Action:** Use a unified visual feedback function (e.g., `visualPress`) that can be called by both keyboard and click listeners.
+
+## 2026-06-11 - Semantic Shortcut Navigation
+**Learning:** Keyboard shortcuts like `?` are most effective when they provide immediate, contextual access to the information requested. Transporting the user to a general "Guide" is helpful, but navigating and focusing the specific "Shortcuts" section within that guide significantly reduces cognitive load and improves accessibility.
+**Action:** Use programmatic focus management (`tabindex="-1"` + `.focus()`) and visual anchoring (highlights/animations) when jumping to specific sections from global keyboard shortcuts.
+
+## 2027-02-14 - Power-user Canvas Navigation
+**Learning:** For complex, canvas-based interactive diagrams (like the Nakaya Diagram), mouse-driven interaction can be imprecise or inaccessible. Mapping semantic keys like `Home`/`End` (to boundaries) and `PageUp`/`PageDown` (to large-percentage jumps) provides an efficient, accessible alternative for parameter manipulation that mirrors standard document navigation expectations.
+**Action:** Always provide "jump" keyboard shortcuts for interactive diagrams that allow users to reach boundary states or make large, predictable adjustments to parameters.
 
 ## 2026-10-19 - [Skip-to-Content / Bypass Blocks Pattern]
 **Learning:** For interactive web applications with immersive 3D/canvas environments and persistent header banners, keyboard-only and screen reader users must navigate past multiple heavy components to reach the core settings block. Implementing a styled, keyboard-accessible "Skip to controls" bypass link as the first document child allows instant interaction.
 **Action:** Always place skip links targeting critical interactive containers (with `tabindex="-1"`) at the very top of `<body>`. Style them so they remain hidden off-screen until receiving `focus-visible`, utilizing design system tokens for cohesive aesthetics.
 
-## 2027-02-15 - [Dynamic Preview Live Region Management]
+## 2027-02-15 - Dynamic Preview Live Region Management
 **Learning:** For dense interactive visualizations like the Nakaya Diagram canvas hover tracking, screen reader users can experience auditory overload if every high-frequency mouse hover triggers an ARIA live-region announcement. Setting `aria-live="off"` during pointermove / preview events, and restoring `aria-live="polite"` only upon a stable state or user selection, maintains visibility without keyboard/screen reader spam.
 **Action:** Always suppress `aria-live` during live-preview/hover interactions and only re-enable it when the state stabilizes or on explicit user confirmation.
 
-## 2027-02-16 - [Dynamic Seed Validation and Assistive Technology Sync]
-**Learning:** In text inputs mapping directly to procedural seed values (such as Lab Mode custom seeds), user-entered validation failures should never silently fail or quietly revert. Instead, combining an explicit, spoken screen reader warning (`aria-live` announcement) with visual error badges on the main display ensures all users can identify and correct erroneous inputs seamlessly.
-**Action:** Always pair custom procedural input validation checks with descriptive live-region announcements and temporary visual error cues rather than silent value rollbacks.
+## 2027-10-23 - Intercepted Scroll Keys in Overlays
+**Learning:** Global keydown handlers (e.g., using `Space` or `PageDown` as triggers) can inadvertently block native browser accessibility and reading tools. When an overlay, guide, or modal is open, global shortcuts must be carefully gated or disabled so that keyboard users can scroll and read the overlay text without triggering unintended background actions.
+**Action:** Always check the visibility or open state of active overlays/modals before allowing non-modified keys (like `Space`) to trigger global state-changing actions.
 
-## 2027-02-17 - [Symmetric Panel Navigation and Keyboard Focus Restoration]
-**Learning:** For interactive web applications with multiple deep/immersive overlay panes (e.g., Field Guide and Lab Mode), providing symmetrical "Close" actions inside both overlay panels significantly improves keyboard and mobile discoverability. When a panel is closed from its inner dismiss button, focus must be cleanly restored to its opening toggle while triggering appropriate visual/tactile press animations to avoid focus loss.
-**Action:** When creating any toggleable panel or overlay, always place a visible "Close" button inside the panel (especially for mobile/scroll containment), and restore focus to the trigger element on close.
-
-## 2027-02-18 - [Granular Action Controls and Grid Symmetry]
-**Learning:** For complex procedural or seeded random applications, copy-to-clipboard behaviors often conflate complete URLs with raw configuration strings (like seeds). Providing a secondary, dedicated "Copy Seed only" button alongside the full "Copy Link" action provides precise control for power users while maintaining layout balance (an even button count) on mobile grid layouts.
-**Action:** Provide dedicated, granular buttons with explicit ARIA descriptions and temporary "Copied!" status visual badges for distinct export behaviors, ensuring they gracefully adapt to responsive action grids.
-
-## 2027-02-19 - [Sub-menu Arrow-Key List Navigation and Focus Wrapping]
-**Learning:** For lists of interactive controls inside dense visual environments (like recent seed history list slots), tab-key navigation alone can feel tedious and break natural keyboard layouts. Implementing custom Arrow key navigation (ArrowRight/ArrowDown to move forward, ArrowLeft/ArrowUp to move backward) with wrapping, combined with event propagation interception to prevent side effects on global keyboard shortcuts (like camera rotation), delivers an incredibly fluid and accessible experience.
-**Action:** When designing nested lists of compact visual buttons, always implement bidirectional arrow-key selection with seamless index wrapping, while explicitly stopping keyboard event bubbling to protect parent controls.
+## 2027-10-24 - [Non-destructive History Purging]
+**Learning:** Destructive actions like clearing history or lists can be frustrating if done accidentally. Providing a temporary inline "Undo" flow in place of the list, styled as a standard interactive element with custom hover/focus states, keeps the action non-destructive, provides clear accessibility feedback, and preserves visual balance.
+**Action:** Always implement a temporary inline undo option with a timeout (e.g. 10s) and programmatic focus management when providing history clearance features.
 
 ## 2027-10-25 - [Dynamic Media Query Sync / Disabled Button ARIA]
 **Learning:** When interactive controls are dynamically disabled based on persistent system preferences (like the auto-rotate button under `prefers-reduced-motion`), screen reader and keyboard-only users need explicit context on why the control cannot be interacted with. Syncing the media query state to set a explanatory `aria-label` (and removing it when not active) prevents confusion.
