@@ -15,8 +15,11 @@ function benchmark() {
     path: Array(6).fill({ temp: -15, ss: 0.9 })
   };
 
-  const iterations = 10000;
+  const iterations = 100000;
   console.log(`Running benchmark with ${iterations} iterations...`);
+
+  const sampleResult = buildSnowflake(conditions, rand);
+  console.log(`Sample snowflake branchCount: ${sampleResult.branchCount}, armCount: ${sampleResult.armCount}`);
 
   const start = performance.now();
   for (let i = 0; i < iterations; i++) {
@@ -28,7 +31,7 @@ function benchmark() {
   const avg = total / iterations;
 
   console.log(`Total time: ${total.toFixed(2)}ms`);
-  console.log(`Average time: ${avg.toFixed(4)}ms`);
+  console.log(`Average time: ${avg.toFixed(6)}ms`);
 }
 
 benchmark();

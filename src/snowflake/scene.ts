@@ -121,7 +121,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     emissiveIntensity: 0.25,
   });
 
-  const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
+  // Performance Optimization: Use openEnded = true for CylinderGeometry.
+  // This removes top and bottom caps, reducing vertex attribute count from 40 to 14 (~65% reduction)
+  // and index count from 72 to 36 (50% reduction) per cylinder instance.
+  const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, true);
 
   // Snowfall particles
   const particleCount = prefersReducedMotion ? 80 : 200;
@@ -664,51 +667,38 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           const initialMinAnimatedIndex = minAnimatedIndex;
           let maxIndex = -1;
 
-          // Optimization: Outer loop over the single arm's instances.
-          // Start from minAnimatedIndex to skip already-grown segments.
-          let batchStart = -1;
-          let batchCount = 0;
+          // Optimization: Pre-filter/fast-forward fully grown segments.
+          // This avoids check branches and batching flushes in the active render loop.
+          let j = minAnimatedIndex;
+          while (j < armLen) {
+            const delay = currentFlakeData.delays[j];
+            if (thresholdScaled - delay < LUT_SIZE_MINUS_ONE) {
+              break;
+            }
+            j++;
+          }
+
+          if (j > minAnimatedIndex) {
+            const startOffset = minAnimatedIndex * 96;
+            const endOffset = j * 96;
+            target.set(source.subarray(startOffset, endOffset), startOffset);
+            minAnimatedIndex = j;
+            maxIndex = j - 1;
+          }
 
           // Performance Optimization: Use additive index tracking for segIdx to avoid
-          // a multiplication (j * 96) in every iteration of the growth animation loop.
+          // a multiplication (k * 96) in every iteration of the growth animation loop.
           let segIdx = minAnimatedIndex * 96;
-          for (let j = minAnimatedIndex; j < armLen; j++) {
-            const delay = currentFlakeData.delays[j];
+          for (let k = minAnimatedIndex; k < armLen; k++) {
+            const delay = currentFlakeData.delays[k];
 
             // Optimization: Early break since segments are sorted by delay.
             if (delay > thresholdScaled) {
-              if (batchStart !== -1) {
-                target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
-              }
               break;
             }
 
-            // Performance Optimization: Direct bitwise-truncated index into EASING_LUT.
-            // Replaces Math.min and redundant multiplications within the hot loop.
+            maxIndex = k;
             const lutIdx = (thresholdScaled - delay) | 0;
-
-            // If this segment is fully grown, we batch the copy operation for contiguous segments.
-            if (lutIdx >= LUT_SIZE_MINUS_ONE) {
-              if (batchStart === -1) {
-                batchStart = segIdx;
-                batchCount = 96;
-              } else {
-                batchCount += 96;
-              }
-              if (j === minAnimatedIndex) minAnimatedIndex++;
-              maxIndex = j;
-              segIdx += 96;
-              continue;
-            }
-
-            // Before processing a segment that isn't fully grown, flush the current batch.
-            if (batchStart !== -1) {
-              target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
-              batchStart = -1;
-              batchCount = 0;
-            }
-
-            maxIndex = j;
             const s = EASING_LUT[lutIdx];
 
             // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
@@ -801,11 +791,6 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             target[segIdx + 89] = -sm9_2;
 
             segIdx += 96;
-          }
-
-          // Flush final batch if it exists (e.g. if loop completed with fully grown segments)
-          if (batchStart !== -1) {
-            target.set(source.subarray(batchStart, batchStart + batchCount), batchStart);
           }
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.

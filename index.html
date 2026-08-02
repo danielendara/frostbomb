@@ -32,23 +32,24 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <a href="#field-notes" class="skip-link">Skip to controls</a>
     <canvas id="scene" role="img" aria-label="3D procedural snowflake visualization"></canvas>
 
     <header class="masthead">
       <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R, Space)" aria-keyshortcuts="r Space">
-        <div class="wordmark" aria-label="frost·bomb">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
+        <div class="wordmark">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
       <div class="edition" id="edition">
-        <button id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-keyshortcuts="c">
+        <button id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-label="Copy share link for current seed" aria-keyshortcuts="c">
           <span class="seed-btn__prefix">Vol.</span>
           <span id="seed-display" aria-live="polite">·····</span>
-          <span class="seed-btn__icon" aria-hidden="true">❏</span>
+          <span class="seed-btn__icon" aria-hidden="true">⎘</span>
         </button>
       </div>
     </header>
 
-    <aside class="field-notes" id="field-notes">
+    <aside class="field-notes" id="field-notes" tabindex="-1" aria-label="Field notes and controls">
       <div class="field-notes__header">
         <h2 class="field-notes__label">Growth conditions</h2>
         <div class="field-notes__toggles">
@@ -68,8 +69,17 @@
         <div class="field-notes__row" role="button" tabindex="0" aria-label="Learn more about Branches in the field guide" title="The total number of individual ice segments in this snowflake."><dt>Branches</dt><dd id="stat-branches">—</dd></div>
       </dl>
 
+      <div class="field-notes__history" id="recent-seeds-container" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--rule);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem;">
+          <h3 id="recent-seeds-label" style="text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-dim); font-size: 0.55rem; font-weight: bold; margin: 0;">Recent Seeds</h3>
+          <button id="btn-clear-history" class="lab-toggle" style="font-size: 0.55rem; text-transform: uppercase;" title="Clear seed history" aria-label="Clear seed history">Clear</button>
+        </div>
+        <div id="recent-seeds-list" style="display: flex; gap: 0.35rem; flex-wrap: wrap;" aria-live="polite" aria-labelledby="recent-seeds-label"></div>
+      </div>
+
       <div class="lab-controls" id="lab-controls" style="display: none;">
         <div id="pane-mount" class="pane-mount" aria-label="Manual growth adjustments"></div>
+        <button id="lab-close" class="field-guide__close" title="Close Lab Mode (Esc, L)" aria-keyshortcuts="Escape L" style="margin-top: 1rem;">Close Lab Mode</button>
       </div>
 
       <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="-1" aria-label="Field Guide">
@@ -94,11 +104,12 @@
             <h3>Nakaya Diagram</h3>
             <p>The physical map of snowflake shapes. Created by Ukichiro Nakaya in the 1930s, it proves that no two snowflakes are alike because no two follow the same path.</p>
             <div class="nakaya-container">
-              <canvas id="nakaya-diagram" width="300" height="200" role="button" tabindex="0" aria-label="Nakaya morphology diagram. Use arrow keys to adjust temperature and humidity, or click and drag to explore habits." title="Click, drag, or use arrow keys (Arrows) on the diagram to set manual growth conditions" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight" aria-expanded="false" aria-pressed="false" aria-controls="lab-controls"></canvas>
+              <canvas id="nakaya-diagram" width="300" height="200" role="button" tabindex="0" aria-label="Nakaya morphology diagram. Use arrow keys to adjust temperature and humidity, or click and drag to explore habits." title="Click, drag, or use keys (Arrows / Home / End / PgUp / PgDn) on the diagram to set manual growth conditions" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home End PageUp PageDown" aria-expanded="false" aria-pressed="false" aria-controls="lab-controls"></canvas>
               <div class="nakaya-labels">
                 <span class="nakaya-label nakaya-label--y" aria-hidden="true">Supersaturation →</span>
                 <span class="nakaya-label nakaya-label--x" aria-hidden="true">Temperature (°C) →</span>
               </div>
+              <div id="nakaya-status" class="nakaya-label" style="text-align: center; margin-top: 0.6rem; min-height: 1rem; text-transform: none; font-size: 0.55rem; width: 100%;" aria-live="polite"></div>
             </div>
           </section>
           <section id="guide-shortcuts" tabindex="-1">
@@ -113,6 +124,7 @@
               <div class="shortcut-item"><dt><kbd>S</kbd></dt><dd>Save as PNG</dd></div>
               <div class="shortcut-item"><dt><kbd>A</kbd></dt><dd>Toggle Auto-rotate</dd></div>
               <div class="shortcut-item"><dt><kbd>C</kbd></dt><dd>Copy share link</dd></div>
+              <div class="shortcut-item"><dt><kbd>K</kbd></dt><dd>Copy seed string only</dd></div>
               <div class="shortcut-item"><dt><kbd>V</kbd></dt><dd>Reset 3D view</dd></div>
               <div class="shortcut-item"><dt><kbd>Arrows</kbd></dt><dd>Rotate camera (Shift for fast)</dd></div>
               <div class="shortcut-item"><dt><kbd>Home</kbd>, <kbd>End</kbd> / <kbd>PgUp</kbd>, <kbd>PgDn</kbd></dt><dd>Navigate Nakaya diagram</dd></div>
@@ -153,6 +165,10 @@
           <span class="action-btn__icon" aria-hidden="true">⎘</span>
           <span class="action-btn__label">Copy Link</span>
         </button>
+        <button class="action-btn" id="btn-copy-seed" title="Copy active seed string only (K)" aria-label="Copy active seed string only (K)" aria-keyshortcuts="k">
+          <span class="action-btn__icon" aria-hidden="true">#</span>
+          <span class="action-btn__label">Copy Seed</span>
+        </button>
         <button class="action-btn" id="btn-save" title="Save as PNG (S)" aria-keyshortcuts="s">
           <span class="action-btn__icon" aria-hidden="true">↓</span>
           <span class="action-btn__label">Save PNG</span>
@@ -169,6 +185,7 @@
 
     <div class="grain" aria-hidden="true"></div>
 
+    <div id="flash-overlay" class="flash-overlay" aria-hidden="true"></div>
     <div id="a11y-announcer" class="sr-only" aria-live="polite" role="status"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

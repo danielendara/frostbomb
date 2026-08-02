@@ -2,13 +2,15 @@ import './style.css';
 import { createScene } from './snowflake/scene.ts';
 import { buildSnowflake } from './snowflake/geometry.ts';
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from './snowflake/nakaya.ts';
-import { mulberry32, resolveSeed, Rand } from './snowflake/random.ts';
+import { mulberry32, resolveSeed, hashString, Rand } from './snowflake/random.ts';
 import { initNakayaDiagram } from './snowflake/diagram.ts';
 
 type TweakpanePane = import('tweakpane').Pane;
 
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 const scene = createScene(canvas);
+
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 const nakayaCanvas = document.getElementById('nakaya-diagram') as HTMLCanvasElement;
 const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
@@ -33,7 +35,211 @@ let lastHabit: string | null = null;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
 
+// Recent seeds history tracking state
+const STORAGE_KEY = 'frostbomb-recent-seeds';
+let recentSeeds: string[] = [];
+let backupRecentSeeds: string[] | null = null;
+let undoTimeoutId: number | null = null;
+
+try {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    if (Array.isArray(parsed)) {
+      recentSeeds = parsed.filter(s => typeof s === 'string' && /^[a-z0-9]{3,12}$/i.test(s)).slice(0, 5);
+    }
+  }
+} catch (e) {
+  console.warn('Failed to parse recent seeds from localStorage:', e);
+}
+
+function updateRecentSeedsUI() {
+  const container = document.getElementById('recent-seeds-container');
+  const listEl = document.getElementById('recent-seeds-list');
+  if (!container || !listEl) return;
+
+  // If guide is open or lab mode is active, we can optionally hide it to avoid crowding, or let it adapt.
+  // Standard: show when guide is closed and not in lab mode, or adapt naturally.
+  if (isGuideOpen || isLabMode) {
+    container.style.display = 'none';
+    return;
+  }
+
+  if (recentSeeds.length === 0) {
+    if (backupRecentSeeds && (backupRecentSeeds as string[]).length > 0) {
+      container.style.display = 'flex';
+      listEl.innerHTML = '';
+
+      const infoSpan = document.createElement('span');
+      infoSpan.style.color = 'var(--ink-dim)';
+      infoSpan.style.fontSize = '0.65rem';
+      infoSpan.textContent = 'History cleared. ';
+
+      const undoBtn = document.createElement('button');
+      undoBtn.id = 'btn-undo-history';
+      undoBtn.className = 'seed-btn';
+      undoBtn.style.padding = '0.15rem 0.35rem';
+      undoBtn.style.fontSize = '0.65rem';
+      undoBtn.style.border = '1px solid var(--rule)';
+      undoBtn.style.borderRadius = '4px';
+      undoBtn.style.background = 'transparent';
+      undoBtn.style.color = 'var(--accent)';
+      undoBtn.style.fontFamily = 'var(--mono)';
+      undoBtn.style.cursor = 'pointer';
+      undoBtn.style.textTransform = 'lowercase';
+      undoBtn.title = 'Undo clearing seed history';
+      undoBtn.setAttribute('aria-label', 'Undo clearing seed history');
+      undoBtn.textContent = 'undo';
+
+      undoBtn.addEventListener('mouseenter', () => {
+        undoBtn.style.background = 'rgba(230, 237, 245, 0.1)';
+        undoBtn.style.color = 'var(--ink)';
+      });
+      undoBtn.addEventListener('mouseleave', () => {
+        undoBtn.style.background = 'transparent';
+        undoBtn.style.color = 'var(--accent)';
+      });
+      undoBtn.addEventListener('focus', () => {
+        undoBtn.style.background = 'rgba(230, 237, 245, 0.1)';
+        undoBtn.style.color = 'var(--ink)';
+      });
+      undoBtn.addEventListener('blur', () => {
+        undoBtn.style.background = 'transparent';
+        undoBtn.style.color = 'var(--accent)';
+      });
+
+      undoBtn.addEventListener('click', () => {
+        visualPress(undoBtn);
+        recentSeeds = backupRecentSeeds || [];
+        backupRecentSeeds = null;
+        if (undoTimeoutId !== null) {
+          clearTimeout(undoTimeoutId);
+          undoTimeoutId = null;
+        }
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSeeds));
+        } catch (e) {
+          console.warn('Failed to save recent seeds to localStorage:', e);
+        }
+        updateRecentSeedsUI();
+        announce('Recent seeds history restored');
+
+        setTimeout(() => {
+          document.getElementById('btn-clear-history')?.focus();
+        }, 50);
+      });
+
+      listEl.appendChild(infoSpan);
+      listEl.appendChild(undoBtn);
+      return;
+    }
+
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'flex';
+  listEl.innerHTML = '';
+
+  recentSeeds.forEach((seedVal) => {
+    const btn = document.createElement('button');
+    btn.className = 'seed-btn';
+    btn.style.padding = '0.15rem 0.35rem';
+    btn.style.fontSize = '0.65rem';
+    btn.style.border = '1px solid var(--rule)';
+    btn.style.borderRadius = '4px';
+    const isActive = seedVal === currentSeedLabel;
+    btn.style.background = isActive ? 'rgba(158, 201, 255, 0.15)' : 'transparent';
+    btn.style.color = isActive ? 'var(--accent)' : 'var(--ink-dim)';
+    btn.style.fontFamily = 'var(--mono)';
+    btn.style.cursor = 'pointer';
+    btn.style.textTransform = 'lowercase';
+    const tooltipText = `Grow seed ${seedVal}${isActive ? ' (currently active)' : ''}`;
+    btn.setAttribute('aria-label', tooltipText);
+    btn.title = tooltipText;
+    btn.textContent = seedVal;
+
+    if (!isActive) {
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'rgba(230, 237, 245, 0.1)';
+        btn.style.color = 'var(--ink)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--ink-dim)';
+      });
+      btn.addEventListener('focus', () => {
+        btn.style.background = 'rgba(230, 237, 245, 0.1)';
+        btn.style.color = 'var(--ink)';
+      });
+      btn.addEventListener('blur', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--ink-dim)';
+      });
+    }
+
+    btn.addEventListener('keydown', (e: KeyboardEvent) => {
+      const buttons = Array.from(listEl.querySelectorAll('button'));
+      const idx = buttons.indexOf(btn);
+      if (idx === -1) return;
+
+      let nextIdx: number | null = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextIdx = (idx + 1) % buttons.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIdx = (idx - 1 + buttons.length) % buttons.length;
+      }
+
+      if (nextIdx !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        buttons[nextIdx].focus();
+      }
+    });
+
+    btn.addEventListener('click', () => {
+      if (seedVal === currentSeedLabel) return;
+      visualPress(btn);
+      currentSeed = {
+        seed: hashString(seedVal),
+        label: seedVal,
+      };
+      const url = new URL(window.location.href);
+      url.searchParams.set('seed', seedVal);
+      window.history.replaceState(null, '', url.pathname + url.search);
+      grow(undefined, true, true);
+    });
+
+    listEl.appendChild(btn);
+  });
+}
+
+function addRecentSeed(seedVal: string) {
+  if (!seedVal || !/^[a-z0-9]{3,12}$/i.test(seedVal)) return;
+
+  // Performance optimization: prevent layout thrashing and redundant localStorage/DOM writes
+  if (recentSeeds[0] === seedVal) {
+    updateRecentSeedsUI();
+    return;
+  }
+
+  if (undoTimeoutId !== null) {
+    clearTimeout(undoTimeoutId);
+    undoTimeoutId = null;
+  }
+  backupRecentSeeds = null;
+
+  recentSeeds = [seedVal, ...recentSeeds.filter(s => s !== seedVal)].slice(0, 5);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSeeds));
+  } catch (e) {
+    console.warn('Failed to save recent seeds to localStorage:', e);
+  }
+  updateRecentSeedsUI();
+}
+
 const labParams = {
+  seed: '····',
   temperature: -15,
   temperatureF: 5,
   supersaturation: 80,
@@ -53,6 +259,31 @@ async function ensurePane(): Promise<TweakpanePane> {
     const p = new Pane({
       container: paneContainer ?? undefined,
       title: 'Growth parameters',
+    });
+
+    p.addBinding(labParams, 'seed', {
+      label: 'Seed',
+    }).on('change', (ev) => {
+      const val = (ev.value || '').trim().toLowerCase();
+      if (val === currentSeedLabel) return;
+
+      if (/^[a-z0-9]{3,12}$/.test(val)) {
+        currentSeed = {
+          seed: hashString(val),
+          label: val,
+        };
+        const url = new URL(window.location.href);
+        url.searchParams.set('seed', val);
+        window.history.replaceState(null, '', url.pathname + url.search);
+
+        grow(currentConditions, true, false);
+        announce(`Seed changed to ${val}`);
+      } else {
+        announce("Invalid seed. Seeds must be 3 to 12 alphanumeric characters.");
+        setTemporaryLabel('btn-seed', '3-12 chars', '✕', true);
+        labParams.seed = currentSeedLabel;
+        p.refresh();
+      }
     });
 
     p.addBinding(labParams, 'temperature', {
@@ -81,6 +312,22 @@ async function ensurePane(): Promise<TweakpanePane> {
   });
 
   return panePromise;
+}
+
+function updateNakayaStatus(temp: number, ss: number, isPreview: boolean) {
+  const statusEl = document.getElementById('nakaya-status');
+  if (!statusEl) return;
+  const habit = getHabit(temp, ss);
+  const habitText = habitLabel[habit];
+  const humPct = Math.round(ss * 100);
+  const tempStr = temp.toFixed(1);
+  if (isPreview) {
+    statusEl.setAttribute('aria-live', 'off');
+    statusEl.innerHTML = `Preview: <span style="color: var(--accent);">${tempStr}°C</span>, <span style="color: var(--accent);">${humPct}%</span> • <em>${habitText}</em>`;
+  } else {
+    statusEl.setAttribute('aria-live', 'polite');
+    statusEl.innerHTML = `Active: <span style="color: var(--accent-hot);">${tempStr}°C</span>, <span style="color: var(--accent-hot);">${humPct}%</span> • <strong>${habitText}</strong>`;
+  }
 }
 
 function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = true) {
@@ -156,11 +403,16 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   updateRowAria('stat-branches', 'Branches', `${result.branchCount}`);
 
   // Always sync labParams so Lab Mode starts from the current snowflake's conditions
+  labParams.seed = label;
   labParams.habit = habitLabel[conditions.habit];
   labParams.temperature = conditions.temperatureC;
   labParams.temperatureF = (conditions.temperatureC * 9 / 5) + 32;
   labParams.supersaturation = conditions.supersaturation * 100;
   pane?.refresh();
+
+  addRecentSeed(label);
+
+  updateNakayaStatus(conditions.temperatureC, conditions.supersaturation, false);
 
   return { conditions, label };
 }
@@ -234,6 +486,10 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
   const existingTimeout = btn.getAttribute('data-timeout-id');
   if (existingTimeout) clearTimeout(parseInt(existingTimeout));
 
+  const labelDuration = (window as any).__FROSTBOMB_LABEL_TIMEOUT__ !== undefined
+    ? (window as any).__FROSTBOMB_LABEL_TIMEOUT__
+    : 2000;
+
   const timeoutId = window.setTimeout(() => {
     const originalLabel = labelEl.getAttribute('data-original');
     if (originalLabel !== null) {
@@ -251,7 +507,7 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
     btn.classList.remove('btn--error');
     btn.classList.remove('btn--success');
     btn.removeAttribute('data-timeout-id');
-  }, 2000);
+  }, labelDuration);
 
   btn.setAttribute('data-timeout-id', timeoutId.toString());
 }
@@ -262,6 +518,15 @@ function visualPress(idOrEl: string | HTMLElement) {
   el.classList.remove('btn-press');
   void (el as HTMLElement).offsetWidth; // Trigger reflow
   el.classList.add('btn-press');
+}
+
+function triggerFlash() {
+  if (motionQuery.matches) return;
+  const el = document.getElementById('flash-overlay');
+  if (!el) return;
+  el.classList.remove('camera-flash');
+  void el.offsetWidth;
+  el.classList.add('camera-flash');
 }
 
 function announce(message: string) {
@@ -327,6 +592,8 @@ async function toggleLabMode() {
     labStatus.textContent = isLabMode ? 'ON' : 'OFF';
   }
 
+  updateRecentSeedsUI();
+
   if (isLabMode) {
     announce('Lab Mode active');
     if (!pane && labStatus) {
@@ -388,6 +655,8 @@ function toggleFieldGuide(target: HTMLElement | null | Event = null) {
     }
   }
   if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
+
+  updateRecentSeedsUI();
 }
 
 function navigateToGuideSection(targetId: string, returnTarget: HTMLElement | null = null) {
@@ -414,6 +683,58 @@ guideToggle?.addEventListener('click', toggleFieldGuide);
 document.getElementById('guide-close')?.addEventListener('click', (e) => {
   visualPress('guide-close');
   toggleFieldGuide(e);
+});
+document.getElementById('lab-close')?.addEventListener('click', () => {
+  visualPress('lab-close');
+  toggleLabMode();
+});
+
+document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+  visualPress('btn-clear-history');
+
+  if (undoTimeoutId !== null) {
+    clearTimeout(undoTimeoutId);
+    undoTimeoutId = null;
+  }
+
+  backupRecentSeeds = [...recentSeeds];
+  recentSeeds = [];
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    console.warn('Failed to remove recent seeds from localStorage:', e);
+  }
+
+  updateRecentSeedsUI();
+  announce('Recent seeds history cleared. You can undo this action.');
+
+  requestAnimationFrame(() => {
+    const undoBtn = document.getElementById('btn-undo-history');
+    if (undoBtn) {
+      undoBtn.focus();
+    } else {
+      const focusTarget = document.getElementById('guide-toggle');
+      if (focusTarget) {
+        focusTarget.focus();
+      }
+    }
+  });
+
+  const timeoutDuration = (window as any).__FROSTBOMB_UNDO_TIMEOUT__ !== undefined
+    ? (window as any).__FROSTBOMB_UNDO_TIMEOUT__
+    : 10000;
+
+  undoTimeoutId = window.setTimeout(() => {
+    backupRecentSeeds = null;
+    undoTimeoutId = null;
+    updateRecentSeedsUI();
+    if (document.activeElement?.id === 'btn-undo-history') {
+      const focusTarget = document.getElementById('guide-toggle');
+      if (focusTarget) {
+        focusTarget.focus();
+      }
+    }
+  }, timeoutDuration);
 });
 
 document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
@@ -471,7 +792,23 @@ nakayaCanvas?.addEventListener('pointerdown', (e) => {
 });
 
 nakayaCanvas?.addEventListener('pointermove', (e) => {
-  if (e.buttons > 0) handleNakayaPointer(e);
+  if (e.buttons > 0) {
+    handleNakayaPointer(e);
+  } else {
+    const rect = nakayaCanvas.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+    const t = x * 40 - 40;
+    const ss = 1 - y;
+    updateNakayaStatus(t, ss, true);
+  }
+});
+
+nakayaCanvas?.addEventListener('pointerleave', () => {
+  if (currentConditions) {
+    updateNakayaStatus(currentConditions.temperatureC, currentConditions.supersaturation, false);
+  }
 });
 
 nakayaCanvas?.addEventListener('keydown', (e: Event) => {
@@ -586,8 +923,47 @@ async function copyLink() {
   }
 }
 
+async function copySeedOnly() {
+  const seed = currentSeedLabel;
+  visualPress('btn-copy-seed');
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(seed);
+    } else {
+      throw new Error('Clipboard API unavailable');
+    }
+    setTemporaryLabel('btn-copy-seed', 'Copied!', '✓', false, true);
+    announce(`Seed ${seed} copied`);
+  } catch (err) {
+    console.warn('Clipboard API failed, trying legacy fallback:', err);
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = seed;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (!successful) {
+        throw new Error('execCommand copy failed');
+      }
+      setTemporaryLabel('btn-copy-seed', 'Copied!', '✓', false, true);
+      announce(`Seed ${seed} copied`);
+    } catch (fallbackErr) {
+      console.error('Legacy fallback failed:', fallbackErr);
+      setTemporaryLabel('btn-copy-seed', 'Failed', '✕', true);
+      announce('Failed to copy seed');
+    }
+  }
+}
+
 document.getElementById('btn-copy')?.addEventListener('click', copyLink);
 document.getElementById('btn-seed')?.addEventListener('click', copyLink);
+document.getElementById('btn-copy-seed')?.addEventListener('click', copySeedOnly);
 
 async function saveSnowflake() {
   setTemporaryLabel('btn-save', 'Saving...', '⌛');
@@ -597,6 +973,7 @@ async function saveSnowflake() {
   // Delay to ensure UI updates before heavy rendering
   setTimeout(() => {
     try {
+      triggerFlash();
       scene.composer.render();
 
       const dataUrl = canvas.toDataURL('image/png');
@@ -650,20 +1027,41 @@ function togglePrismMode() {
 
 btnPrism?.addEventListener('click', togglePrismMode);
 
-const btnRotate = document.getElementById('btn-rotate');
-if (btnRotate) {
-  btnRotate.setAttribute('aria-pressed', scene.isAutoRotateEnabled.toString());
-  btnRotate.classList.toggle('active', scene.isAutoRotateEnabled);
+const btnRotate = document.getElementById('btn-rotate') as HTMLButtonElement | null;
+
+function updateRotateButtonUI() {
+  if (!btnRotate) return;
+  const isReduced = motionQuery.matches;
+
+  if (isReduced && scene.isAutoRotateEnabled) {
+    scene.setAutoRotate(false);
+  }
+
+  const isEnabled = scene.isAutoRotateEnabled;
+
+  btnRotate.setAttribute('aria-pressed', isEnabled.toString());
+  btnRotate.classList.toggle('active', isEnabled);
+
+  if (isReduced) {
+    btnRotate.disabled = true;
+    btnRotate.title = 'Auto-rotation disabled (prefers-reduced-motion)';
+    btnRotate.setAttribute('aria-label', 'Auto-Rotate (disabled because prefers-reduced-motion is active)');
+  } else {
+    btnRotate.disabled = false;
+    btnRotate.title = 'Toggle auto-rotation (A)';
+    btnRotate.removeAttribute('aria-label');
+  }
 }
 
+updateRotateButtonUI();
+motionQuery.addEventListener('change', updateRotateButtonUI);
+
 function toggleAutoRotate() {
+  if (motionQuery.matches) return;
   const enabled = !scene.isAutoRotateEnabled;
   visualPress('btn-rotate');
-  if (btnRotate) {
-    btnRotate.setAttribute('aria-pressed', enabled.toString());
-    btnRotate.classList.toggle('active', enabled);
-  }
   scene.setAutoRotate(enabled);
+  updateRotateButtonUI();
   announce(`Auto-rotation ${enabled ? 'enabled' : 'disabled'}`);
 }
 
@@ -749,6 +1147,9 @@ window.addEventListener('keydown', (e: Event) => {
   const isDiagramFocused = document.activeElement === nakayaCanvas;
   if (isGuideOpen && !isDiagramFocused && k.startsWith('arrow')) return;
 
+  // Space should scroll down the guide instead of refreshing if guide is open and active
+  if (k === ' ' && isGuideOpen && !isDiagramFocused) return;
+
   const delta = ke.shiftKey ? 0.3 : 0.1;
   const actions: Record<string, () => void> = {
     'arrowup': () => (e.preventDefault(), scene.rotateView(0, -delta)),
@@ -767,6 +1168,7 @@ window.addEventListener('keydown', (e: Event) => {
     's': () => (saveSnowflake(), visualPress('btn-save')),
     'a': () => (toggleAutoRotate(), visualPress('btn-rotate')),
     'c': () => (copyLink(), visualPress('btn-copy'), visualPress('btn-seed')),
+    'k': () => (copySeedOnly(), visualPress('btn-copy-seed')),
   };
   actions[k]?.();
 });

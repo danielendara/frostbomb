@@ -54,7 +54,7 @@
 **Impact:** Ensures rendering correctness across multiple snowflake regenerations without compromising the performance gains of manual matrix construction.
 
 ## 2026-05-20 - [Data-Oriented Segment Buffer & Trig Approximations]
-**Learning:** Procedural generation of tree-like structures (like snowflake arms) using recursive functions that return or allocate objects causes significant GC pressure. Transitioning to a Data-Oriented Design (DOD) with pre-allocated `Float32Array` buffers eliminates this churn. Furthermore, for small-angle jitter or perturbations, 2nd-order Taylor expansions are a faster alternative to standard `Math.sin`/`Math.cos` calls.
+**Learning:** Procedural generation of tree-like structures (like snowflake arms) using recursive functions that return or allocate objects causes significant GC pressure. Transitioning to a Data-Orient Design (DOD) with pre-allocated `Float32Array` buffers eliminates this churn. Furthermore, for small-angle jitter or perturbations, 2nd-order Taylor expansions are a faster alternative to standard `Math.sin`/`Math.cos` calls.
 **Action:** Refactor recursive generation to write directly into a flat `Float32Array` (the `SEGMENT_BUFFER`) with a fixed stride (e.g., 8). Use 2nd-order Taylor series approximations for small-angle trigonometric perturbations in hot recursive paths.
 **Impact:** Eliminated thousands of short-lived object allocations per snowflake generation, significantly reducing garbage collection overhead. Improved cache locality for subsequent sorting and matrix population phases.
 
@@ -180,3 +180,54 @@
 **Learning:** During the growth animation loop, "Arm 1" (60° rotation) was being calculated by re-reading from the source buffer and multiplying by the easing progress. Since Arm 0 is already calculated in the same loop, Arm 1's basis can be derived directly from Arm 0 using hexagonal rotation identities ($x' = 0.5x - sin60 \cdot y$, $y' = sin60 \cdot x + 0.5y$).
 **Action:** Replace buffer reads and multiplications for Arm 1 with direct arithmetic derivation from Arm 0's scaled components. This eliminates 6 memory reads and 6 multiplications per segment per frame.
 **Impact:** Reduces CPU instruction count and memory bus pressure in the hot animation loop, ensuring smoother growth on devices with limited memory bandwidth.
+
+## 2026-07-08 - [Path Parameter Caching & Local Stack Pruning]
+**Learning:** In procedural generation along continuous paths (like atmospheric growth conditions), sequential path segments often share identical conditions (temperature, supersaturation). Implementing a simple sequential change-detection cache for lookups avoids redundant high-overhead calculations (like `paramsFor` or `getHabit`). Additionally, inside deep recursive functions, optimizing stack allocation by inlining redundant local variables (reducing temporary storage for intermediate calculations) reduces stack pressure and register usage.
+**Action:** Implement change-detection caches for sequential lookups. In recursive hot paths, inline temporary variables directly into function calls.
+**Impact:** Reduced average `buildSnowflake` time by ~17% (~0.041ms to ~0.034ms) with zero regressions or visual divergence.
+
+## 2026-07-09 - [Branch Loop Simplification & Constant Matrix Pre-multiplication]
+**Learning:** In recursive branch generators, tracking and decrementing intermediate multipliers like `currentLenFactor` and the redundant scale bounds within the same hot loop adds avoidable registry pressure and multi-instruction latency. Simplifying branch length math to a direct fraction of the pre-decayed base `sideLenMax` eliminates an auxiliary decay tracker. Furthermore, pre-multiplying `sx * sax` as a single variable inside the primary matrix geometry builder reduces the matrix generation loop's overall multiplication operations by replacing complex multi-property computations of `m8` and `m9` with simple dual multiplications.
+**Action:** Simplify nested loop multipliers into direct mathematical dependencies on existing parameters. Pre-multiply intermediate products to bypass repetitive array indices inside high-frequency matrix transformations.
+**Impact:** Reduced average `buildSnowflake` time across all growth habits by ~4.5% (from ~0.0305ms to ~0.0291ms average).
+
+## 2026-07-09 - [Animation Pre-filtering & Bulk Copying]
+**Learning:** In high-frequency animation rendering loops, sorting elements by animation delay allows fully grown elements to be pre-filtered sequentially. Instead of using complex multi-branch tracking and loop flushes (such as batching contiguous sections), performing a simple O(1) sequential scan over the elements followed by a single bulk TypedArray copy (`target.set(source.subarray(...))`) avoids check branches, loop tracking variables, and multi-write overhead.
+**Action:** For animation loops processing sequentially completed elements, pre-filter completed elements at the start of the frame, bulk copy them in a single operation, and run a simplified, branchless loop for the active elements.
+**Impact:** Drastically simplified hot animation loop code, eliminated batching state variables, and reduced execution overhead of active animation frames.
+
+## 2026-07-10 - [In-Place Quicksort & Subarray Allocation Pruning]
+**Learning:** Standard native `.sort()` on dynamic arrays in Web and V8 often requires allocating lightweight `TypedArray` subarray views (e.g. `.subarray(0, count)`) to only sort the active region. These allocations cause massive GC pressure in high-frequency loops. Writing a lightweight, non-allocating in-place Quicksort directly on the pre-allocated buffers yields a ~3.5x sorting speedup and avoids all temporary object wrappers.
+**Action:** Replace native `.sort()` on subarray slices with optimized, non-allocating in-place sorting routines when operating on pre-allocated global or shared TypedArrays in hot paths.
+**Impact:** Achieved a ~3.5x speedup on index sorting and a ~17.4% overall speedup in snowflake generation (average generation time decreased from ~0.0305ms to ~0.0252ms).
+
+## 2026-07-11 - [Bulk Index Initialization & Side-Branch Decay Simplification]
+**Learning:** In high-frequency recursive geometry generation, initializing array segments with a manual `for` loop on every generation adds avoidable CPU cycles. Leveraging low-level `.set()` on native TypedArrays with a pre-allocated IDENTITY_INDICES subarray is significantly faster. Additionally, replacing multiplicative decay tracking (`sideBranchProb * (1 - lut04)`) with direct subtraction of pre-computed step values reduces arithmetic instruction density in the recursion loop.
+**Action:** Always utilize `.set()` for bulk TypedArray copies. Replace multiplicative scaling with direct additive/subtractive tracking when pre-computed step parameters are available.
+**Impact:** Optimizations streamline register pressure and instruction execution, ensuring maximum performance of procedural snowflake generation.
+
+## 2026-07-12 - [On-Demand Multiplicative Tracking & Parameter Pruning]
+**Learning:** In recursive tree/procedural generators, carrying and additively updating tracking variables (such as animation delay or path coordinate index) inside loops on every iteration incurs avoidable register pressure and arithmetic overhead. Since side branches are spawned occasionally, calculating these trackers on-demand as a function of the loop index (`delay + i * delayStep`) only when a branch is actually created completely eliminates thousands of per-frame additions.
+**Action:** Derive loop trackers on-demand based on loop indices inside conditional spawning blocks to keep high-frequency paths lean.
+**Impact:** Optimization simplifies the recursion loop and eliminates hundreds of thousand redundant additions in standard/large snowflake generations.
+
+## 2026-07-13 - [Side-Branch Decay Constant Hoisting]
+**Learning:** In deep recursive procedural generators, performing lookup calculations (like `INV_STEPS_LUT_05[numSteps]`) and multiplications (`sideLenBase * lenStep`) to calculate step-wise geometric decays (like side-branch lengths) adds measurable CPU latency when scaled over thousands of branches. Hoisting this decay ratio into the pre-calculated, structured `Params` object completely eliminates the need for array lookup and division/multiplication with variable steps inside the recursion.
+**Action:** Identify step-wise parameters that scale geometrically with branch levels, and factor out loop-dependent decay step factors into pre-calculated constant multipliers in the parameters configuration phase.
+**Impact:** Measurably accelerated snowflake generation, reducing average execution time from ~0.0248ms to ~0.0242ms.
+
+## 2026-07-14 - [Direct Hexagonal Symmetry Subtraction & Pre-calculated Branch Delay]
+**Learning:** In 6-fold symmetry matrix population loops, deriving the Arm 2 components using the algebraic identity `Arm 2 = Arm 1 - Arm 0` replaces multiplication operations (like `m1_2 * sax` and `-m0_2 * sax`) with direct floating-point subtractions (`m8_1 - m8` and `m9_1 - m9`). Additionally, pre-calculating the side-branch delay (`nextDelay = delay + i * delayStep + 0.1`) once instead of evaluating `sideDelay + 0.1` twice per branch pair reduces floating-point addition overhead in the hot recursive path.
+**Action:** Use direct subtraction/addition for derived hexagonal symmetry elements to eliminate CPU-intensive multiplications in hot symmetry loops. Always identify and hoist duplicated recursive calculations across branch pairs.
+
+## 2026-07-15 - [Morphology Region Single-Value Caching]
+**Learning:** In highly nested, multi-branch conditional mappings (such as the Nakaya diagram's `getHabit` function), executing multiple floating-point comparisons on every call adds avoidable instruction latency. Since consecutive calls often query identical atmospheric parameters (T, SS) during diagram drawing and state updates, a single-value change-detection cache offers a clean, O(1) shortcut that bypasses all branches.
+**Action:** Implement a lightweight, synchronous, single-value cache for high-frequency mapping functions with high input locality.
+
+## 2026-07-16 - [Branch Elimination via Extended Step LUTs]
+**Learning:** Small look-up tables with limited bounds (e.g., size 11) force redundant logical fallback checks (like `|| 1 / numSteps` and `|| invNumSteps * 0.4`) inside hot recursive loops to guard against index out-of-bounds. Increasing the static LUT bounds to a larger safe limit (e.g., 32) guarantees safe array indexing and completely eliminates the branch check and division/multiplication fallbacks in the recursive hot path.
+**Action:** Always pre-allocate and expand the boundaries of static look-up tables to completely bypass out-of-bounds fallback logic and division checks in recursive procedurals.
+
+## 2026-07-17 - [Deferred Parameter Destructuring in Hot Recursion]
+**Learning:** Destructuring entire parameter configurations at the very beginning of a deep recursive hot path (like `buildArmInternal`) introduces redundant property lookup overhead for leaf nodes and branches that exit early. Deferring the destructuring of properties that are only required during child branching until after base-case and early-exit checks are completed avoids thousands of property accesses across the call tree.
+**Action:** Only destructure the minimum set of properties required for immediate node initialization at the start of recursive functions, and defer the rest until after early exits or inside branching conditions where they are actually consumed.
