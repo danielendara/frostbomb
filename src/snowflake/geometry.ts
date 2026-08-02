@@ -138,11 +138,7 @@ export function buildSnowflake(
     const halfLen = length * 0.5;
     const midX = startX + dirX * halfLen;
     const midY = startY + dirY * halfLen;
-    const midX3 = midX * 3;
-    const midY3 = midY * 3;
-    const nx = midX3 + nOffset;
-    const ny = midY3 + nOffset;
-    const vVarRaw = noise2D(nx, ny);
+    const vVarRaw = noise2D(midX * 3 + nOffset, midY * 3 + nOffset);
     const sx = primaryThickness + vVarRaw * thickness015;
 
     // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
@@ -151,34 +147,25 @@ export function buildSnowflake(
     const sax2 = sax * sax;
     const cax = 1 - 0.5 * sax2; // cos(ax) approx
     const sy = length;
-    // Use pre-calculated sx, sy, and cax to derive matrix columns.
-    const m0 = -dirY * sx;
-    const m1 = dirX * sx;
-    const caxy = cax * sy;
-    const m4 = -dirX * caxy;
-    const m5 = -dirY * caxy;
-    // Optimization: Reuse m1 and m0 to calculate m8 and m9.
-    const m8 = m1 * sax;
-    const m9 = -m0 * sax;
-    const m6 = sax * sy;
-    const m10 = cax * sx; // cax * sz, where sz = sx
-    const vJitter = sax * 0.15; // jitter constant: 0.15 * 0.1 * 0.15
-    const m12 = midX + vJitter;
-    const m13 = midY + vJitter;
-    const m14 = vJitter;
 
+    // Performance Optimization: Use direct assignments to SEGMENT_BUFFER to minimize the overhead
+    // of temporary variable assignments. Reuse intermediate products to reduce instruction count.
     const bIdx = currentSegmentCount << 4; // STRIDE 16
-    SEGMENT_BUFFER[bIdx + 0] = m0;
-    SEGMENT_BUFFER[bIdx + 1] = m1;
-    SEGMENT_BUFFER[bIdx + 2] = m4;
-    SEGMENT_BUFFER[bIdx + 3] = m5;
-    SEGMENT_BUFFER[bIdx + 4] = m8;
-    SEGMENT_BUFFER[bIdx + 5] = m9;
-    SEGMENT_BUFFER[bIdx + 6] = m6;
-    SEGMENT_BUFFER[bIdx + 7] = m10;
-    SEGMENT_BUFFER[bIdx + 8] = m12;
-    SEGMENT_BUFFER[bIdx + 9] = m13;
-    SEGMENT_BUFFER[bIdx + 10] = m14;
+    const caxy = cax * sy;
+    const sxax = sx * sax;
+    const vJitter = sax * 0.15;
+
+    SEGMENT_BUFFER[bIdx + 0] = -dirY * sx; // m0
+    SEGMENT_BUFFER[bIdx + 1] = dirX * sx; // m1
+    SEGMENT_BUFFER[bIdx + 2] = -dirX * caxy; // m4
+    SEGMENT_BUFFER[bIdx + 3] = -dirY * caxy; // m5
+    SEGMENT_BUFFER[bIdx + 4] = dirX * sxax; // m8
+    SEGMENT_BUFFER[bIdx + 5] = dirY * sxax; // m9
+    SEGMENT_BUFFER[bIdx + 6] = sax * sy; // m6
+    SEGMENT_BUFFER[bIdx + 7] = cax * sx; // m10
+    SEGMENT_BUFFER[bIdx + 8] = midX + vJitter; // m12
+    SEGMENT_BUFFER[bIdx + 9] = midY + vJitter; // m13
+    SEGMENT_BUFFER[bIdx + 10] = vJitter; // m14
     DELAY_BUFFER[currentSegmentCount] = dist * 0.15 + depth * 0.1;
 
     currentSegmentCount++;
