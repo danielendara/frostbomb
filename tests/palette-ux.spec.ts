@@ -141,8 +141,9 @@ test('Nakaya diagram displays live-hover preview and reverts on leave', async ({
   // Status should change to Preview mode
   await expect(status).toContainText('Preview:');
 
-  // Move cursor away (hover back to guideToggle)
+  // Move cursor away (hover back to guideToggle and explicitly move to 0,0 to guarantee pointerleave)
   await guideToggle.hover();
+  await page.mouse.move(0, 0);
 
   // Status should revert to Active mode
   await expect(status).toContainText('Active:');
