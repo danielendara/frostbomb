@@ -1126,8 +1126,25 @@ function toggleUI(forceShow?: boolean) {
 }
 
 btnUI?.addEventListener('click', () => toggleUI());
-canvas.addEventListener('click', () => {
-  if (isUIHidden) toggleUI(true);
+
+let canvasPointerDownX = 0;
+let canvasPointerDownY = 0;
+
+canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+  canvasPointerDownX = e.clientX;
+  canvasPointerDownY = e.clientY;
+});
+
+canvas.addEventListener('click', (e: MouseEvent) => {
+  if (isUIHidden) {
+    const dx = e.clientX - canvasPointerDownX;
+    const dy = e.clientY - canvasPointerDownY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    // Only exit Photo Mode (restore UI) if it was a stationary tap/click, not a drag.
+    if (distance < 6) {
+      toggleUI(true);
+    }
+  }
 });
 canvas.addEventListener('dblclick', resetView);
 
