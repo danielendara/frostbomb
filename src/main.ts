@@ -281,6 +281,31 @@ async function ensurePane(): Promise<TweakpanePane> {
       } else {
         announce("Invalid seed. Seeds must be 3 to 12 alphanumeric characters.");
         setTemporaryLabel('btn-seed', '3-12 chars', '✕', true);
+
+        // Direct inline visual error feedback for Tweakpane's Seed input
+        const labelViews = document.querySelectorAll('.tp-lblv');
+        let seedInputEl: HTMLInputElement | null = null;
+        for (const lv of labelViews) {
+          if (lv.textContent?.toLowerCase().includes('seed')) {
+            seedInputEl = lv.querySelector('input') as HTMLInputElement;
+            break;
+          }
+        }
+        if (seedInputEl) {
+          seedInputEl.style.outline = '2px solid #ff6b6b';
+          seedInputEl.style.outlineOffset = '2px';
+          seedInputEl.style.transition = 'outline 0.2s ease, background-color 0.2s ease';
+          seedInputEl.style.backgroundColor = 'rgba(255, 107, 107, 0.15)';
+          setTimeout(() => {
+            if (seedInputEl) {
+              seedInputEl.style.outline = '';
+              seedInputEl.style.outlineOffset = '';
+              seedInputEl.style.transition = '';
+              seedInputEl.style.backgroundColor = '';
+            }
+          }, 1500);
+        }
+
         labParams.seed = currentSeedLabel;
         p.refresh();
       }
