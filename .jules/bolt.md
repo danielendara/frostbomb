@@ -231,3 +231,7 @@
 ## 2026-07-17 - [Deferred Parameter Destructuring in Hot Recursion]
 **Learning:** Destructuring entire parameter configurations at the very beginning of a deep recursive hot path (like `buildArmInternal`) introduces redundant property lookup overhead for leaf nodes and branches that exit early. Deferring the destructuring of properties that are only required during child branching until after base-case and early-exit checks are completed avoids thousands of property accesses across the call tree.
 **Action:** Only destructure the minimum set of properties required for immediate node initialization at the start of recursive functions, and defer the rest until after early exits or inside branching conditions where they are actually consumed.
+
+## 2026-07-18 - [Pruning Redundant GPU Uploads for Non-Animated Path]
+**Learning:** During non-animated updates (such as interactive Lab Mode slider drags), setting the state update flag `needsMatrixUpdate = true` causes a redundant matrices `.set()` and a costly GPU buffer upload on the very next animation frame. Unifying the non-animated and prefers-reduced-motion paths allows us to directly copy the pre-computed matrices inside `updateFlake`, apply final transformations immediately, and set `needsMatrixUpdate = false` to completely bypass render loop updates.
+**Action:** Avoid setting state-dirty flags when synchronously applying finalized transformations in procedural pipelines to bypass subsequent redundant animation frame updates.
