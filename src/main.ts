@@ -608,7 +608,8 @@ const fieldGuide = document.getElementById('field-guide');
 const statsDisplay = document.getElementById('stats-display');
 const labStatus = document.getElementById('lab-status');
 
-async function toggleLabMode() {
+async function toggleLabMode(focusControls: boolean | Event = true) {
+  const shouldFocus = focusControls === true || (typeof focusControls !== 'boolean' && focusControls instanceof Event);
   isLabMode = !isLabMode;
   visualPress('lab-toggle');
   const toggleGeneration = ++labToggleGeneration;
@@ -659,11 +660,13 @@ async function toggleLabMode() {
       labStatus.textContent = 'ON';
     }
     updateFromPane(false);
-    requestAnimationFrame(() => {
-      if (labControls) {
-        labControls.focus();
-      }
-    });
+    if (shouldFocus) {
+      requestAnimationFrame(() => {
+        if (labControls) {
+          labControls.focus();
+        }
+      });
+    }
   } else {
     grow(undefined, true);
     announce('Lab Mode disabled');
@@ -820,7 +823,7 @@ function handleNakayaPointer(e: PointerEvent) {
   labParams.supersaturation = ss * 100;
 
   if (!isLabMode) {
-    toggleLabMode();
+    toggleLabMode(false);
   } else {
     updateFromPane(false);
   }
@@ -861,7 +864,7 @@ nakayaCanvas?.addEventListener('keydown', (e: Event) => {
     e.stopPropagation();
 
     if (!isLabMode) {
-      toggleLabMode();
+      toggleLabMode(false);
     }
 
     if (isNav) {
