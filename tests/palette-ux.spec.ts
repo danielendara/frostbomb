@@ -237,3 +237,38 @@ test('Lab Mode Randomize Seed button updates the seed and UI', async ({ page }) 
   const seedDisplay = page.locator('#seed-display');
   await expect(seedDisplay).toHaveText(newSeed);
 });
+
+test('Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exits on stationary click', async ({ page }) => {
+  const btnUI = page.locator('#btn-ui');
+  const masthead = page.locator('.masthead');
+  const canvas = page.locator('#scene');
+
+  // Verify initial state: UI is visible
+  await expect(masthead).not.toHaveClass(/ui-hidden/);
+
+  // Hide UI (enter Photo Mode)
+  await btnUI.click();
+  await expect(masthead).toHaveClass(/ui-hidden/);
+
+  // Drag on the canvas to rotate the camera
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const startX = box!.x + box!.width / 2;
+  const startY = box!.y + box!.height / 2;
+
+  // Perform a drag gesture
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 100, startY + 50, { steps: 5 });
+  await page.mouse.up();
+
+  // Click event might be triggered depending on browser behavior, but our distance check should block exiting Photo Mode.
+  // Verify UI remains hidden after drag
+  await expect(masthead).toHaveClass(/ui-hidden/);
+
+  // Click on the canvas without dragging (stationary tap/click)
+  await canvas.click({ position: { x: box!.width / 2, y: box!.height / 2 } });
+
+  // Verify UI becomes visible again
+  await expect(masthead).not.toHaveClass(/ui-hidden/);
+});
