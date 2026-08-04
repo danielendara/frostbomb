@@ -186,11 +186,12 @@ export function buildSnowflake(
     const vVarRaw = noise2D(midX * 3 + nOffset, midY * 3 + nOffset);
     const sx = primaryThickness + vVarRaw * thickness015;
 
-    // Performance Optimization: Hoist matrix basis calculations and organic jitter from the O(6N)
-    // symmetry loop into this O(N) build phase. This reduces calculations by a factor of 6.
+    // Performance Optimization: Algebraic reduction and breaking of dependency chains.
+    // Instead of sequentially deriving sax -> sax2 -> cax -> vJitter, we calculate cax and vJitter
+    // directly from vVarRaw. This reduces instruction count and enables parallel execution of
+    // independent trigonometric approximations in CPU execution pipelines.
     const sax = vVarRaw * 0.015; // sin(ax) approx: 0.1 * 0.15
-    const sax2 = sax * sax;
-    const cax = 1 - 0.5 * sax2; // cos(ax) approx
+    const cax = 1 - vVarRaw * vVarRaw * 0.0001125; // cos(ax) approx: 1 - 0.5 * (vVarRaw * 0.015)^2
     const sy = length;
     // Use pre-calculated sx, sy, and cax to derive matrix columns.
     const m0 = -dirY * sx;
@@ -200,7 +201,7 @@ export function buildSnowflake(
     const m5 = -dirY * caxy;
     const m6 = sax * sy;
     const m10 = cax * sx; // cax * sz, where sz = sx
-    const vJitter = sax * 0.15; // jitter constant: 0.15 * 0.1 * 0.15
+    const vJitter = vVarRaw * 0.00225; // jitter constant: 0.15 * 0.1 * 0.15 * vVarRaw
     const m12 = midX + vJitter;
     const m13 = midY + vJitter;
     const m14 = vJitter;
@@ -344,8 +345,7 @@ export function buildSnowflake(
     const tipMidX = 3.56; // endX(3.5) + dirX(1) * 0.06
     const tipVVarRaw = noise2D(tipMidX * 3 + nOffset, nOffset); // tipMidY is 0
     const tsax = tipVVarRaw * 0.015;
-    const tsax2 = tsax * tsax;
-    const tcax = 1 - 0.5 * tsax2;
+    const tcax = 1 - tipVVarRaw * tipVVarRaw * 0.0001125;
     const tsx = primaryParams.thickness04 + tipVVarRaw * primaryParams.thickness04_015;
     const tcaxy = tcax * tipLen;
 
@@ -357,7 +357,7 @@ export function buildSnowflake(
     SEGMENT_BUFFER[tIdx + 4] = tsax; // Store tsax directly as sax
     SEGMENT_BUFFER[tIdx + 6] = tsax * tipLen;
     SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
-    const tvJitter = tsax * 0.15;
+    const tvJitter = tipVVarRaw * 0.00225;
     SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
     SEGMENT_BUFFER[tIdx + 9] = tvJitter; // tipMidY(0) + tvJitter
     SEGMENT_BUFFER[tIdx + 10] = tvJitter;
