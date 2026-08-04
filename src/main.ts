@@ -659,6 +659,11 @@ async function toggleLabMode() {
       labStatus.textContent = 'ON';
     }
     updateFromPane(false);
+    requestAnimationFrame(() => {
+      if (labControls) {
+        labControls.focus();
+      }
+    });
   } else {
     grow(undefined, true);
     announce('Lab Mode disabled');
@@ -1038,6 +1043,8 @@ function togglePinkMode() {
   if (btnPink) {
     btnPink.setAttribute('aria-pressed', enabled.toString());
     btnPink.classList.toggle('active', enabled);
+    btnPink.setAttribute('aria-label', 'Pink Mode (P)');
+    btnPink.title = `Toggle pink mode (P) - current: ${enabled ? 'active' : 'inactive'}`;
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle('pink-mode', enabled);
@@ -1054,6 +1061,8 @@ function togglePrismMode() {
   if (btnPrism) {
     btnPrism.setAttribute('aria-pressed', enabled.toString());
     btnPrism.classList.toggle('active', enabled);
+    btnPrism.setAttribute('aria-label', 'Prism Mode (M)');
+    btnPrism.title = `Toggle prism mode (M) - current: ${enabled ? 'active' : 'inactive'}`;
   }
   scene.setPrismMode(enabled);
   document.body.classList.toggle('prism-mode', enabled);

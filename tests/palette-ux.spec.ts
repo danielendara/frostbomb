@@ -272,3 +272,37 @@ test('Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
   // Verify UI becomes visible again
   await expect(masthead).not.toHaveClass(/ui-hidden/);
 });
+
+test('Lab Mode container receives focus when Lab Mode is activated', async ({ page }) => {
+  const labToggle = page.locator('#lab-toggle');
+  const labControls = page.locator('#lab-controls');
+
+  await labToggle.click();
+  await expect(labControls).toBeVisible();
+  await expect(labControls).toBeFocused();
+});
+
+test('Pink mode and Prism mode buttons dynamically update their titles and aria-labels', async ({ page }) => {
+  const btnPink = page.locator('#btn-pink');
+  const btnPrism = page.locator('#btn-prism');
+
+  // Verify Pink Mode updates
+  await expect(btnPink).not.toHaveAttribute('aria-label');
+  await btnPink.click();
+  await expect(btnPink).toHaveAttribute('aria-label', 'Pink Mode (P)');
+  await expect(btnPink).toHaveAttribute('title', 'Toggle pink mode (P) - current: active');
+
+  await btnPink.click();
+  await expect(btnPink).toHaveAttribute('aria-label', 'Pink Mode (P)');
+  await expect(btnPink).toHaveAttribute('title', 'Toggle pink mode (P) - current: inactive');
+
+  // Verify Prism Mode updates
+  await expect(btnPrism).not.toHaveAttribute('aria-label');
+  await btnPrism.click();
+  await expect(btnPrism).toHaveAttribute('aria-label', 'Prism Mode (M)');
+  await expect(btnPrism).toHaveAttribute('title', 'Toggle prism mode (M) - current: active');
+
+  await btnPrism.click();
+  await expect(btnPrism).toHaveAttribute('aria-label', 'Prism Mode (M)');
+  await expect(btnPrism).toHaveAttribute('title', 'Toggle prism mode (M) - current: inactive');
+});
