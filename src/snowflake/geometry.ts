@@ -69,11 +69,32 @@ for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
 let currentSegmentCount = 0;
 
 /**
- * Performance Optimization: Non-allocating in-place Quick Sort to replace native .sort() on subarray.
+ * Performance Optimization: In-place Insertion Sort helper for small subarrays.
+ * Reduces recursion overhead and call stack pressure in the sorting hot path.
+ */
+function insertionsort(arr: Uint16Array, left: number, right: number) {
+  for (let i = left + 1; i <= right; i++) {
+    const keyIdx = arr[i];
+    const keyVal = DELAY_BUFFER[keyIdx];
+    let j = i - 1;
+    while (j >= left && DELAY_BUFFER[arr[j]] > keyVal) {
+      arr[j + 1] = arr[j];
+      j--;
+    }
+    arr[j + 1] = keyIdx;
+  }
+}
+
+/**
+ * Performance Optimization: Non-allocating hybrid Quick Sort / Insertion Sort to replace native .sort() on subarray.
  * Avoids any wrapper object allocations, reducing garbage collection pressure and speeding up sorting by ~3.5x.
+ * Delegates to insertionsort for small partitions to bypass recursion and branching overhead.
  */
 function quicksort(arr: Uint16Array, left: number, right: number) {
-  if (left >= right) return;
+  if (right - left < 12) {
+    insertionsort(arr, left, right);
+    return;
+  }
   const pivotIdx = arr[(left + right) >> 1];
   const pivotVal = DELAY_BUFFER[pivotIdx];
   let i = left;
