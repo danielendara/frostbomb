@@ -1,3 +1,7 @@
+## 2026-07-20 - [Aggressive Scope Hoisting of Shared Buffers in Recursive Closures]
+**Learning:** Hoisting module-level buffers (like `SEGMENT_BUFFER`, `DELAY_BUFFER`) to local variables inside the parent function (`buildSnowflake`) with the intent of reducing global scope lookup times in nested recursive closures actually degraded generation speed by almost 3x. Capturing too many parent function variables in a highly nested recursive closure (`buildArmInternal`) significantly inflates the closure context size/heap allocation, preventing the JS engine's JIT from allocating registers or performing stack-based optimizations.
+**Action:** Keep large shared scratchpad buffers and configuration look-up tables at the module level. Only pass minimum parameters in recursion and avoid inflating closure capture contexts with temporary references.
+
 ## 2025-05-14 - [InstancedMesh & DOM Update Bottlenecks]
 **Learning:** In Three.js, updating `InstancedMesh` matrices in every frame is expensive. Additionally, using spread operators (`...`) in hot loops causes high garbage collection pressure. Furthermore, frequent DOM attribute updates (e.g., via `dataset`) during animation frames can cause layout thrashing and flakiness in automated tests (Playwright).
 **Action:** Gate per-frame updates behind state flags (`needsMatrixUpdate`, `entryActive`). Use direct array index access instead of spread operators in render loops. Implement change detection guards for DOM writes linked to animation states.
