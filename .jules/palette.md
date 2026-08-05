@@ -68,3 +68,11 @@
 ## 2027-10-25 - [Dynamic Media Query Sync / Disabled Button ARIA]
 **Learning:** When interactive controls are dynamically disabled based on persistent system preferences (like the auto-rotate button under `prefers-reduced-motion`), screen reader and keyboard-only users need explicit context on why the control cannot be interacted with. Syncing the media query state to set a explanatory `aria-label` (and removing it when not active) prevents confusion.
 **Action:** Always pair disabled elements matching system media query overrides with an explicit, descriptive `aria-label` to convey the exact context to assistive technologies.
+
+## 2027-10-26 - [Immersive Panel Focus Management]
+**Learning:** When activating an immersive, hidden manual control container (such as the `#lab-controls` panel), assigning `tabindex="-1"`, `role="region"`, and an explicit `aria-label` to the container and programmatically focusing it inside a `requestAnimationFrame` callback ensures keyboard and screen-reader users are immediately routed into the newly revealed controls once painted.
+**Action:** Always programmatically move focus to a newly revealed container panel on toggle to prevent keyboard navigation from being trapped or lost.
+
+## 2027-10-27 - [Static ARIA-Label with Dynamic Tooltip for Toggle Buttons]
+**Learning:** When buttons utilize `aria-pressed` to convey binary toggled state, maintaining a static `aria-label` attribute (e.g. 'Pink Mode (P)') avoids redundant screen reader announcements, while concurrently updating the native `title` attribute (e.g. 'Toggle pink mode (P) - current: active') provides mouse-hover users with updated state guidance.
+**Action:** Pair static `aria-label` attributes on `aria-pressed` buttons with dynamic tooltip `title` text updates for clean accessibility and tooltips.

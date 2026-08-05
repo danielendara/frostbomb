@@ -608,7 +608,8 @@ const fieldGuide = document.getElementById('field-guide');
 const statsDisplay = document.getElementById('stats-display');
 const labStatus = document.getElementById('lab-status');
 
-async function toggleLabMode() {
+async function toggleLabMode(focusControls: boolean | Event = true) {
+  const shouldFocus = focusControls === true || (typeof focusControls !== 'boolean' && focusControls instanceof Event);
   isLabMode = !isLabMode;
   visualPress('lab-toggle');
   const toggleGeneration = ++labToggleGeneration;
@@ -659,6 +660,13 @@ async function toggleLabMode() {
       labStatus.textContent = 'ON';
     }
     updateFromPane(false);
+    if (shouldFocus) {
+      requestAnimationFrame(() => {
+        if (labControls) {
+          labControls.focus();
+        }
+      });
+    }
   } else {
     grow(undefined, true);
     announce('Lab Mode disabled');
@@ -815,7 +823,7 @@ function handleNakayaPointer(e: PointerEvent) {
   labParams.supersaturation = ss * 100;
 
   if (!isLabMode) {
-    toggleLabMode();
+    toggleLabMode(false);
   } else {
     updateFromPane(false);
   }
@@ -856,7 +864,7 @@ nakayaCanvas?.addEventListener('keydown', (e: Event) => {
     e.stopPropagation();
 
     if (!isLabMode) {
-      toggleLabMode();
+      toggleLabMode(false);
     }
 
     if (isNav) {
@@ -1038,6 +1046,8 @@ function togglePinkMode() {
   if (btnPink) {
     btnPink.setAttribute('aria-pressed', enabled.toString());
     btnPink.classList.toggle('active', enabled);
+    btnPink.setAttribute('aria-label', 'Pink Mode (P)');
+    btnPink.title = `Toggle pink mode (P) - current: ${enabled ? 'active' : 'inactive'}`;
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle('pink-mode', enabled);
@@ -1054,6 +1064,8 @@ function togglePrismMode() {
   if (btnPrism) {
     btnPrism.setAttribute('aria-pressed', enabled.toString());
     btnPrism.classList.toggle('active', enabled);
+    btnPrism.setAttribute('aria-label', 'Prism Mode (M)');
+    btnPrism.title = `Toggle prism mode (M) - current: ${enabled ? 'active' : 'inactive'}`;
   }
   scene.setPrismMode(enabled);
   document.body.classList.toggle('prism-mode', enabled);
