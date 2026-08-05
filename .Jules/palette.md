@@ -70,5 +70,9 @@
 **Action:** Always pair disabled elements matching system media query overrides with an explicit, descriptive `aria-label` to convey the exact context to assistive technologies.
 
 ## 2027-11-01 - [Direct Dynamic Visual Feedback on GUI Validation Failures]
-**Learning:** Third-party GUI libraries (like Tweakpane) often handle invalid inputs by silently reverting back to the last valid state without any visual alerts on the text input element itself. When custom input validation is intercepted, programmatically querying the input DOM element and applying temporary high-contrast visual cues (such as a 1.5-second red outline and background tint, with a clean transition and subsequent cleanup) bridges the feedback gap and provides immediate inline context to sighted users.
+**Learning:** Third-party GUI libraries (like Tweakpane) handle invalid inputs by silently reverting back to the last valid state without any visual alerts on the text input element itself. When custom input validation is intercepted, programmatically querying the input DOM element and applying temporary high-contrast visual cues bridges the feedback gap.
 **Action:** On custom input validation failures within third-party widgets, manually query the underlying input elements to apply and cleanly tear down temporary warning styles in synchrony with screen reader live region announcements.
+
+## 2027-11-02 - Crosshair Alignment Guides on Canvas Hover
+**Learning:** Adding dotted horizontal and vertical axis-alignment guides along with a small preview dot on coordinate diagram canvases (such as the Nakaya Diagram) during high-frequency 'pointermove' events—and clearing them on 'pointerleave'—provides immediate, intuitive spatial tracking and numerical context without cluttering the persistent visualization path.
+**Action:** Integrate dotted crosshair alignment guides and a temporary preview dot on coordinate diagram canvases on mouse hover, and cleanly reset/re-render the background once mouse is removed.
