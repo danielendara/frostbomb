@@ -1,7 +1,7 @@
-import * as THREE from 'three';
-import { createNoise2D } from 'simplex-noise';
-import { Rand } from './random.ts';
-import { getHabit, GrowthConditions, Habit } from './nakaya.ts';
+import * as THREE from "three";
+import { createNoise2D } from "simplex-noise";
+import { Rand } from "./random.ts";
+import { getHabit, GrowthConditions, Habit } from "./nakaya.ts";
 
 /**
  * Generates a single arm of the snowflake (a 2D branching pattern in the
@@ -45,7 +45,7 @@ const INV_STEPS_LUT_04 = INV_STEPS_LUT.map((v) => v * 0.4);
 // per snowflake generation. This drastically reduces GC pressure and improves memory locality.
 // Using Uint16Array for indices (max 65535) saves memory as MAX_SEGMENTS_PER_ARM is only 10000.
 const MAX_SEGMENTS_PER_ARM = 10000;
-const SEGMENT_STRIDE = 16;
+const SEGMENT_STRIDE = 8;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
 const DELAY_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
 const DELAYS_RESULT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM);
@@ -139,7 +139,8 @@ export function buildSnowflake(
   const pathLen = Math.min(conditions.path.length, MAX_PATH_LEN);
   const pathParams = SHARED_PATH_PARAMS;
   let lastP: Params | null = null;
-  let lastT = NaN, lastS = NaN;
+  let lastT = NaN,
+    lastS = NaN;
   for (let i = 0; i < pathLen; i++) {
     const p = conditions.path[i];
     if (p.temp === lastT && p.ss === lastS) {
@@ -175,10 +176,7 @@ export function buildSnowflake(
 
     // Performance Optimization: Destructure params as-needed to minimize property lookups
     // for leaf segments and non-branching nodes.
-    const {
-      primaryThickness,
-      thickness015,
-    } = params;
+    const { primaryThickness, thickness015 } = params;
 
     const halfLen = length * 0.5;
     const midX = startX + dirX * halfLen;
@@ -191,32 +189,16 @@ export function buildSnowflake(
     // directly from vVarRaw. This reduces instruction count and enables parallel execution of
     // independent trigonometric approximations in CPU execution pipelines.
     const sax = vVarRaw * 0.015; // sin(ax) approx: 0.1 * 0.15
-    const cax = 1 - vVarRaw * vVarRaw * 0.0001125; // cos(ax) approx: 1 - 0.5 * (vVarRaw * 0.015)^2
-    const sy = length;
-    // Use pre-calculated sx, sy, and cax to derive matrix columns.
-    const m0 = -dirY * sx;
-    const m1 = dirX * sx;
-    const caxy = cax * sy;
-    const m4 = -dirX * caxy;
-    const m5 = -dirY * caxy;
-    const m6 = sax * sy;
-    const m10 = cax * sx; // cax * sz, where sz = sx
-    const vJitter = vVarRaw * 0.00225; // jitter constant: 0.15 * 0.1 * 0.15 * vVarRaw
-    const m12 = midX + vJitter;
-    const m13 = midY + vJitter;
-    const m14 = vJitter;
 
-    const bIdx = currentSegmentCount << 4; // STRIDE 16
-    SEGMENT_BUFFER[bIdx + 0] = m0;
-    SEGMENT_BUFFER[bIdx + 1] = m1;
-    SEGMENT_BUFFER[bIdx + 2] = m4;
-    SEGMENT_BUFFER[bIdx + 3] = m5;
-    SEGMENT_BUFFER[bIdx + 4] = sax; // Store sax directly to avoid redundant calculations of m8/m9 in recursion
-    SEGMENT_BUFFER[bIdx + 6] = m6;
-    SEGMENT_BUFFER[bIdx + 7] = m10;
-    SEGMENT_BUFFER[bIdx + 8] = m12;
-    SEGMENT_BUFFER[bIdx + 9] = m13;
-    SEGMENT_BUFFER[bIdx + 10] = m14;
+    const bIdx = currentSegmentCount << 3; // STRIDE 8
+    SEGMENT_BUFFER[bIdx + 0] = dirX;
+    SEGMENT_BUFFER[bIdx + 1] = dirY;
+    SEGMENT_BUFFER[bIdx + 2] = midX;
+    SEGMENT_BUFFER[bIdx + 3] = midY;
+    SEGMENT_BUFFER[bIdx + 4] = length;
+    SEGMENT_BUFFER[bIdx + 5] = sx;
+    SEGMENT_BUFFER[bIdx + 6] = sax;
+    SEGMENT_BUFFER[bIdx + 7] = vVarRaw;
     DELAY_BUFFER[currentSegmentCount] = delay;
 
     currentSegmentCount++;
@@ -228,13 +210,8 @@ export function buildSnowflake(
     if (numSteps <= 1) return;
 
     // Destructure properties needed for side branches only when spawning them.
-    const {
-      sideBranchProb,
-      sideBranchDecay,
-      cosAngle,
-      sinAngle,
-      decay05,
-    } = params;
+    const { sideBranchProb, sideBranchDecay, cosAngle, sinAngle, decay05 } =
+      params;
 
     const invNumSteps = INV_STEPS_LUT[numSteps];
     const stepDist = length * invNumSteps;
@@ -345,22 +322,18 @@ export function buildSnowflake(
     const tipMidX = 3.56; // endX(3.5) + dirX(1) * 0.06
     const tipVVarRaw = noise2D(tipMidX * 3 + nOffset, nOffset); // tipMidY is 0
     const tsax = tipVVarRaw * 0.015;
-    const tcax = 1 - tipVVarRaw * tipVVarRaw * 0.0001125;
-    const tsx = primaryParams.thickness04 + tipVVarRaw * primaryParams.thickness04_015;
-    const tcaxy = tcax * tipLen;
+    const tsx =
+      primaryParams.thickness04 + tipVVarRaw * primaryParams.thickness04_015;
 
-    const tIdx = currentSegmentCount << 4;
-    SEGMENT_BUFFER[tIdx + 0] = 0; // tm0 = -dirY(0) * tsx
-    SEGMENT_BUFFER[tIdx + 1] = tsx; // tm1 = dirX(1) * tsx
-    SEGMENT_BUFFER[tIdx + 2] = -tcaxy; // -dirX(1) * tcaxy
-    SEGMENT_BUFFER[tIdx + 3] = 0; // -dirY(0) * tcaxy
-    SEGMENT_BUFFER[tIdx + 4] = tsax; // Store tsax directly as sax
-    SEGMENT_BUFFER[tIdx + 6] = tsax * tipLen;
-    SEGMENT_BUFFER[tIdx + 7] = tcax * tsx;
-    const tvJitter = tipVVarRaw * 0.00225;
-    SEGMENT_BUFFER[tIdx + 8] = tipMidX + tvJitter;
-    SEGMENT_BUFFER[tIdx + 9] = tvJitter; // tipMidY(0) + tvJitter
-    SEGMENT_BUFFER[tIdx + 10] = tvJitter;
+    const tIdx = currentSegmentCount << 3; // STRIDE 8
+    SEGMENT_BUFFER[tIdx + 0] = 1; // dirX
+    SEGMENT_BUFFER[tIdx + 1] = 0; // dirY
+    SEGMENT_BUFFER[tIdx + 2] = tipMidX; // midX
+    SEGMENT_BUFFER[tIdx + 3] = 0; // midY
+    SEGMENT_BUFFER[tIdx + 4] = tipLen; // length
+    SEGMENT_BUFFER[tIdx + 5] = tsx; // sx
+    SEGMENT_BUFFER[tIdx + 6] = tsax; // sax
+    SEGMENT_BUFFER[tIdx + 7] = tipVVarRaw; // vVarRaw
     DELAY_BUFFER[currentSegmentCount] = 0.625; // 3.5 * 0.15 + 0.1
 
     currentSegmentCount++;
@@ -392,22 +365,33 @@ export function buildSnowflake(
     const delay = DELAY_BUFFER[idx];
     delays[j] = delay;
 
-    // Performance Optimization: All matrix components and jitter are pre-calculated during the
-    // recursive buildArm pass and stored in SEGMENT_BUFFER. This avoids O(N) redundant calculations
-    // and memory loads in the final population phase.
-    const bIdx = idx << 4; // STRIDE 16
-    const m0 = SEGMENT_BUFFER[bIdx + 0];
-    const m1 = SEGMENT_BUFFER[bIdx + 1];
-    const m4 = SEGMENT_BUFFER[bIdx + 2];
-    const m5 = SEGMENT_BUFFER[bIdx + 3];
-    const sax = SEGMENT_BUFFER[bIdx + 4]; // packed sax directly
-    const m6 = SEGMENT_BUFFER[bIdx + 6];
-    const m10 = SEGMENT_BUFFER[bIdx + 7];
-    const m12 = SEGMENT_BUFFER[bIdx + 8];
-    const m13 = SEGMENT_BUFFER[bIdx + 9];
-    const m14 = SEGMENT_BUFFER[bIdx + 10];
+    // Performance Optimization: All matrix components and jitter are derived on-the-fly from the
+    // 8 raw parameters stored in SEGMENT_BUFFER. This reduces memory footprint and improves cache locality
+    // by changing the segment stride from 16 to 8.
+    const bIdx = idx << 3; // STRIDE 8
+    const dirX = SEGMENT_BUFFER[bIdx + 0];
+    const dirY = SEGMENT_BUFFER[bIdx + 1];
+    const midX = SEGMENT_BUFFER[bIdx + 2];
+    const midY = SEGMENT_BUFFER[bIdx + 3];
+    const length = SEGMENT_BUFFER[bIdx + 4];
+    const sx = SEGMENT_BUFFER[bIdx + 5];
+    const sax = SEGMENT_BUFFER[bIdx + 6];
+    const vVarRaw = SEGMENT_BUFFER[bIdx + 7];
 
-    // Derive m8 and m9 on-the-fly to save 2 Float32Array lookups and writes in buildArmInternal
+    const cax = 1 - vVarRaw * vVarRaw * 0.0001125;
+    const m0 = -dirY * sx;
+    const m1 = dirX * sx;
+    const caxy = cax * length;
+    const m4 = -dirX * caxy;
+    const m5 = -dirY * caxy;
+    const m6 = sax * length;
+    const m10 = cax * sx;
+    const vJitter = vVarRaw * 0.00225;
+    const m12 = midX + vJitter;
+    const m13 = midY + vJitter;
+    const m14 = vJitter;
+
+    // Derive m8 and m9 on-the-fly
     const m8 = m1 * sax;
     const m9 = -m0 * sax;
 
@@ -552,9 +536,9 @@ export function buildSnowflake(
 }
 
 function getZDepthScale(habit: Habit): number {
-  return habit === 'column' || habit === 'needle'
+  return habit === "column" || habit === "needle"
     ? 2.5
-    : habit === 'capped_column'
+    : habit === "capped_column"
       ? 1.8
       : 1.0;
 }
@@ -599,7 +583,7 @@ const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({
   cosAngle: 0.5,
   sinAngle: 0.86602540378,
   maxDepth: 3,
-  habit: 'stellar_dendrite' as Habit,
+  habit: "stellar_dendrite" as Habit,
   hasRidges: true,
   hasTip: true,
   decay05: 0.3,
@@ -609,7 +593,7 @@ let stellarPoolIdx = 0;
 function paramsFor(temp: number, ss: number): Params {
   const habit = getHabit(temp, ss);
 
-  if (habit === 'stellar_dendrite') {
+  if (habit === "stellar_dendrite") {
     // Safety check: if the pool is exhausted within a single snowflake generation,
     // fallback to allocation to avoid object mutation collisions.
     if (stellarPoolIdx >= MAX_PATH_LEN) {
@@ -639,9 +623,17 @@ function paramsFor(temp: number, ss: number): Params {
   const cached = PARAMS_CACHE[habit];
   if (cached) return cached;
 
-  let p: Omit<Params, 'cosAngle' | 'sinAngle' | 'thickness015' | 'thickness04' | 'thickness04_015' | 'decay05'>;
+  let p: Omit<
+    Params,
+    | "cosAngle"
+    | "sinAngle"
+    | "thickness015"
+    | "thickness04"
+    | "thickness04_015"
+    | "decay05"
+  >;
   switch (habit) {
-    case 'fernlike_dendrite':
+    case "fernlike_dendrite":
       p = {
         primaryLength: 3.04,
         primaryThickness: 0.036,
@@ -654,7 +646,7 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: true,
       };
       break;
-    case 'sector_plate':
+    case "sector_plate":
       p = {
         primaryLength: 2.08,
         primaryThickness: 0.176,
@@ -667,7 +659,7 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
       break;
-    case 'plate':
+    case "plate":
       p = {
         primaryLength: 1.76,
         primaryThickness: 0.28,
@@ -680,7 +672,7 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
       break;
-    case 'needle':
+    case "needle":
       p = {
         primaryLength: 3.36,
         primaryThickness: 0.04,
@@ -693,7 +685,7 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: true,
       };
       break;
-    case 'column':
+    case "column":
       p = {
         primaryLength: 1.92,
         primaryThickness: 0.4,
@@ -706,7 +698,7 @@ function paramsFor(temp: number, ss: number): Params {
         hasTip: false,
       };
       break;
-    case 'capped_column':
+    case "capped_column":
       p = {
         primaryLength: 2.24,
         primaryThickness: 0.144,
@@ -727,7 +719,7 @@ function paramsFor(temp: number, ss: number): Params {
         sideBranchDecay: 0.3,
         sideBranchAngle: Math.PI / 3,
         maxDepth: 1,
-        habit: 'plate',
+        habit: "plate",
         hasRidges: false,
         hasTip: false,
       };
@@ -753,6 +745,10 @@ export function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
   return new THREE.Vector3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
 }
 
-export function rotateZ(v: THREE.Vector3, cos: number, sin: number): THREE.Vector3 {
+export function rotateZ(
+  v: THREE.Vector3,
+  cos: number,
+  sin: number,
+): THREE.Vector3 {
   return new THREE.Vector3(v.x * cos - v.y * sin, v.x * sin + v.y * cos, v.z);
 }
