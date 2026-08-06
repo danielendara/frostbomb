@@ -114,13 +114,46 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     ctx!.stroke();
   }
 
+  function drawPreviewPoint(point: { temp: number; ss: number }) {
+    const x = toX(point.temp);
+    const y = toY(point.ss);
+
+    ctx!.save();
+    ctx!.strokeStyle = 'rgba(230, 237, 245, 0.25)';
+    ctx!.lineWidth = 1;
+    ctx!.setLineDash([2, 4]);
+
+    // Horizontal alignment guide
+    ctx!.beginPath();
+    ctx!.moveTo(0, y);
+    ctx!.lineTo(width, y);
+    ctx!.stroke();
+
+    // Vertical alignment guide
+    ctx!.beginPath();
+    ctx!.moveTo(x, 0);
+    ctx!.lineTo(x, height);
+    ctx!.stroke();
+
+    // Preview point dot
+    ctx!.fillStyle = 'rgba(255, 199, 138, 0.8)';
+    ctx!.beginPath();
+    ctx!.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx!.fill();
+
+    ctx!.restore();
+  }
+
   return {
-    update: (path: { temp: number; ss: number }[]) => {
+    update: (path: { temp: number; ss: number }[], previewPoint?: { temp: number; ss: number }) => {
       if (isDisposed) return;
       ctx.clearRect(0, 0, width, height);
       // Fast blit of pre-rendered background
       ctx.drawImage(cacheCanvas, 0, 0);
       drawPath(path);
+      if (previewPoint) {
+        drawPreviewPoint(previewPoint);
+      }
     },
     dispose: () => {
       isDisposed = true;

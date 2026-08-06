@@ -365,7 +365,7 @@ function updateNakayaStatus(temp: number, ss: number, isPreview: boolean) {
   }
 }
 
-function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = true) {
+function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = true, previewPoint?: { temp: number; ss: number }) {
   const isNewSeed = !keepSeed || !currentSeed;
   if (isNewSeed) {
     currentSeed = resolveSeed();
@@ -381,7 +381,7 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   const result = buildSnowflake(conditions, rand);
 
   scene.updateFlake(result, animate);
-  nakayaDiagram?.update(conditions.path);
+  nakayaDiagram?.update(conditions.path, previewPoint);
 
   if (canvas) {
     const canvasAria = `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`;
@@ -845,12 +845,18 @@ nakayaCanvas?.addEventListener('pointermove', (e) => {
     const t = x * 40 - 40;
     const ss = 1 - y;
     updateNakayaStatus(t, ss, true);
+
+    // Render the preview alignment lines and dot on hover
+    if (currentConditions) {
+      nakayaDiagram?.update(currentConditions.path, { temp: t, ss });
+    }
   }
 });
 
 nakayaCanvas?.addEventListener('pointerleave', () => {
   if (currentConditions) {
     updateNakayaStatus(currentConditions.temperatureC, currentConditions.supersaturation, false);
+    nakayaDiagram?.update(currentConditions.path);
   }
 });
 
