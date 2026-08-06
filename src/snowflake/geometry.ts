@@ -205,19 +205,19 @@ export function buildSnowflake(
 
     if (depth >= params.maxDepth || params.sideBranchProb <= 0) return;
 
+    const { sideBranchProb, sideBranchDecay, cosAngle, sinAngle, decay05 } =
+      params;
+    const sideLenBase = length * sideBranchDecay;
+    if (sideLenBase < 0.08) return;
+
     // Walk along the main branch, occasionally spawning side branches
     const numSteps = (length * INV_SIDE_BRANCH_STEP) | 0;
     if (numSteps <= 1) return;
-
-    // Destructure properties needed for side branches only when spawning them.
-    const { sideBranchProb, sideBranchDecay, cosAngle, sinAngle, decay05 } =
-      params;
 
     const invNumSteps = INV_STEPS_LUT[numSteps];
     const stepDist = length * invNumSteps;
     const stepX = dirX * stepDist;
     const stepY = dirY * stepDist;
-    const sideLenBase = length * sideBranchDecay;
     let pointX = startX;
     let pointY = startY;
 
@@ -235,9 +235,19 @@ export function buildSnowflake(
 
     const nextDepth = depth + 1;
 
-    for (let i = 1; i < numSteps; i++) {
-      if (sideLenMax < 0.08) break;
+    // Performance Optimization: Pre-calculate the maximum loop limit where sideLenMax remains >= 0.08.
+    // This completely avoids the comparison check and subtraction branch/overhead inside the hot loop.
+    let loopLimit = numSteps;
+    if (sideLenMaxStep > 0) {
+      // Adding a tiny epsilon (1e-9) to handle potential floating-point inaccuracies
+      // when dividing very close values, ensuring deterministic and correct iterations.
+      const maxI = ((sideLenBase - 0.08) / sideLenMaxStep + 1e-9) | 0;
+      if (maxI + 1 < numSteps) {
+        loopLimit = maxI + 1;
+      }
+    }
 
+    for (let i = 1; i < loopLimit; i++) {
       pointX += stepX;
       pointY += stepY;
 
