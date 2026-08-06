@@ -76,3 +76,7 @@
 ## 2027-10-27 - [Static ARIA-Label with Dynamic Tooltip for Toggle Buttons]
 **Learning:** When buttons utilize `aria-pressed` to convey binary toggled state, maintaining a static `aria-label` attribute (e.g. 'Pink Mode (P)') avoids redundant screen reader announcements, while concurrently updating the native `title` attribute (e.g. 'Toggle pink mode (P) - current: active') provides mouse-hover users with updated state guidance.
 **Action:** Pair static `aria-label` attributes on `aria-pressed` buttons with dynamic tooltip `title` text updates for clean accessibility and tooltips.
+
+## 2027-10-28 - [Keyboard Shortcut Badges without Screen Reader Clutter]
+**Learning:** Adding physical keycap badges (using `<kbd>` elements) inside action buttons makes keyboard shortcuts highly discoverable for desktop users. However, because the shortcut info is already provided via the button's accessible name, `title`, or `aria-keyshortcuts`, these nested visual elements should be marked with `aria-hidden="true"` to prevent screen readers from announcing redundant or confusing characters (e.g., reading "Reset V" instead of "Reset").
+**Action:** When nesting keyboard shortcut badges within buttons, wrap them in a `<kbd>` element with `aria-hidden="true"` and apply responsive styles to hide them on touch-only/mobile devices where shortcuts are irrelevant.
