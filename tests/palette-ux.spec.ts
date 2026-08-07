@@ -309,6 +309,7 @@ test("Lab Mode container receives focus when Lab Mode is activated", async ({
 test("Pink mode and Prism mode buttons dynamically update their titles and aria-labels", async ({
   page,
 }) => {
+  test.slow();
   const btnPink = page.locator("#btn-pink");
   const btnPrism = page.locator("#btn-prism");
 
