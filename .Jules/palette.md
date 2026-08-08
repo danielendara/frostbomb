@@ -76,3 +76,7 @@
 ## 2027-11-02 - Crosshair Alignment Guides on Canvas Hover
 **Learning:** Adding dotted horizontal and vertical axis-alignment guides along with a small preview dot on coordinate diagram canvases (such as the Nakaya Diagram) during high-frequency 'pointermove' events—and clearing them on 'pointerleave'—provides immediate, intuitive spatial tracking and numerical context without cluttering the persistent visualization path.
 **Action:** Integrate dotted crosshair alignment guides and a temporary preview dot on coordinate diagram canvases on mouse hover, and cleanly reset/re-render the background once mouse is removed.
+
+## 2027-11-03 - Keyboard-Driven Canvas Alignment Guides
+**Learning:** Adding mouse-hover interaction guides to highly visual canvases is excellent, but keyboard-only users who focus and navigate the canvas using keyboard shortcuts miss out on that visual scaffolding. Bridging the gap by rendering the same alignment guides when the canvas is keyboard-focused or undergoing keyboard navigation ensures functional parity and high visual clarity.
+**Action:** Bind canvas `focus`/`blur` listeners to trigger crosshair guides at the current active coordinates, and ensure rendering loops preserve these guides if keyboard focus is maintained during `pointerleave` events.

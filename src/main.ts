@@ -407,7 +407,8 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   const result = buildSnowflake(conditions, rand);
 
   scene.updateFlake(result, animate);
-  nakayaDiagram?.update(conditions.path, previewPoint);
+  const isCanvasFocused = document.activeElement === nakayaCanvas;
+  nakayaDiagram?.update(conditions.path, previewPoint || (isCanvasFocused ? { temp: conditions.temperatureC, ss: conditions.supersaturation } : undefined));
 
   if (canvas) {
     const canvasAria = `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`;
@@ -882,6 +883,22 @@ nakayaCanvas?.addEventListener('pointermove', (e) => {
 nakayaCanvas?.addEventListener('pointerleave', () => {
   if (currentConditions) {
     updateNakayaStatus(currentConditions.temperatureC, currentConditions.supersaturation, false);
+    if (document.activeElement === nakayaCanvas) {
+      nakayaDiagram?.update(currentConditions.path, { temp: currentConditions.temperatureC, ss: currentConditions.supersaturation });
+    } else {
+      nakayaDiagram?.update(currentConditions.path);
+    }
+  }
+});
+
+nakayaCanvas?.addEventListener('focus', () => {
+  if (currentConditions) {
+    nakayaDiagram?.update(currentConditions.path, { temp: currentConditions.temperatureC, ss: currentConditions.supersaturation });
+  }
+});
+
+nakayaCanvas?.addEventListener('blur', () => {
+  if (currentConditions) {
     nakayaDiagram?.update(currentConditions.path);
   }
 });

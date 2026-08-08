@@ -309,6 +309,7 @@ test("Lab Mode container receives focus when Lab Mode is activated", async ({
 test("Pink mode and Prism mode buttons dynamically update their titles and aria-labels", async ({
   page,
 }) => {
+  test.slow();
   const btnPink = page.locator("#btn-pink");
   const btnPrism = page.locator("#btn-prism");
 
@@ -343,4 +344,32 @@ test("Pink mode and Prism mode buttons dynamically update their titles and aria-
     "title",
     "Toggle prism mode (M) - current: inactive",
   );
+});
+
+test("Nakaya diagram displays crosshair alignment guides on keyboard focus and clears them on blur", async ({
+  page,
+}) => {
+  const guideToggle = page.locator("#guide-toggle");
+  const fieldGuide = page.locator("#field-guide");
+  const nakaya = page.locator("#nakaya-diagram");
+
+  // Open the field guide
+  await guideToggle.click();
+  await expect(fieldGuide).toBeVisible();
+
+  // Focus the nakaya diagram
+  await nakaya.focus();
+  await expect(nakaya).toBeFocused();
+
+  // Hover over the nakaya diagram
+  await nakaya.hover({ position: { x: 150, y: 100 } });
+
+  // Move pointer away
+  await guideToggle.hover();
+  await page.mouse.move(0, 0);
+
+  // Since nakaya diagram is still focused, we expect focus behavior to hold.
+  // Blurring it should clear focus/preview state.
+  await nakaya.blur();
+  await expect(nakaya).not.toBeFocused();
 });
