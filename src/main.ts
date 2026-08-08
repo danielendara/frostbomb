@@ -53,10 +53,36 @@ try {
   console.warn('Failed to parse recent seeds from localStorage:', e);
 }
 
+// Performance Optimization: Cache inputs of updateRecentSeedsUI to prevent layout thrashing
+// and redundant DOM clearing/rebuilding on every slider drag or interaction.
+let lastActiveSeed: string | undefined = undefined;
+let lastSeedsStr: string | undefined = undefined;
+let lastIsLabMode: boolean | undefined = undefined;
+let lastIsGuideOpen: boolean | undefined = undefined;
+let lastHasBackup: boolean | undefined = undefined;
+
 function updateRecentSeedsUI() {
   const container = document.getElementById('recent-seeds-container');
   const listEl = document.getElementById('recent-seeds-list');
   if (!container || !listEl) return;
+
+  const seedsStr = recentSeeds.join(',');
+  const hasBackup = backupRecentSeeds !== null;
+  if (
+    lastActiveSeed === currentSeedLabel &&
+    lastSeedsStr === seedsStr &&
+    lastIsLabMode === isLabMode &&
+    lastIsGuideOpen === isGuideOpen &&
+    lastHasBackup === hasBackup
+  ) {
+    return;
+  }
+
+  lastActiveSeed = currentSeedLabel;
+  lastSeedsStr = seedsStr;
+  lastIsLabMode = isLabMode;
+  lastIsGuideOpen = isGuideOpen;
+  lastHasBackup = hasBackup;
 
   // If guide is open or lab mode is active, we can optionally hide it to avoid crowding, or let it adapt.
   // Standard: show when guide is closed and not in lab mode, or adapt naturally.
