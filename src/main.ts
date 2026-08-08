@@ -182,6 +182,7 @@ function updateRecentSeedsUI() {
     btn.style.textTransform = 'lowercase';
     const tooltipText = `Grow seed ${seedVal}${isActive ? ' (currently active)' : ''}`;
     btn.setAttribute('aria-label', tooltipText);
+    btn.setAttribute('aria-current', isActive ? 'true' : 'false');
     btn.title = tooltipText;
     btn.textContent = seedVal;
 
