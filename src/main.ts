@@ -1264,26 +1264,82 @@ window.addEventListener('keydown', (e: Event) => {
   if (k === ' ' && isGuideOpen && !isDiagramFocused) return;
 
   const delta = ke.shiftKey ? 0.3 : 0.1;
-  const actions: Record<string, () => void> = {
-    'arrowup': () => (e.preventDefault(), scene.rotateView(0, -delta)),
-    'arrowdown': () => (e.preventDefault(), scene.rotateView(0, delta)),
-    'arrowleft': () => (e.preventDefault(), scene.rotateView(-delta, 0)),
-    'arrowright': () => (e.preventDefault(), scene.rotateView(delta, 0)),
-    'r': () => (handleRefresh(), visualPress('refresh')),
-    ' ': () => (e.preventDefault(), handleRefresh(), visualPress('refresh')),
-    'v': () => (resetView(), visualPress('btn-reset')),
-    'g': () => (toggleFieldGuide(), visualPress('guide-toggle')),
-    '?': () => (navigateToGuideSection('guide-shortcuts'), visualPress('guide-toggle')),
-    'l': () => (toggleLabMode(), visualPress('lab-toggle')),
-    'h': () => (toggleUI(), visualPress('btn-ui')),
-    'p': () => (togglePinkMode(), visualPress('btn-pink')),
-    'm': () => (togglePrismMode(), visualPress('btn-prism')),
-    's': () => (saveSnowflake(), visualPress('btn-save')),
-    'a': () => (toggleAutoRotate(), visualPress('btn-rotate')),
-    'c': () => (copyLink(), visualPress('btn-copy'), visualPress('btn-seed')),
-    'k': () => (copySeedOnly(), visualPress('btn-copy-seed')),
-  };
-  actions[k]?.();
+
+  // Performance Optimization: Replacing the dynamic `actions` dictionary object allocation
+  // and its 17 inline closure functions with a static `switch` block completely eliminates
+  // garbage collection pressure and object allocation overhead during high-frequency user keyboard inputs.
+  switch (k) {
+    case 'arrowup':
+      e.preventDefault();
+      scene.rotateView(0, -delta);
+      break;
+    case 'arrowdown':
+      e.preventDefault();
+      scene.rotateView(0, delta);
+      break;
+    case 'arrowleft':
+      e.preventDefault();
+      scene.rotateView(-delta, 0);
+      break;
+    case 'arrowright':
+      e.preventDefault();
+      scene.rotateView(delta, 0);
+      break;
+    case 'r':
+      handleRefresh();
+      visualPress('refresh');
+      break;
+    case ' ':
+      e.preventDefault();
+      handleRefresh();
+      visualPress('refresh');
+      break;
+    case 'v':
+      resetView();
+      visualPress('btn-reset');
+      break;
+    case 'g':
+      toggleFieldGuide();
+      visualPress('guide-toggle');
+      break;
+    case '?':
+      navigateToGuideSection('guide-shortcuts');
+      visualPress('guide-toggle');
+      break;
+    case 'l':
+      toggleLabMode();
+      visualPress('lab-toggle');
+      break;
+    case 'h':
+      toggleUI();
+      visualPress('btn-ui');
+      break;
+    case 'p':
+      togglePinkMode();
+      visualPress('btn-pink');
+      break;
+    case 'm':
+      togglePrismMode();
+      visualPress('btn-prism');
+      break;
+    case 's':
+      saveSnowflake();
+      visualPress('btn-save');
+      break;
+    case 'a':
+      toggleAutoRotate();
+      visualPress('btn-rotate');
+      break;
+    case 'c':
+      copyLink();
+      visualPress('btn-copy');
+      visualPress('btn-seed');
+      break;
+    case 'k':
+      copySeedOnly();
+      visualPress('btn-copy-seed');
+      break;
+  }
 });
 
 grow();
