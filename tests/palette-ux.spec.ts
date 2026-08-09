@@ -370,25 +370,46 @@ test("Nakaya diagram displays crosshair alignment guides on keyboard focus and c
 
   // Since nakaya diagram is still focused, we expect focus behavior to hold.
   // Blurring it should clear focus/preview state.
-  await nakaya.blur();
+  await page.evaluate(() => document.getElementById("nakaya-diagram")?.blur());
   await expect(nakaya).not.toBeFocused();
 });
 
-test("Palette: main action buttons have explicit fallback aria-labels on load", async ({ page }) => {
-  await expect(page.locator("#btn-reset")).toHaveAttribute("aria-label", "Reset 3D view (V)");
-  await expect(page.locator("#btn-ui")).toHaveAttribute("aria-label", "Photo Mode / Toggle UI (H)");
-  await expect(page.locator("#btn-copy")).toHaveAttribute("aria-label", "Copy share link (C)");
-  await expect(page.locator("#btn-save")).toHaveAttribute("aria-label", "Save as PNG (S)");
-  await expect(page.locator("#refresh")).toHaveAttribute("aria-label", "Grow another snowflake (R, Space)");
+test("Palette: main action buttons have explicit fallback aria-labels on load", async ({
+  page,
+}) => {
+  await expect(page.locator("#btn-reset")).toHaveAttribute(
+    "aria-label",
+    "Reset 3D view (V)",
+  );
+  await expect(page.locator("#btn-ui")).toHaveAttribute(
+    "aria-label",
+    "Photo Mode / Toggle UI (H)",
+  );
+  await expect(page.locator("#btn-copy")).toHaveAttribute(
+    "aria-label",
+    "Copy share link (C)",
+  );
+  await expect(page.locator("#btn-save")).toHaveAttribute(
+    "aria-label",
+    "Save as PNG (S)",
+  );
+  await expect(page.locator("#refresh")).toHaveAttribute(
+    "aria-label",
+    "Grow another snowflake (R, Space)",
+  );
 });
 
-test("Palette: active history seed button has aria-current='true'", async ({ page }) => {
+test("Palette: active history seed button has aria-current='true'", async ({
+  page,
+}) => {
   const seedDisplay = page.locator("#seed-display");
   await expect(seedDisplay).not.toHaveText("·····");
   const activeSeed = (await seedDisplay.textContent())?.trim() || "";
 
   // Find the button in recent seeds list corresponding to the active seed
-  const activeSeedBtn = page.locator(`#recent-seeds-list button:has-text("${activeSeed}")`);
+  const activeSeedBtn = page.locator(
+    `#recent-seeds-list button:has-text("${activeSeed}")`,
+  );
   await expect(activeSeedBtn).toBeVisible();
   await expect(activeSeedBtn).toHaveAttribute("aria-current", "true");
 
