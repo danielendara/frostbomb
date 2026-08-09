@@ -154,9 +154,13 @@ test("Nakaya diagram displays live-hover preview and reverts on leave", async ({
   // Status should change to Preview mode
   await expect(status).toContainText("Preview:");
 
-  // Move cursor away (hover back to guideToggle and explicitly move to 0,0 to guarantee pointerleave)
-  await guideToggle.hover();
-  await page.mouse.move(0, 0);
+  // Move cursor away smoothly in steps to guarantee pointerleave fires reliably on slow CI runners
+  const box = await nakaya.boundingBox();
+  if (box) {
+    // Move slightly outside the canvas bounds first
+    await page.mouse.move(box.x - 20, box.y - 20, { steps: 5 });
+  }
+  await page.mouse.move(0, 0, { steps: 5 });
 
   // Status should revert to Active mode
   await expect(status).toContainText("Active:");
