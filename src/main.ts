@@ -167,7 +167,10 @@ function updateRecentSeedsUI() {
   container.style.display = 'flex';
   listEl.innerHTML = '';
 
-  recentSeeds.forEach((seedVal) => {
+  const activeIndex = recentSeeds.indexOf(currentSeedLabel);
+  const primaryIndex = activeIndex !== -1 ? activeIndex : 0;
+
+  recentSeeds.forEach((seedVal, i) => {
     const btn = document.createElement('button');
     btn.className = 'seed-btn';
     btn.style.padding = '0.15rem 0.35rem';
@@ -183,8 +186,16 @@ function updateRecentSeedsUI() {
     const tooltipText = `Grow seed ${seedVal}${isActive ? ' (currently active)' : ''}`;
     btn.setAttribute('aria-label', tooltipText);
     btn.setAttribute('aria-current', isActive ? 'true' : 'false');
+    btn.setAttribute('tabindex', i === primaryIndex ? '0' : '-1');
     btn.title = tooltipText;
     btn.textContent = seedVal;
+
+    btn.addEventListener('focus', () => {
+      const buttons = Array.from(listEl.querySelectorAll('button'));
+      buttons.forEach((b) => {
+        b.setAttribute('tabindex', b === btn ? '0' : '-1');
+      });
+    });
 
     if (!isActive) {
       btn.addEventListener('mouseenter', () => {
@@ -221,6 +232,9 @@ function updateRecentSeedsUI() {
         e.preventDefault();
         e.stopPropagation();
         buttons[nextIdx].focus();
+        buttons.forEach((b, idx) => {
+          b.setAttribute('tabindex', idx === nextIdx ? '0' : '-1');
+        });
       }
     });
 
