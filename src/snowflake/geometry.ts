@@ -77,8 +77,12 @@ function insertionsort(arr: Uint16Array, left: number, right: number) {
     const keyIdx = arr[i];
     const keyVal = DELAY_BUFFER[keyIdx];
     let j = i - 1;
-    while (j >= left && DELAY_BUFFER[arr[j]] > keyVal) {
-      arr[j + 1] = arr[j];
+    while (j >= left) {
+      const idx = arr[j];
+      if (DELAY_BUFFER[idx] <= keyVal) {
+        break;
+      }
+      arr[j + 1] = idx;
       j--;
     }
     arr[j + 1] = keyIdx;
