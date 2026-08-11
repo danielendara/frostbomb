@@ -80,3 +80,7 @@
 ## 2027-11-03 - Keyboard-Driven Canvas Alignment Guides
 **Learning:** Adding mouse-hover interaction guides to highly visual canvases is excellent, but keyboard-only users who focus and navigate the canvas using keyboard shortcuts miss out on that visual scaffolding. Bridging the gap by rendering the same alignment guides when the canvas is keyboard-focused or undergoing keyboard navigation ensures functional parity and high visual clarity.
 **Action:** Bind canvas `focus`/`blur` listeners to trigger crosshair guides at the current active coordinates, and ensure rendering loops preserve these guides if keyboard focus is maintained during `pointerleave` events.
+
+## 2027-11-04 - Roving Tabindex for Dynamic Lists
+**Learning:** For lists of dynamic keyboard-navigable items (like the recent seeds list), assigning `tabindex="0"` to all elements results in sequential Tab navigation clutter. Implementing the roving tabindex pattern (where only the active or first element has `tabindex="0"`, all others have `tabindex="-1"`, and arrow keys shift both focus and `tabindex="0"`) avoids keyboard clutter and provides a streamlined navigation experience.
+**Action:** Always utilize the roving tabindex pattern on multi-item keyboard-navigable dynamic groups to preserve clean page tab orders.
