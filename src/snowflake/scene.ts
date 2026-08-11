@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { BuildResult } from './geometry';
+import * as THREE from "three";
+import { BuildResult } from "./geometry";
 
 const EASING_LUT_SIZE = 1024;
 const LUT_SIZE_MINUS_ONE = EASING_LUT_SIZE - 1;
@@ -11,7 +11,7 @@ const SIN60 = 0.86602540378;
 const EASING_LUT = new Float32Array(EASING_LUT_SIZE);
 for (let i = 0; i < EASING_LUT_SIZE; i++) {
   const t = i / LUT_SIZE_MINUS_ONE;
-  EASING_LUT[i] = t === 0 ? 0 : (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
+  EASING_LUT[i] = t === 0 ? 0 : t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }
 
 /**
@@ -50,9 +50,14 @@ export interface Scene {
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
-  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reducedMotionQuery = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  );
   let prefersReducedMotion = reducedMotionQuery.matches;
-  const maxPixelRatio = Math.min(window.devicePixelRatio, prefersReducedMotion ? 1 : 2);
+  const maxPixelRatio = Math.min(
+    window.devicePixelRatio,
+    prefersReducedMotion ? 1 : 2,
+  );
   let qualityScale = prefersReducedMotion ? 0.7 : 1;
 
   const scene = new THREE.Scene();
@@ -70,7 +75,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     canvas,
     antialias: false,
     alpha: true,
-    powerPreference: 'high-performance',
+    powerPreference: "high-performance",
     stencil: false,
     depth: true,
   });
@@ -107,7 +112,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   scene.add(flakeHolder);
 
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#ffffff'),
+    color: new THREE.Color("#ffffff"),
     metalness: 0,
     roughness: 0.15,
     transmission: 0.85,
@@ -117,7 +122,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     reflectivity: 0.5,
     transparent: true,
     opacity: 0.9,
-    emissive: new THREE.Color('#e0f0ff'),
+    emissive: new THREE.Color("#e0f0ff"),
     emissiveIntensity: 0.25,
   });
 
@@ -164,7 +169,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   }
   updateScaledParticles();
 
-  particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+  particleGeom.setAttribute(
+    "position",
+    new THREE.BufferAttribute(particlePos, 3),
+  );
   const particleMat = new THREE.PointsMaterial({
     color: 0xffffff,
     size: 0.05,
@@ -189,7 +197,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let postprocessingRequested = false;
 
   async function loadPostprocessing() {
-    if (postprocessingLoaded || postprocessingLoading || prefersReducedMotion) return;
+    if (postprocessingLoaded || postprocessingLoading || prefersReducedMotion)
+      return;
     postprocessingLoading = true;
 
     try {
@@ -200,7 +209,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         BloomEffect,
         SMAAEffect,
         SMAAPreset,
-      } = await import('postprocessing');
+      } = await import("postprocessing");
 
       if (prefersReducedMotion) return;
 
@@ -237,7 +246,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const targetRotation = { x: 0, y: 0 };
   const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
 
-  canvas.style.cursor = 'grab';
+  canvas.style.cursor = "grab";
 
   function handlePointerMove(e: PointerEvent) {
     mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 0.3;
@@ -250,17 +259,17 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
   function handlePointerDown() {
     isDragging = true;
-    canvas.style.cursor = 'grabbing';
+    canvas.style.cursor = "grabbing";
   }
 
   function handlePointerUp() {
     isDragging = false;
-    canvas.style.cursor = 'grab';
+    canvas.style.cursor = "grab";
   }
 
-  window.addEventListener('pointermove', handlePointerMove);
-  canvas.addEventListener('pointerdown', handlePointerDown);
-  window.addEventListener('pointerup', handlePointerUp);
+  window.addEventListener("pointermove", handlePointerMove);
+  canvas.addEventListener("pointerdown", handlePointerDown);
+  window.addEventListener("pointerup", handlePointerUp);
 
   function updateCamera() {
     const w = window.innerWidth;
@@ -283,7 +292,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     composer.setSize(w, h);
   }
 
-  window.addEventListener('resize', updateCamera);
+  window.addEventListener("resize", updateCamera);
   updateCamera();
 
   let frameId = 0;
@@ -307,11 +316,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     // Only update DOM if values changed to avoid redundant work and test instability.
     // Use setAttribute for robust synchronization with testing engines (Playwright).
     if (lastEntryActive !== active) {
-      canvas.setAttribute('data-entry-active', active);
+      canvas.setAttribute("data-entry-active", active);
       lastEntryActive = active;
     }
     if (lastEntryProgress !== progress) {
-      canvas.setAttribute('data-entry-progress', progress);
+      canvas.setAttribute("data-entry-progress", progress);
       lastEntryProgress = progress;
     }
   }
@@ -365,12 +374,15 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       cancelAnimationFrame(frameId);
       cancelEntryTween();
       timer.dispose();
-      window.removeEventListener('pointermove', handlePointerMove);
-      canvas.removeEventListener('pointerdown', handlePointerDown);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('resize', updateCamera);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      reducedMotionQuery.removeEventListener('change', handleReducedMotionChange);
+      window.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("resize", updateCamera);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      reducedMotionQuery.removeEventListener(
+        "change",
+        handleReducedMotionChange,
+      );
       renderer.dispose();
       composer.dispose();
       branchMesh?.dispose();
@@ -391,16 +403,16 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       sceneInterface.isPinkModeEnabled = enabled;
       if (!sceneInterface.isPrismModeEnabled) {
         if (enabled) {
-          material.color.set('#ffb2d1');
-          material.emissive.set('#ff80bf');
-          particleMat.color.set('#ffb2d1');
+          material.color.set("#ffb2d1");
+          material.emissive.set("#ff80bf");
+          particleMat.color.set("#ffb2d1");
           particleMat.opacity = 0.6;
           if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x0c0512);
           }
         } else {
-          material.color.set('#ffffff');
-          material.emissive.set('#e0f0ff');
+          material.color.set("#ffffff");
+          material.emissive.set("#e0f0ff");
           particleMat.color.set(0xffffff);
           particleMat.opacity = 0.5;
           if (scene.fog instanceof THREE.FogExp2) {
@@ -439,14 +451,24 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       // Performance Optimization: Hoist static core updates out of the render loop.
       // Position and rotation are constant for a given snowflake and only need to be set once.
       const coreData = data.core;
-      coreMesh.position.set(coreData.position[0], coreData.position[1], coreData.position[2]);
-      coreMesh.rotation.set(coreData.rotation[0], coreData.rotation[1], coreData.rotation[2]);
+      coreMesh.position.set(
+        coreData.position[0],
+        coreData.position[1],
+        coreData.position[2],
+      );
+      coreMesh.rotation.set(
+        coreData.rotation[0],
+        coreData.rotation[1],
+        coreData.rotation[2],
+      );
 
       const requiredCount = data.matrices.length / 16;
 
       // Only recreate the InstancedMesh if the existing one is too small.
       // We add a bit of headroom to avoid frequent re-allocations during interactive growth.
-      const currentCapacity = branchMesh ? branchMesh.instanceMatrix.array.length / 16 : 0;
+      const currentCapacity = branchMesh
+        ? branchMesh.instanceMatrix.array.length / 16
+        : 0;
 
       if (!branchMesh || requiredCount > currentCapacity) {
         if (branchMesh) {
@@ -455,11 +477,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         }
 
         const capacity = Math.ceil(requiredCount * 1.25);
-        branchMesh = new THREE.InstancedMesh(
-          branchGeom,
-          material,
-          capacity,
-        );
+        branchMesh = new THREE.InstancedMesh(branchGeom, material, capacity);
         flakeHolder.add(branchMesh);
       }
 
@@ -471,11 +489,14 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         // Fast-path for non-animated updates (e.g. Lab Mode or prefersReducedMotion): directly copy the pre-computed
         // matrices to the GPU buffer and skip the basis-zeroing loop.
         branchMesh.instanceMatrix.array.set(data.matrices);
-        if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+        if (typeof branchMesh.instanceMatrix.clearUpdateRanges === "function") {
           branchMesh.instanceMatrix.clearUpdateRanges();
           branchMesh.instanceMatrix.addUpdateRange(0, data.matrices.length);
         } else {
-          (branchMesh.instanceMatrix as any).updateRange = { offset: 0, count: data.matrices.length };
+          (branchMesh.instanceMatrix as any).updateRange = {
+            offset: 0,
+            count: data.matrices.length,
+          };
         }
         branchMesh.instanceMatrix.needsUpdate = true;
         minAnimatedIndex = data.armCount;
@@ -512,7 +533,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         // Performance Optimization: When not animating (such as slider drags in Lab Mode or prefers-reduced-motion),
         // apply the final scale and position offsets immediately and set needsMatrixUpdate to false.
         // This avoids any extra matrix copies or redundant GPU buffer uploads in subsequent animation frames.
-        coreMesh.scale.set(coreData.scale[0], coreData.scale[1], coreData.scale[2]);
+        coreMesh.scale.set(
+          coreData.scale[0],
+          coreData.scale[1],
+          coreData.scale[2],
+        );
         flakeHolder.position.y = 0;
         needsMatrixUpdate = false;
         entryState.progress = 1;
@@ -561,8 +586,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     updateCamera();
   }
 
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  reducedMotionQuery.addEventListener('change', handleReducedMotionChange);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
 
   function adaptQuality(delta: number) {
     if (prefersReducedMotion || qualityScale <= 0.75) return;
@@ -600,7 +625,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
 
     // Animate snowfall particles
-    const positions = particles.geometry.attributes.position.array as Float32Array;
+    const positions = particles.geometry.attributes.position
+      .array as Float32Array;
     // Optimization: Use trig identity sin(a + b) = sin(a)cos(b) + cos(a)sin(b)
     // to replace 200 sin() calls with 2 sin/cos calls per frame.
     const sinTime = Math.sin(time);
@@ -615,7 +641,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       // Horizontal drift using pre-calculated phase components
       // Performance Optimization: Using pre-scaled phase components (particleCosPhaseScaled and
       // particleSinPhaseScaled) eliminates approximately 400 multiplications per frame.
-      const drift = sinTime * particleCosPhaseScaled[i] + cosTime * particleSinPhaseScaled[i];
+      const drift =
+        sinTime * particleCosPhaseScaled[i] +
+        cosTime * particleSinPhaseScaled[i];
       px += drift;
 
       if (py < -10) {
@@ -657,11 +685,19 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         if (eased === 1) {
           // Fast-path for finished animation: bulk copy pre-computed matrices
           branchMesh.instanceMatrix.array.set(currentFlakeData.matrices);
-          if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+          if (
+            typeof branchMesh.instanceMatrix.clearUpdateRanges === "function"
+          ) {
             branchMesh.instanceMatrix.clearUpdateRanges();
-            branchMesh.instanceMatrix.addUpdateRange(0, currentFlakeData.matrices.length);
+            branchMesh.instanceMatrix.addUpdateRange(
+              0,
+              currentFlakeData.matrices.length,
+            );
           } else {
-            (branchMesh.instanceMatrix as any).updateRange = { offset: 0, count: currentFlakeData.matrices.length };
+            (branchMesh.instanceMatrix as any).updateRange = {
+              offset: 0,
+              count: currentFlakeData.matrices.length,
+            };
           }
           branchMesh.instanceMatrix.needsUpdate = true;
           minAnimatedIndex = currentFlakeData.armCount;
@@ -713,20 +749,22 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             const m6s = source[segIdx + 6] * s;
             const m10s = source[segIdx + 10] * s;
 
-            target[segIdx + 6] =
-              target[segIdx + 22] =
-              target[segIdx + 38] =
-              target[segIdx + 54] =
-              target[segIdx + 70] =
-              target[segIdx + 86] =
-                m6s;
-            target[segIdx + 10] =
-              target[segIdx + 26] =
-              target[segIdx + 42] =
-              target[segIdx + 58] =
-              target[segIdx + 74] =
-              target[segIdx + 90] =
-                m10s;
+            // Performance Optimization: Replacing chained assignments with flat direct assignments
+            // improves V8 JIT evaluation efficiency, reduces register pressure, and speeds up
+            // the growth animation hot path.
+            target[segIdx + 6] = m6s;
+            target[segIdx + 22] = m6s;
+            target[segIdx + 38] = m6s;
+            target[segIdx + 54] = m6s;
+            target[segIdx + 70] = m6s;
+            target[segIdx + 86] = m6s;
+
+            target[segIdx + 10] = m10s;
+            target[segIdx + 26] = m10s;
+            target[segIdx + 42] = m10s;
+            target[segIdx + 58] = m10s;
+            target[segIdx + 74] = m10s;
+            target[segIdx + 90] = m10s;
 
             // Arm 0 (Primary Arm, 0°)
             const sm0 = source[segIdx + 0] * s;
@@ -802,7 +840,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
           // Optimize GPU upload: only transfer the window of segments that are currently growing.
           if (maxIndex >= initialMinAnimatedIndex) {
-            if (typeof branchMesh.instanceMatrix.clearUpdateRanges === 'function') {
+            if (
+              typeof branchMesh.instanceMatrix.clearUpdateRanges === "function"
+            ) {
               branchMesh.instanceMatrix.clearUpdateRanges();
               const start = initialMinAnimatedIndex * 96; // 6 arms * 16 floats
               const count = (maxIndex - initialMinAnimatedIndex + 1) * 96;
@@ -810,7 +850,10 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
             } else {
               const start = initialMinAnimatedIndex * 96;
               const count = (maxIndex - initialMinAnimatedIndex + 1) * 96;
-              (branchMesh.instanceMatrix as any).updateRange = { offset: start, count: count };
+              (branchMesh.instanceMatrix as any).updateRange = {
+                offset: start,
+                count: count,
+              };
             }
             branchMesh.instanceMatrix.needsUpdate = true;
           }
@@ -820,7 +863,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       if (coreMesh && currentFlakeData) {
         const coreData = currentFlakeData.core;
         const s = eased;
-        coreMesh.scale.set(coreData.scale[0] * s, coreData.scale[1] * s, coreData.scale[2] * s);
+        coreMesh.scale.set(
+          coreData.scale[0] * s,
+          coreData.scale[1] * s,
+          coreData.scale[2] * s,
+        );
       }
 
       flakeHolder.position.y = (1 - eased) * -2;
