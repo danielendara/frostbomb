@@ -197,71 +197,37 @@ test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page
   const seedButtons = recentSeedsList.locator('button');
   await expect(seedButtons).toHaveCount(2);
 
+  // Verify initial roving tabindex states
+  await expect(seedButtons.first()).toHaveAttribute('tabindex', '0');
+  await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
+
   // Focus the first button
   await seedButtons.first().focus();
   await expect(seedButtons.first()).toBeFocused();
+  await expect(seedButtons.first()).toHaveAttribute('tabindex', '0');
+  await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
 
   // ArrowRight/ArrowDown should move focus to the second button
   await page.keyboard.press('ArrowRight');
   await expect(seedButtons.nth(1)).toBeFocused();
+  await expect(seedButtons.first()).toHaveAttribute('tabindex', '-1');
+  await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '0');
 
   // ArrowRight/ArrowDown should wrap focus back to the first button
   await page.keyboard.press('ArrowDown');
   await expect(seedButtons.first()).toBeFocused();
+  await expect(seedButtons.first()).toHaveAttribute('tabindex', '0');
+  await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
 
   // ArrowLeft/ArrowUp should wrap focus to the second button
   await page.keyboard.press('ArrowLeft');
   await expect(seedButtons.nth(1)).toBeFocused();
+  await expect(seedButtons.first()).toHaveAttribute('tabindex', '-1');
+  await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '0');
 
   // ArrowLeft/ArrowUp should move focus back to the first button
   await page.keyboard.press('ArrowUp');
   await expect(seedButtons.first()).toBeFocused();
-});
-
-test('Recent Seeds buttons implement roving tabindex pattern', async ({ page }) => {
-  const recentSeedsList = page.locator('#recent-seeds-list');
-  const seedDisplay = page.locator('#seed-display');
-
-  // Let first seed load
-  await expect(seedDisplay).not.toHaveText('·····');
-  const firstSeed = (await seedDisplay.textContent())?.trim() || '';
-
-  // Grow another seed
-  const refreshBtn = page.locator('#refresh');
-  await refreshBtn.click();
-
-  // Wait for new seed
-  await expect(async () => {
-    const currentSeed = (await seedDisplay.textContent())?.trim() || '';
-    expect(currentSeed).not.toBe(firstSeed);
-  }).toPass({ timeout: 5000 });
-
-  const secondSeed = (await seedDisplay.textContent())?.trim() || '';
-
-  const seedButtons = recentSeedsList.locator('button');
-  await expect(seedButtons).toHaveCount(2);
-
-  // The active seed button (secondSeed, which is index 0 in recentSeeds list) should have tabindex="0"
-  await expect(seedButtons.first()).toHaveAttribute('tabindex', '0');
-  // The inactive seed button (firstSeed, index 1) should have tabindex="-1"
-  await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
-
-  // Focus the first button (secondSeed)
-  await seedButtons.first().focus();
-  await expect(seedButtons.first()).toBeFocused();
-
-  // Press ArrowRight to navigate to the second button (firstSeed)
-  await page.keyboard.press('ArrowRight');
-  await expect(seedButtons.nth(1)).toBeFocused();
-
-  // Now, the second button (firstSeed) must have tabindex="0" and the first button must have tabindex="-1"
-  await expect(seedButtons.first()).toHaveAttribute('tabindex', '-1');
-  await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '0');
-
-  // Click the first button (secondSeed)
-  await seedButtons.first().click();
-
-  // After click, it is focused and active, so its tabindex becomes "0" again
   await expect(seedButtons.first()).toHaveAttribute('tabindex', '0');
   await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
 });
