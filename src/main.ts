@@ -183,6 +183,12 @@ function updateRecentSeedsUI() {
     const tooltipText = `Grow seed ${seedVal}${isActive ? ' (currently active)' : ''}`;
     btn.setAttribute('aria-label', tooltipText);
     btn.setAttribute('aria-current', isActive ? 'true' : 'false');
+
+    // Roving tabindex pattern
+    const hasActiveButton = recentSeeds.includes(currentSeedLabel);
+    const shouldBeFocusable = isActive || (!hasActiveButton && seedVal === recentSeeds[0]);
+    btn.setAttribute('tabindex', shouldBeFocusable ? '0' : '-1');
+
     btn.title = tooltipText;
     btn.textContent = seedVal;
 
@@ -205,6 +211,13 @@ function updateRecentSeedsUI() {
       });
     }
 
+    btn.addEventListener('focus', () => {
+      const buttons = Array.from(listEl.querySelectorAll('button'));
+      buttons.forEach((b) => {
+        b.setAttribute('tabindex', b === btn ? '0' : '-1');
+      });
+    });
+
     btn.addEventListener('keydown', (e: KeyboardEvent) => {
       const buttons = Array.from(listEl.querySelectorAll('button'));
       const idx = buttons.indexOf(btn);
@@ -220,6 +233,11 @@ function updateRecentSeedsUI() {
       if (nextIdx !== null) {
         e.preventDefault();
         e.stopPropagation();
+
+        buttons.forEach((b, i) => {
+          b.setAttribute('tabindex', i === nextIdx ? '0' : '-1');
+        });
+
         buttons[nextIdx].focus();
       }
     });
