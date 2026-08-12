@@ -748,11 +748,21 @@ kbd {
   cursor: pointer;
   margin-top: 1rem;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .field-guide__close:hover {
   background: rgba(230, 237, 245, 0.2);
   border-color: var(--accent);
+}
+
+.field-guide__close:hover .btn-kbd {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(158, 201, 255, 0.08);
 }
 
 .action-btn:active,

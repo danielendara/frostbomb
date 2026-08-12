@@ -33,7 +33,7 @@
   </head>
   <body>
     <a href="#field-notes" class="skip-link">Skip to controls</a>
-    <canvas id="scene" role="img" aria-label="3D procedural snowflake visualization"></canvas>
+    <canvas id="scene" role="img" aria-label="3D procedural snowflake visualization" title="Drag to rotate, double-click to reset view"></canvas>
 
     <header class="masthead">
       <a class="wordmark-container wordmark-link" href="/" aria-label="Grow a new frostbomb snowflake" title="Grow a new snowflake (R, Space)" aria-keyshortcuts="r Space">
@@ -79,7 +79,10 @@
 
       <div class="lab-controls" id="lab-controls" style="display: none;" role="region" tabindex="-1" aria-label="Lab Mode controls">
         <div id="pane-mount" class="pane-mount" aria-label="Manual growth adjustments"></div>
-        <button id="lab-close" class="field-guide__close" title="Close Lab Mode (Esc, L)" aria-keyshortcuts="Escape L" style="margin-top: 1rem;">Close Lab Mode</button>
+        <button id="lab-close" class="field-guide__close" title="Close Lab Mode (Esc, L)" aria-keyshortcuts="Escape L" style="margin-top: 1rem;">
+          Close Lab Mode
+          <kbd class="btn-kbd" aria-hidden="true">Esc</kbd>
+        </button>
       </div>
 
       <div class="field-guide" id="field-guide" style="display: none;" role="region" tabindex="-1" aria-label="Field Guide">
@@ -131,7 +134,10 @@
               <div class="shortcut-item"><dt><kbd>Esc</kbd></dt><dd>Close overlay / Show UI</dd></div>
             </dl>
           </section>
-          <button id="guide-close" class="field-guide__close" title="Close Field Guide (Esc)" aria-keyshortcuts="Escape">Close Guide</button>
+          <button id="guide-close" class="field-guide__close" title="Close Field Guide (Esc)" aria-keyshortcuts="Escape">
+            Close Guide
+            <kbd class="btn-kbd" aria-hidden="true">Esc</kbd>
+          </button>
         </div>
       </div>
     </aside>
