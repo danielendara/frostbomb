@@ -80,3 +80,7 @@
 ## 2027-11-03 - Keyboard-Driven Canvas Alignment Guides
 **Learning:** Adding mouse-hover interaction guides to highly visual canvases is excellent, but keyboard-only users who focus and navigate the canvas using keyboard shortcuts miss out on that visual scaffolding. Bridging the gap by rendering the same alignment guides when the canvas is keyboard-focused or undergoing keyboard navigation ensures functional parity and high visual clarity.
 **Action:** Bind canvas `focus`/`blur` listeners to trigger crosshair guides at the current active coordinates, and ensure rendering loops preserve these guides if keyboard focus is maintained during `pointerleave` events.
+
+## 2027-11-04 - Dynamic ARIA and Tooltip Synchronization on Transient Button States
+**Learning:** When buttons update their visible text to convey transient visual feedback (e.g., 'Copied!', 'Saving...', 'Reset!'), screen reader and mouse-hover users do not receive this feedback unless the `aria-label` and native `title` (tooltip) are also synchronized temporarily and restored cleanly.
+**Action:** Always capture and cache existing `aria-label` and `title` attributes into custom data-attributes, apply the transient state feedback to them, and restore them upon feedback expiration. If underlying data changes while a button is in a transient feedback state (such as seed changes), update the cached data-attributes to prevent restoring stale or incorrect information.

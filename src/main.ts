@@ -443,7 +443,11 @@ function grow(manualConditions?: GrowthConditions, keepSeed = false, animate = t
   if (btnSeed) {
     const seedAria = `Copy share link for seed ${label}`;
     if (lastSeedAria !== seedAria) {
-      btnSeed.setAttribute('aria-label', seedAria);
+      if (btnSeed.hasAttribute('data-original-aria-label')) {
+        btnSeed.setAttribute('data-original-aria-label', seedAria);
+      } else {
+        btnSeed.setAttribute('aria-label', seedAria);
+      }
       lastSeedAria = seedAria;
     }
   }
@@ -545,9 +549,19 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
   if (iconEl && !iconEl.hasAttribute('data-original')) {
     iconEl.setAttribute('data-original', iconEl.textContent || '');
   }
+  if (!btn.hasAttribute('data-original-aria-label')) {
+    btn.setAttribute('data-original-aria-label', btn.getAttribute('aria-label') || '');
+  }
+  if (!btn.hasAttribute('data-original-title')) {
+    btn.setAttribute('data-original-title', btn.getAttribute('title') || '');
+  }
 
   labelEl.textContent = tempText;
   if (iconEl && tempIcon) iconEl.textContent = tempIcon;
+
+  // Also temporarily update aria-label and title/tooltip
+  btn.setAttribute('aria-label', tempText);
+  btn.setAttribute('title', tempText);
 
   if (isError) {
     btn.classList.add('btn--error');
@@ -581,6 +595,27 @@ function setTemporaryLabel(id: string, tempText: string, tempIcon?: string, isEr
         iconEl.removeAttribute('data-original');
       }
     }
+
+    const origAria = btn.getAttribute('data-original-aria-label');
+    if (origAria !== null) {
+      if (origAria) {
+        btn.setAttribute('aria-label', origAria);
+      } else {
+        btn.removeAttribute('aria-label');
+      }
+      btn.removeAttribute('data-original-aria-label');
+    }
+
+    const origTitle = btn.getAttribute('data-original-title');
+    if (origTitle !== null) {
+      if (origTitle) {
+        btn.setAttribute('title', origTitle);
+      } else {
+        btn.removeAttribute('title');
+      }
+      btn.removeAttribute('data-original-title');
+    }
+
     btn.classList.remove('btn--error');
     btn.classList.remove('btn--success');
     btn.removeAttribute('data-timeout-id');
