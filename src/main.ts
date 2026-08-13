@@ -25,17 +25,6 @@ let lastNakayaAria = '';
 let lastCanvasAria = '';
 let lastSeedAria = '';
 let lastTitle = '';
-let lastNakayaStatusHtml = '';
-let lastNakayaStatusLive = '';
-let nakayaRect: DOMRect | null = null;
-
-// Clear the cached Nakaya bounding rect on window resize or scroll to ensure correct coordinates are calculated
-window.addEventListener('resize', () => {
-  nakayaRect = null;
-});
-window.addEventListener('scroll', () => {
-  nakayaRect = null;
-}, { passive: true });
 
 let isLabMode = false;
 let isGuideOpen = false;
@@ -402,29 +391,18 @@ async function ensurePane(): Promise<TweakpanePane> {
 }
 
 function updateNakayaStatus(temp: number, ss: number, isPreview: boolean) {
-  let statusEl = DOM_CACHE.get('nakaya-status');
-  if (!statusEl) {
-    const el = document.getElementById('nakaya-status');
-    if (!el) return;
-    statusEl = el;
-    DOM_CACHE.set('nakaya-status', el);
-  }
+  const statusEl = document.getElementById('nakaya-status');
+  if (!statusEl) return;
   const habit = getHabit(temp, ss);
   const habitText = habitLabel[habit];
   const humPct = Math.round(ss * 100);
   const tempStr = temp.toFixed(1);
-  const liveAttr = isPreview ? 'off' : 'polite';
-  const htmlContent = isPreview
-    ? `Preview: <span style="color: var(--accent);">${tempStr}°C</span>, <span style="color: var(--accent);">${humPct}%</span> • <em>${habitText}</em>`
-    : `Active: <span style="color: var(--accent-hot);">${tempStr}°C</span>, <span style="color: var(--accent-hot);">${humPct}%</span> • <strong>${habitText}</strong>`;
-
-  if (lastNakayaStatusLive !== liveAttr) {
-    statusEl.setAttribute('aria-live', liveAttr);
-    lastNakayaStatusLive = liveAttr;
-  }
-  if (lastNakayaStatusHtml !== htmlContent) {
-    statusEl.innerHTML = htmlContent;
-    lastNakayaStatusHtml = htmlContent;
+  if (isPreview) {
+    statusEl.setAttribute('aria-live', 'off');
+    statusEl.innerHTML = `Preview: <span style="color: var(--accent);">${tempStr}°C</span>, <span style="color: var(--accent);">${humPct}%</span> • <em>${habitText}</em>`;
+  } else {
+    statusEl.setAttribute('aria-live', 'polite');
+    statusEl.innerHTML = `Active: <span style="color: var(--accent-hot);">${tempStr}°C</span>, <span style="color: var(--accent-hot);">${humPct}%</span> • <strong>${habitText}</strong>`;
   }
 }
 
@@ -876,10 +854,7 @@ function handleNakayaPointer(e: PointerEvent) {
   if (e.type === 'pointerdown') {
     visualPress('nakaya-diagram');
   }
-  if (!nakayaRect) {
-    nakayaRect = nakayaCanvas.getBoundingClientRect();
-  }
-  const rect = nakayaRect;
+  const rect = nakayaCanvas.getBoundingClientRect();
   const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
 
@@ -901,18 +876,11 @@ nakayaCanvas?.addEventListener('pointerdown', (e) => {
   handleNakayaPointer(e);
 });
 
-nakayaCanvas?.addEventListener('pointerup', () => {
-  nakayaRect = null;
-});
-
 nakayaCanvas?.addEventListener('pointermove', (e) => {
   if (e.buttons > 0) {
     handleNakayaPointer(e);
   } else {
-    if (!nakayaRect) {
-      nakayaRect = nakayaCanvas.getBoundingClientRect();
-    }
-    const rect = nakayaRect;
+    const rect = nakayaCanvas.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
 
@@ -928,7 +896,6 @@ nakayaCanvas?.addEventListener('pointermove', (e) => {
 });
 
 nakayaCanvas?.addEventListener('pointerleave', () => {
-  nakayaRect = null;
   if (currentConditions) {
     updateNakayaStatus(currentConditions.temperatureC, currentConditions.supersaturation, false);
     if (document.activeElement === nakayaCanvas) {
