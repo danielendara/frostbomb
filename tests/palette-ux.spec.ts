@@ -399,3 +399,24 @@ test("Palette: active history seed button has aria-current='true'", async ({ pag
     }
   }
 });
+
+test("Palette: buttons update kbd styles and other visual child/parent cues on keyboard focus matching hover", async ({ page }) => {
+  const btnReset = page.locator("#btn-reset");
+  const btnResetKbd = btnReset.locator(".btn-kbd");
+
+  // Initial state should not be focused or have active styles
+  await expect(btnReset).toBeVisible();
+
+  // Focus the reset button
+  await btnReset.focus();
+  await expect(btnReset).toBeFocused();
+
+  // Ensure the keyboard focus applies the matching kbd and focus-visible styling
+  // We check that the kbd badge has the color matching var(--accent) by computing style
+  const kbdColor = await btnResetKbd.evaluate((el) => {
+    return window.getComputedStyle(el).color;
+  });
+  // Since we synced .action-btn:focus-visible .btn-kbd with .action-btn:hover .btn-kbd,
+  // we expect the badge color to be accent, which is typically rgb(158, 201, 255)
+  expect(kbdColor).toBe("rgb(158, 201, 255)");
+});

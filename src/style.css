@@ -95,7 +95,8 @@ body.pink-mode {
   transition: text-shadow 0.3s ease;
 }
 
-.wordmark-link:hover .wordmark__accent {
+.wordmark-link:hover .wordmark__accent,
+.wordmark-link:focus-visible .wordmark__accent {
   text-shadow: 0 0 8px var(--accent);
 }
 
@@ -181,7 +182,8 @@ body.pink-mode {
   transition: opacity 0.2s ease;
 }
 
-.seed-btn:hover .seed-btn__icon {
+.seed-btn:hover .seed-btn__icon,
+.seed-btn:focus-visible .seed-btn__icon {
   opacity: 1;
   color: var(--accent);
 }
@@ -754,12 +756,14 @@ kbd {
   gap: 0.5rem;
 }
 
-.field-guide__close:hover {
+.field-guide__close:hover,
+.field-guide__close:focus-visible {
   background: rgba(230, 237, 245, 0.2);
   border-color: var(--accent);
 }
 
-.field-guide__close:hover .btn-kbd {
+.field-guide__close:hover .btn-kbd,
+.field-guide__close:focus-visible .btn-kbd {
   color: var(--accent);
   border-color: var(--accent);
   background: rgba(158, 201, 255, 0.08);
@@ -883,7 +887,8 @@ kbd {
   pointer-events: none;
 }
 
-.action-btn:hover .btn-kbd {
+.action-btn:hover .btn-kbd,
+.action-btn:focus-visible .btn-kbd {
   color: var(--accent);
   border-color: var(--accent);
   background: rgba(158, 201, 255, 0.08);
@@ -895,7 +900,8 @@ kbd {
   background: rgba(158, 201, 255, 0.08);
 }
 
-.refresh:hover .btn-kbd--refresh {
+.refresh:hover .btn-kbd--refresh,
+.refresh:focus-visible .btn-kbd--refresh {
   color: var(--accent);
   border-color: var(--accent);
   background: rgba(158, 201, 255, 0.1);
