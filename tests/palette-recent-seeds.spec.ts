@@ -231,38 +231,3 @@ test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page
   await expect(seedButtons.first()).toHaveAttribute('tabindex', '0');
   await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
 });
-
-test('Recent Seed button interactions trigger screen reader live region announcements', async ({ page }) => {
-  const recentSeedsList = page.locator('#recent-seeds-list');
-  const seedDisplay = page.locator('#seed-display');
-  const announcer = page.locator('#a11y-announcer');
-
-  // Let first seed load
-  await expect(seedDisplay).not.toHaveText('·····');
-  const firstSeed = (await seedDisplay.textContent())?.trim() || '';
-
-  // Grow a second seed
-  const refreshBtn = page.locator('#refresh');
-  await refreshBtn.click();
-
-  await expect(async () => {
-    const currentSeed = (await seedDisplay.textContent())?.trim() || '';
-    expect(currentSeed).not.toBe(firstSeed);
-  }).toPass({ timeout: 5000 });
-
-  const secondSeed = (await seedDisplay.textContent())?.trim() || '';
-
-  // Ensure both seed buttons are visible
-  const activeBtn = recentSeedsList.locator(`button:has-text("${secondSeed}")`);
-  const firstSeedBtn = recentSeedsList.locator(`button:has-text("${firstSeed}")`);
-  await expect(activeBtn).toBeVisible();
-  await expect(firstSeedBtn).toBeVisible();
-
-  // Clicking an already active seed button announces that it is active
-  await activeBtn.click();
-  await expect(announcer).toHaveText(`Seed ${secondSeed} is already active`);
-
-  // Clicking an inactive seed button announces loading the new seed and habit
-  await firstSeedBtn.click();
-  await expect(announcer).toHaveText(new RegExp(`Loaded seed ${firstSeed}:`));
-});

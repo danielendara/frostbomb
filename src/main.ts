@@ -239,11 +239,8 @@ function updateRecentSeedsUI() {
     });
 
     btn.addEventListener('click', () => {
+      if (seedVal === currentSeedLabel) return;
       visualPress(btn);
-      if (seedVal === currentSeedLabel) {
-        announce(`Seed ${seedVal} is already active`);
-        return;
-      }
       currentSeed = {
         seed: hashString(seedVal),
         label: seedVal,
@@ -251,8 +248,7 @@ function updateRecentSeedsUI() {
       const url = new URL(window.location.href);
       url.searchParams.set('seed', seedVal);
       window.history.replaceState(null, '', url.pathname + url.search);
-      const { conditions } = grow(undefined, true, true);
-      announce(`Loaded seed ${seedVal}: ${habitLabel[conditions.habit]}`);
+      grow(undefined, true, true);
     });
 
     listEl.appendChild(btn);
