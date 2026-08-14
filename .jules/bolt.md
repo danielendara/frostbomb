@@ -252,3 +252,7 @@
 ## 2026-07-18 - [Pruning Redundant GPU Uploads for Non-Animated Path]
 **Learning:** During non-animated updates (such as interactive Lab Mode slider drags), setting the state update flag `needsMatrixUpdate = true` causes a redundant matrices `.set()` and a costly GPU buffer upload on the very next animation frame. Unifying the non-animated and prefers-reduced-motion paths allows us to directly copy the pre-computed matrices inside `updateFlake`, apply final transformations immediately, and set `needsMatrixUpdate = false` to completely bypass render loop updates.
 **Action:** Avoid setting state-dirty flags when synchronously applying finalized transformations in procedural pipelines to bypass subsequent redundant animation frame updates.
+
+## 2026-07-23 - [TypedArray Index Caching in Insertion Sort]
+**Learning:** In hot array sorting routines that operate on shared flat TypedArray buffers, accessing elements multiple times per loop (e.g. `arr[j]` for comparison and then again for writing) introduces redundant index resolution and property lookup overhead in JavaScript engines. Caching the array index value `arr[j]` in a local variable `const idx = arr[j]` within the inner comparison loop avoids duplicate lookups and ensures efficient single-pass read and write operations on typed arrays.
+**Action:** Always cache index/element references in inner-most loops of hot numeric sort routines to minimize redundant typed array read operations.
