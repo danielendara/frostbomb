@@ -80,3 +80,7 @@
 ## 2027-11-03 - Keyboard-Driven Canvas Alignment Guides
 **Learning:** Adding mouse-hover interaction guides to highly visual canvases is excellent, but keyboard-only users who focus and navigate the canvas using keyboard shortcuts miss out on that visual scaffolding. Bridging the gap by rendering the same alignment guides when the canvas is keyboard-focused or undergoing keyboard navigation ensures functional parity and high visual clarity.
 **Action:** Bind canvas `focus`/`blur` listeners to trigger crosshair guides at the current active coordinates, and ensure rendering loops preserve these guides if keyboard focus is maintained during `pointerleave` events.
+
+## 2027-11-04 - Keyboard Focus and Hover Style Parity
+**Learning:** Secondary visual indicators and badges (like `<kbd>` shortcut tags or custom icons/accents) that change color on hover are often missed on keyboard focus because CSS rules target `:hover` without a matching `:focus-visible` sibling. Aligning hover and keyboard focus states for nested cues guarantees complete visual parity for keyboard users.
+**Action:** Always sync color-changing nested indicators (such as `.btn-kbd` tags or wordmark accents) under a combined `:hover` and `:focus-visible` selector.
