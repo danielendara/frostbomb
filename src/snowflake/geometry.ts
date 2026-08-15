@@ -235,7 +235,6 @@ export function buildSnowflake(
     const probStep = sideBranchProb * lut04;
     const sideLenMaxStep = stepDist * decay05;
     let currentLocalProb = sideBranchProb - probStep;
-    let sideLenMax = sideLenBase - sideLenMaxStep;
 
     const nextDepth = depth + 1;
 
@@ -258,6 +257,9 @@ export function buildSnowflake(
       // Side branches get less likely near the tip
       // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
       if (rng() < currentLocalProb) {
+        // Performance Optimization: On-demand sideLenMax calculation avoids performing subtraction
+        // on every iteration when a branch is not spawned.
+        const sideLenMax = sideLenBase - i * sideLenMaxStep;
         const sideLen = sideLenMax * (0.4 + 0.6 * rng());
 
         // Optimization: Prune side branches early before performing lookups and recursive calls.
@@ -322,7 +324,6 @@ export function buildSnowflake(
       }
 
       currentLocalProb -= probStep;
-      sideLenMax -= sideLenMaxStep;
     }
   }
 
