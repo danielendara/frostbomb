@@ -231,3 +231,33 @@ test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page
   await expect(seedButtons.first()).toHaveAttribute('tabindex', '0');
   await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
 });
+
+test('Recent Seeds buttons announce state on click', async ({ page }) => {
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+  const announcer = page.locator('#a11y-announcer');
+
+  // Let first seed load
+  await expect(seedDisplay).not.toHaveText('·····');
+  const firstSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  // Grow another seed
+  const refreshBtn = page.locator('#refresh');
+  await refreshBtn.click();
+
+  await expect(async () => {
+    const currentSeed = (await seedDisplay.textContent())?.trim() || '';
+    expect(currentSeed).not.toBe(firstSeed);
+  }).toPass({ timeout: 5000 });
+
+  const seedButtons = recentSeedsList.locator('button');
+  await expect(seedButtons).toHaveCount(2);
+
+  // Click active seed button (first button in list)
+  await seedButtons.first().click();
+  await expect(announcer).toContainText('is already active');
+
+  // Click inactive seed button (second button in list)
+  await seedButtons.nth(1).click();
+  await expect(announcer).toContainText(`Loaded seed ${firstSeed}:`);
+});
