@@ -20,6 +20,12 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
   await expect(seedButtonsBefore).toHaveCount(1);
   await expect(seedButtonsBefore.first()).toHaveText(firstSeed);
 
+  // Clear button should display item count and dynamic aria-label/title
+  const clearBtn = page.locator('#btn-clear-history');
+  await expect(clearBtn).toHaveText('Clear (1)');
+  await expect(clearBtn).toHaveAttribute('title', 'Clear seed history (1 item)');
+  await expect(clearBtn).toHaveAttribute('aria-label', 'Clear seed history (1 item)');
+
   // Grow another one by clicking the refresh button
   const refreshBtn = page.locator('#refresh');
   await refreshBtn.click();
