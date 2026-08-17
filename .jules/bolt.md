@@ -256,3 +256,7 @@
 ## 2026-07-23 - [TypedArray Index Caching in Insertion Sort]
 **Learning:** In hot array sorting routines that operate on shared flat TypedArray buffers, accessing elements multiple times per loop (e.g. `arr[j]` for comparison and then again for writing) introduces redundant index resolution and property lookup overhead in JavaScript engines. Caching the array index value `arr[j]` in a local variable `const idx = arr[j]` within the inner comparison loop avoids duplicate lookups and ensures efficient single-pass read and write operations on typed arrays.
 **Action:** Always cache index/element references in inner-most loops of hot numeric sort routines to minimize redundant typed array read operations.
+
+## 2026-07-24 - [FLOP Density vs CPU Instruction Pipelining Speculation in V8]
+**Learning:** Attempting to break serial data dependencies in hot matrix rotation loops by replacing direct single-term derivations (`m1_1 * sax`, `-m0_1 * sax` - 2 FLOPs) with multi-term 2D rotation math (`0.5 * m8 - SIN60 * m9`, `SIN60 * m8 + 0.5 * m9` - 6 FLOPs) increases floating-point operation count without providing any execution speedup in modern JIT engines (like V8). In JavaScript JIT execution, minimizing raw FLOP count and ALU operations consistently yields better performance than speculative CPU pipeline unrolling.
+**Action:** Always prioritize lower total floating-point operation counts over speculative instruction-level parallelism in hot numerical paths.
