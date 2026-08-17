@@ -167,6 +167,15 @@ function updateRecentSeedsUI() {
   container.style.display = 'flex';
   listEl.innerHTML = '';
 
+  const clearBtn = document.getElementById('btn-clear-history');
+  if (clearBtn) {
+    const count = recentSeeds.length;
+    const itemLabel = `${count} item${count === 1 ? '' : 's'}`;
+    clearBtn.textContent = `Clear (${count})`;
+    clearBtn.title = `Clear seed history (${itemLabel})`;
+    clearBtn.setAttribute('aria-label', `Clear seed history (${itemLabel})`);
+  }
+
   const activeIndex = recentSeeds.indexOf(currentSeedLabel);
   const primaryIndex = activeIndex !== -1 ? activeIndex : 0;
 
