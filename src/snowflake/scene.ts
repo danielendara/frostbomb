@@ -711,11 +711,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
           let maxIndex = -1;
 
           // Optimization: Pre-filter/fast-forward fully grown segments.
-          // This avoids check branches and batching flushes in the active render loop.
+          // Pre-calculate the cutoff threshold once outside the loop to eliminate per-segment floating-point subtractions.
+          const fullyGrownCutoff = thresholdScaled - LUT_SIZE_MINUS_ONE;
           let j = minAnimatedIndex;
           while (j < armLen) {
-            const delay = currentFlakeData.delays[j];
-            if (thresholdScaled - delay < LUT_SIZE_MINUS_ONE) {
+            if (currentFlakeData.delays[j] > fullyGrownCutoff) {
               break;
             }
             j++;
@@ -731,18 +731,19 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
 
           // Performance Optimization: Use additive index tracking for segIdx to avoid
           // a multiplication (k * 96) in every iteration of the growth animation loop.
+          // Reuse pre-calculated threshold difference to bypass redundant subtractions.
           let segIdx = minAnimatedIndex * 96;
           for (let k = minAnimatedIndex; k < armLen; k++) {
             const delay = currentFlakeData.delays[k];
+            const diff = thresholdScaled - delay;
 
             // Optimization: Early break since segments are sorted by delay.
-            if (delay > thresholdScaled) {
+            if (diff < 0) {
               break;
             }
 
             maxIndex = k;
-            const lutIdx = (thresholdScaled - delay) | 0;
-            const s = EASING_LUT[lutIdx];
+            const s = EASING_LUT[diff | 0];
 
             // Optimization: Hoist invariant calculations for Column 2 and 3 Z-basis components.
             // These are identical for all 6 arms as they represent Z-tilt and thickness.
