@@ -239,7 +239,8 @@ body.pink-mode {
   transition: all 0.2s ease;
 }
 
-.lab-toggle:hover {
+.lab-toggle:hover,
+.lab-toggle:focus-visible {
   color: var(--accent);
 }
 
