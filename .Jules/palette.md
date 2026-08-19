@@ -84,3 +84,7 @@
 ## 2027-11-04 - Dynamic ARIA and Tooltip Synchronization on Transient Button States
 **Learning:** When buttons update their visible text to convey transient visual feedback (e.g., 'Copied!', 'Saving...', 'Reset!'), screen reader and mouse-hover users do not receive this feedback unless the `aria-label` and native `title` (tooltip) are also synchronized temporarily and restored cleanly.
 **Action:** Always capture and cache existing `aria-label` and `title` attributes into custom data-attributes, apply the transient state feedback to them, and restore them upon feedback expiration. If underlying data changes while a button is in a transient feedback state (such as seed changes), update the cached data-attributes to prevent restoring stale or incorrect information.
+
+## 2027-11-05 - Dynamic ARIA-Expanded and Controls on Navigation Triggers
+**Learning:** When interactive elements (such as stat summary cards or field note rows) act as trigger buttons that jump to and open specific accordion/guide sections elsewhere in the document, pairing explicit `aria-controls` with dynamic `aria-expanded` attributes provides critical spatial and state context to screen readers.
+**Action:** On jump/navigation buttons that open or expand target sections, set `aria-controls` to the section ID and synchronize `aria-expanded` ("true"/"false") dynamically whenever the target section is toggled or dismissed.
