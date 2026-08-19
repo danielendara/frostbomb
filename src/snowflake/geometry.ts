@@ -185,7 +185,9 @@ export function buildSnowflake(
     const halfLen = length * 0.5;
     const midX = startX + dirX * halfLen;
     const midY = startY + dirY * halfLen;
-    const vVarRaw = noise2D(midX * 3 + nOffset, midY * 3 + nOffset);
+    const nx = midX * 3 + nOffset;
+    const ny = midY * 3 + nOffset;
+    const vVarRaw = noise2D(nx, ny);
     const sx = primaryThickness + vVarRaw * thickness015;
 
     // Performance Optimization: Algebraic reduction and breaking of dependency chains.
@@ -195,7 +197,7 @@ export function buildSnowflake(
     const sax = vVarRaw * 0.015; // sin(ax) approx: 0.1 * 0.15
 
     const bIdx = currentSegmentCount << 3; // STRIDE 8
-    SEGMENT_BUFFER[bIdx + 0] = dirX;
+    SEGMENT_BUFFER[bIdx] = dirX;
     SEGMENT_BUFFER[bIdx + 1] = dirY;
     SEGMENT_BUFFER[bIdx + 2] = midX;
     SEGMENT_BUFFER[bIdx + 3] = midY;
@@ -341,7 +343,7 @@ export function buildSnowflake(
       primaryParams.thickness04 + tipVVarRaw * primaryParams.thickness04_015;
 
     const tIdx = currentSegmentCount << 3; // STRIDE 8
-    SEGMENT_BUFFER[tIdx + 0] = 1; // dirX
+    SEGMENT_BUFFER[tIdx] = 1; // dirX
     SEGMENT_BUFFER[tIdx + 1] = 0; // dirY
     SEGMENT_BUFFER[tIdx + 2] = tipMidX; // midX
     SEGMENT_BUFFER[tIdx + 3] = 0; // midY
@@ -384,7 +386,7 @@ export function buildSnowflake(
     // 8 raw parameters stored in SEGMENT_BUFFER. This reduces memory footprint and improves cache locality
     // by changing the segment stride from 16 to 8.
     const bIdx = idx << 3; // STRIDE 8
-    const dirX = SEGMENT_BUFFER[bIdx + 0];
+    const dirX = SEGMENT_BUFFER[bIdx];
     const dirY = SEGMENT_BUFFER[bIdx + 1];
     const midX = SEGMENT_BUFFER[bIdx + 2];
     const midY = SEGMENT_BUFFER[bIdx + 3];
@@ -416,40 +418,20 @@ export function buildSnowflake(
     // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
     // and eliminate multiplications.
 
-    // Performance Optimization: Use flat direct assignments for invariant matrix components
-    // across all 6 symmetry instances. This is more efficient inside V8 than chained assignments.
-    matrices[offset + 6] = m6;
-    matrices[offset + 22] = m6;
-    matrices[offset + 38] = m6;
-    matrices[offset + 54] = m6;
-    matrices[offset + 70] = m6;
-    matrices[offset + 86] = m6;
-
-    matrices[offset + 10] = m10;
-    matrices[offset + 26] = m10;
-    matrices[offset + 42] = m10;
-    matrices[offset + 58] = m10;
-    matrices[offset + 74] = m10;
-    matrices[offset + 90] = m10;
-
-    matrices[offset + 14] = m14;
-    matrices[offset + 30] = m14;
-    matrices[offset + 46] = m14;
-    matrices[offset + 62] = m14;
-    matrices[offset + 78] = m14;
-    matrices[offset + 94] = m14;
-
-    // Performance Optimization: Use explicit initialization for all potential non-zero indices
-    // to ensure safety when reusing the shared MATRICES_BUFFER across generations.
+    // Performance Optimization: Group matrix assignments sequentially by symmetry arm
+    // to maximize cache locality and sequential memory write throughput in TypedArray buffers.
     // Arm 0 (Primary Arm, 0°)
     matrices[offset + 0] = m0;
     matrices[offset + 1] = m1;
     matrices[offset + 4] = m4;
     matrices[offset + 5] = m5;
+    matrices[offset + 6] = m6;
     matrices[offset + 8] = m8;
     matrices[offset + 9] = m9;
+    matrices[offset + 10] = m10;
     matrices[offset + 12] = m12;
     matrices[offset + 13] = m13;
+    matrices[offset + 14] = m14;
 
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
@@ -467,10 +449,13 @@ export function buildSnowflake(
     matrices[offset + 17] = m1_1;
     matrices[offset + 20] = m4_1;
     matrices[offset + 21] = m5_1;
+    matrices[offset + 22] = m6;
     matrices[offset + 24] = m8_1;
     matrices[offset + 25] = m9_1;
+    matrices[offset + 26] = m10;
     matrices[offset + 28] = m12_1;
     matrices[offset + 29] = m13_1;
+    matrices[offset + 30] = m14;
 
     // Arm 2 (120°) = Arm 1 - Arm 0
     const m0_2 = m0_1 - m0;
@@ -483,44 +468,57 @@ export function buildSnowflake(
     const m9_2 = m9_1 - m9;
     const m12_2 = m12_1 - m12;
     const m13_2 = m13_1 - m13;
+
     matrices[offset + 32] = m0_2;
     matrices[offset + 33] = m1_2;
     matrices[offset + 36] = m4_2;
     matrices[offset + 37] = m5_2;
+    matrices[offset + 38] = m6;
     matrices[offset + 40] = m8_2;
     matrices[offset + 41] = m9_2;
+    matrices[offset + 42] = m10;
     matrices[offset + 44] = m12_2;
     matrices[offset + 45] = m13_2;
+    matrices[offset + 46] = m14;
 
     // Arm 3 (180°) = -Arm 0
     matrices[offset + 48] = -m0;
     matrices[offset + 49] = -m1;
     matrices[offset + 52] = -m4;
     matrices[offset + 53] = -m5;
+    matrices[offset + 54] = m6;
     matrices[offset + 56] = -m8;
     matrices[offset + 57] = -m9;
+    matrices[offset + 58] = m10;
     matrices[offset + 60] = -m12;
     matrices[offset + 61] = -m13;
+    matrices[offset + 62] = m14;
 
     // Arm 4 (240°) = -Arm 1
     matrices[offset + 64] = -m0_1;
     matrices[offset + 65] = -m1_1;
     matrices[offset + 68] = -m4_1;
     matrices[offset + 69] = -m5_1;
+    matrices[offset + 70] = m6;
     matrices[offset + 72] = -m8_1;
     matrices[offset + 73] = -m9_1;
+    matrices[offset + 74] = m10;
     matrices[offset + 76] = -m12_1;
     matrices[offset + 77] = -m13_1;
+    matrices[offset + 78] = m14;
 
     // Arm 5 (300°) = -Arm 2
     matrices[offset + 80] = -m0_2;
     matrices[offset + 81] = -m1_2;
     matrices[offset + 84] = -m4_2;
     matrices[offset + 85] = -m5_2;
+    matrices[offset + 86] = m6;
     matrices[offset + 88] = -m8_2;
     matrices[offset + 89] = -m9_2;
+    matrices[offset + 90] = m10;
     matrices[offset + 92] = -m12_2;
     matrices[offset + 93] = -m13_2;
+    matrices[offset + 94] = m14;
 
     offset += 96;
   }

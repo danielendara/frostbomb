@@ -1,3 +1,7 @@
+## 2026-08-18 - [Sequential TypedArray Write Grouping by Instance Block]
+**Learning:** In high-frequency matrix population routines operating on large flat TypedArrays, grouping property assignments sequentially arm-by-arm within 16-float instance blocks (rather than writing invariant indices across 6 arms at stride +16 and then filling remaining entries) improves CPU write-combining and L1 cache line locality.
+**Action:** Group TypedArray writes sequentially within contiguous memory blocks to maximize write buffer throughput and CPU cache line locality.
+
 ## 2026-07-22 - [Recent Seeds UI State Caching and Early Exit]
 **Learning:** Frequent DOM manipulations and component rebuilding (like clearing `listEl.innerHTML` and recreating lists of button elements) during high-frequency user updates (such as dragging the Lab Mode temperature/supersaturation sliders) can cause excessive layout thrashing and main thread blocking. Caching the exact state variables that dictate the UI representation (`currentSeedLabel`, `recentSeeds`, `isLabMode`, `isGuideOpen`, `backupRecentSeeds`) and initializing them to `undefined` allows for a safe, robust O(1) early-exit that completely skips expensive DOM queries and mutations when none of the determining state variables change.
 **Action:** Always map layout-critical state inputs and use strict reference checks with `undefined` initial states to bypass redundant DOM updates in interactive and continuous UI components.
