@@ -4,6 +4,22 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ## Next
 
+### 3D Model Export (STL / GLTF) for 3D Printing (#234)
+- Goal: allow users to export watertight 3D models of generated crystals for 3D printing.
+- Scope: merge instanced matrices into unified geometry and export binary `.stl` or `.gltf`.
+
+### Advanced Ice Crystal Shaders (#235)
+- Goal: elevate visual realism with optical physics.
+- Scope: thin-film iridescence chromatic sheen on facet edges, subtle subsurface scattering, and procedural frost texture.
+
+### Vector SVG Path Export (#236)
+- Goal: export 2D vector geometry for physical fabrications (laser cutting, CNC, vinyl plotters).
+- Scope: project 2D branching lines/polygons across 6-fold rotational symmetry to clean SVG paths.
+
+### Modularize Monolithic Files (#237)
+- Goal: improve maintainability by breaking up large monolithic files (`main.ts`, `scene.ts`).
+- Scope: extract `ui/history.ts`, `ui/keyboard.ts`, `ui/lab-panel.ts`, and `ui/announcer.ts`.
+
 ### Add production monitoring
 - Goal: catch live runtime errors and deploy regressions quickly.
 - Ideas: Cloudflare Web Analytics, Worker logs, browser error reporting, uptime check.
