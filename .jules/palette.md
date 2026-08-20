@@ -80,3 +80,20 @@
 ## 2027-10-28 - [Keyboard Shortcut Badges without Screen Reader Clutter]
 **Learning:** Adding physical keycap badges (using `<kbd>` elements) inside action buttons makes keyboard shortcuts highly discoverable for desktop users. However, because the shortcut info is already provided via the button's accessible name, `title`, or `aria-keyshortcuts`, these nested visual elements should be marked with `aria-hidden="true"` to prevent screen readers from announcing redundant or confusing characters (e.g., reading "Reset V" instead of "Reset").
 **Action:** When nesting keyboard shortcut badges within buttons, wrap them in a `<kbd>` element with `aria-hidden="true"` and apply responsive styles to hide them on touch-only/mobile devices where shortcuts are irrelevant.
+
+## 2027-11-01 - [Direct Dynamic Visual Feedback on GUI Validation Failures]
+**Learning:** Third-party GUI libraries (like Tweakpane) handle invalid inputs by silently reverting back to the last valid state without any visual alerts on the text input element itself. When custom input validation is intercepted, programmatically querying the input DOM element and applying temporary high-contrast visual cues bridges the feedback gap.
+**Action:** On custom input validation failures within third-party widgets, manually query the underlying input elements to apply and cleanly tear down temporary warning styles in synchrony with screen reader live region announcements.
+
+## 2027-11-02 - Crosshair Alignment Guides on Canvas Hover
+**Learning:** Adding dotted horizontal and vertical axis-alignment guides along with a small preview dot on coordinate diagram canvases (such as the Nakaya Diagram) during high-frequency 'pointermove' events—and clearing them on 'pointerleave'—provides immediate, intuitive spatial tracking and numerical context without cluttering the persistent visualization path.
+**Action:** Integrate dotted crosshair alignment guides and a temporary preview dot on coordinate diagram canvases on mouse hover, and cleanly reset/re-render the background once mouse is removed.
+
+## 2027-11-03 - Keyboard-Driven Canvas Alignment Guides
+**Learning:** Adding mouse-hover interaction guides to highly visual canvases is excellent, but keyboard-only users who focus and navigate the canvas using keyboard shortcuts miss out on that visual scaffolding. Bridging the gap by rendering the same alignment guides when the canvas is keyboard-focused or undergoing keyboard navigation ensures functional parity and high visual clarity.
+**Action:** Bind canvas `focus`/`blur` listeners to trigger crosshair guides at the current active coordinates, and ensure rendering loops preserve these guides if keyboard focus is maintained during `pointerleave` events.
+
+## 2027-11-04 - Dynamic ARIA and Tooltip Synchronization on Transient Button States
+**Learning:** When buttons update their visible text to convey transient visual feedback (e.g., 'Copied!', 'Saving...', 'Reset!'), screen reader and mouse-hover users do not receive this feedback unless the `aria-label` and native `title` (tooltip) are also synchronized temporarily and restored cleanly.
+**Action:** Always capture and cache existing `aria-label` and `title` attributes into custom data-attributes, apply the transient state feedback to them, and restore them upon feedback expiration. If underlying data changes while a button is in a transient feedback state (such as seed changes), update the cached data-attributes to prevent restoring stale or incorrect information.
+

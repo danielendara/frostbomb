@@ -889,6 +889,7 @@ kbd {
 }
 
 .action-btn:hover .btn-kbd,
+.action-btn:focus .btn-kbd,
 .action-btn:focus-visible .btn-kbd {
   color: var(--accent);
   border-color: var(--accent);
@@ -902,6 +903,7 @@ kbd {
 }
 
 .refresh:hover .btn-kbd--refresh,
+.refresh:focus .btn-kbd--refresh,
 .refresh:focus-visible .btn-kbd--refresh {
   color: var(--accent);
   border-color: var(--accent);
