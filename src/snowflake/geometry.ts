@@ -274,11 +274,9 @@ export function buildSnowflake(
           // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
           //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
           const v = angleVariation + (-0.04 + 0.08 * rng());
-          const vSin = v * sinAngle;
-          const vCos = v * cosAngle;
-          const vHalf = 0.5 * v;
-          const cosA = cosAngle - vSin - vHalf * vCos;
-          const sinA = sinAngle + vCos - vHalf * vSin;
+          const v05 = 0.5 * v;
+          const cosA = cosAngle - v * (sinAngle + v05 * cosAngle);
+          const sinA = sinAngle + v * (cosAngle - v05 * sinAngle);
           // Optimization: Pre-sample parameters for the side branch only when it's created.
           const sidePIdxFloat = pIdxFloat + i * pIdxStep;
           const pIdx = sidePIdxFloat | 0;
@@ -418,107 +416,108 @@ export function buildSnowflake(
     // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
     // and eliminate multiplications.
 
-    // Performance Optimization: Group matrix assignments sequentially by symmetry arm
-    // to maximize cache locality and sequential memory write throughput in TypedArray buffers.
-    // Arm 0 (Primary Arm, 0°)
-    matrices[offset + 0] = m0;
-    matrices[offset + 1] = m1;
-    matrices[offset + 4] = m4;
-    matrices[offset + 5] = m5;
-    matrices[offset + 6] = m6;
-    matrices[offset + 8] = m8;
-    matrices[offset + 9] = m9;
-    matrices[offset + 10] = m10;
-    matrices[offset + 12] = m12;
-    matrices[offset + 13] = m13;
-    matrices[offset + 14] = m14;
-
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
     const m1_1 = SIN60 * m0 + 0.5 * m1;
     const m4_1 = 0.5 * m4 - SIN60 * m5;
     const m5_1 = SIN60 * m4 + 0.5 * m5;
-    // Performance Optimization: Derive m8_1 and m9_1 directly using the rotated m0_1 and m1_1 components and sax.
-    // This avoids multi-term rotation math (0.5 * m8 - SIN60 * m9) and saves multiple floating-point operations.
     const m8_1 = m1_1 * sax;
     const m9_1 = -m0_1 * sax;
     const m12_1 = 0.5 * m12 - SIN60 * m13;
     const m13_1 = SIN60 * m12 + 0.5 * m13;
-
-    matrices[offset + 16] = m0_1;
-    matrices[offset + 17] = m1_1;
-    matrices[offset + 20] = m4_1;
-    matrices[offset + 21] = m5_1;
-    matrices[offset + 22] = m6;
-    matrices[offset + 24] = m8_1;
-    matrices[offset + 25] = m9_1;
-    matrices[offset + 26] = m10;
-    matrices[offset + 28] = m12_1;
-    matrices[offset + 29] = m13_1;
-    matrices[offset + 30] = m14;
 
     // Arm 2 (120°) = Arm 1 - Arm 0
     const m0_2 = m0_1 - m0;
     const m1_2 = m1_1 - m1;
     const m4_2 = m4_1 - m4;
     const m5_2 = m5_1 - m5;
-    // Performance Optimization: Derive m8_2 and m9_2 directly using Arm 1 - Arm 0 identities.
-    // This replaces 2 multiplications and a negation with 2 subtractions.
     const m8_2 = m8_1 - m8;
     const m9_2 = m9_1 - m9;
     const m12_2 = m12_1 - m12;
     const m13_2 = m13_1 - m13;
 
+    // Performance Optimization: Hoist invariant components m6, m10, m14 assignments.
+    // Setting all 6 arm instances of m6, m10, and m14 together improves register reuse and write efficiency.
+    matrices[offset + 6] = m6;
+    matrices[offset + 22] = m6;
+    matrices[offset + 38] = m6;
+    matrices[offset + 54] = m6;
+    matrices[offset + 70] = m6;
+    matrices[offset + 86] = m6;
+
+    matrices[offset + 10] = m10;
+    matrices[offset + 26] = m10;
+    matrices[offset + 42] = m10;
+    matrices[offset + 58] = m10;
+    matrices[offset + 74] = m10;
+    matrices[offset + 90] = m10;
+
+    matrices[offset + 14] = m14;
+    matrices[offset + 30] = m14;
+    matrices[offset + 46] = m14;
+    matrices[offset + 62] = m14;
+    matrices[offset + 78] = m14;
+    matrices[offset + 94] = m14;
+
+    // Arm 0 (Primary Arm, 0°)
+    matrices[offset + 0] = m0;
+    matrices[offset + 1] = m1;
+    matrices[offset + 4] = m4;
+    matrices[offset + 5] = m5;
+    matrices[offset + 8] = m8;
+    matrices[offset + 9] = m9;
+    matrices[offset + 12] = m12;
+    matrices[offset + 13] = m13;
+
+    // Arm 1 (60°)
+    matrices[offset + 16] = m0_1;
+    matrices[offset + 17] = m1_1;
+    matrices[offset + 20] = m4_1;
+    matrices[offset + 21] = m5_1;
+    matrices[offset + 24] = m8_1;
+    matrices[offset + 25] = m9_1;
+    matrices[offset + 28] = m12_1;
+    matrices[offset + 29] = m13_1;
+
+    // Arm 2 (120°)
     matrices[offset + 32] = m0_2;
     matrices[offset + 33] = m1_2;
     matrices[offset + 36] = m4_2;
     matrices[offset + 37] = m5_2;
-    matrices[offset + 38] = m6;
     matrices[offset + 40] = m8_2;
     matrices[offset + 41] = m9_2;
-    matrices[offset + 42] = m10;
     matrices[offset + 44] = m12_2;
     matrices[offset + 45] = m13_2;
-    matrices[offset + 46] = m14;
 
     // Arm 3 (180°) = -Arm 0
     matrices[offset + 48] = -m0;
     matrices[offset + 49] = -m1;
     matrices[offset + 52] = -m4;
     matrices[offset + 53] = -m5;
-    matrices[offset + 54] = m6;
     matrices[offset + 56] = -m8;
     matrices[offset + 57] = -m9;
-    matrices[offset + 58] = m10;
     matrices[offset + 60] = -m12;
     matrices[offset + 61] = -m13;
-    matrices[offset + 62] = m14;
 
     // Arm 4 (240°) = -Arm 1
     matrices[offset + 64] = -m0_1;
     matrices[offset + 65] = -m1_1;
     matrices[offset + 68] = -m4_1;
     matrices[offset + 69] = -m5_1;
-    matrices[offset + 70] = m6;
     matrices[offset + 72] = -m8_1;
     matrices[offset + 73] = -m9_1;
-    matrices[offset + 74] = m10;
     matrices[offset + 76] = -m12_1;
     matrices[offset + 77] = -m13_1;
-    matrices[offset + 78] = m14;
 
     // Arm 5 (300°) = -Arm 2
     matrices[offset + 80] = -m0_2;
     matrices[offset + 81] = -m1_2;
     matrices[offset + 84] = -m4_2;
     matrices[offset + 85] = -m5_2;
-    matrices[offset + 86] = m6;
     matrices[offset + 88] = -m8_2;
     matrices[offset + 89] = -m9_2;
-    matrices[offset + 90] = m10;
     matrices[offset + 92] = -m12_2;
     matrices[offset + 93] = -m13_2;
-    matrices[offset + 94] = m14;
 
     offset += 96;
   }
