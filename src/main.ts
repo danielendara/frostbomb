@@ -785,6 +785,11 @@ function toggleFieldGuide(target: HTMLElement | null | Event = null) {
       const restoreTo = guideReturnTarget || guideToggle;
       requestAnimationFrame(() => restoreTo?.focus());
       guideReturnTarget = null;
+
+      // Reset aria-expanded on growth condition rows when guide closes
+      document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
+        row.setAttribute('aria-expanded', 'false');
+      });
     }
   }
   if (statsDisplay) statsDisplay.style.display = isGuideOpen ? 'none' : 'flex';
@@ -798,6 +803,12 @@ function navigateToGuideSection(targetId: string, returnTarget: HTMLElement | nu
   } else if (returnTarget) {
     guideReturnTarget = returnTarget;
   }
+
+  // Update aria-expanded on growth condition rows based on target section
+  document.querySelectorAll('.field-notes__row[role="button"]').forEach((row) => {
+    const rowControls = row.getAttribute('aria-controls');
+    row.setAttribute('aria-expanded', rowControls === targetId ? 'true' : 'false');
+  });
 
   requestAnimationFrame(() => {
     const el = document.getElementById(targetId);

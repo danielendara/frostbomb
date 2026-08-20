@@ -415,3 +415,32 @@ test("Palette: buttons update kbd styles and other visual child/parent cues on k
   // toHaveCSS waits for CSS transition to settle
   await expect(btnResetKbd).toHaveCSS("color", "rgb(158, 201, 255)");
 });
+
+test("Palette: growth condition rows dynamically update aria-expanded on interaction and guide close", async ({ page }) => {
+  const tempRow = page.locator('.field-notes__row[aria-controls="guide-temp"]');
+  const humidRow = page.locator('.field-notes__row[aria-controls="guide-humid"]');
+  const fieldGuide = page.locator("#field-guide");
+  const guideClose = page.locator("#guide-close");
+
+  // Initial state: guide is closed, rows should be aria-expanded="false"
+  await expect(tempRow).toHaveAttribute("aria-expanded", "false");
+  await expect(humidRow).toHaveAttribute("aria-expanded", "false");
+
+  // Click on Temperature row to open guide to temperature section
+  await tempRow.click();
+  await expect(fieldGuide).toBeVisible();
+  await expect(tempRow).toHaveAttribute("aria-expanded", "true");
+  await expect(humidRow).toHaveAttribute("aria-expanded", "false");
+
+  // Close guide and verify all rows revert to aria-expanded="false"
+  await guideClose.click();
+  await expect(fieldGuide).not.toBeVisible();
+  await expect(tempRow).toHaveAttribute("aria-expanded", "false");
+  await expect(humidRow).toHaveAttribute("aria-expanded", "false");
+
+  // Click on Supersaturation row to open guide to supersaturation section
+  await humidRow.click();
+  await expect(fieldGuide).toBeVisible();
+  await expect(tempRow).toHaveAttribute("aria-expanded", "false");
+  await expect(humidRow).toHaveAttribute("aria-expanded", "true");
+});
