@@ -10,8 +10,8 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ### Advanced Ice Crystal Shaders (#235)
 - Goal: elevate visual realism with optical physics.
-- Remaining: procedural frost / micro-facet scattering, Photo Mode depth of field.
-- Done: thin-film iridescence on the shared `MeshPhysicalMaterial` (grazing chromatic sheen).
+- Remaining: Photo Mode depth of field.
+- Done: thin-film iridescence; procedural frost roughness/normal maps and sheen on the shared ice material.
 
 ### Add production monitoring
 - Goal: catch live runtime errors and deploy regressions quickly.

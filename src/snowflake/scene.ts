@@ -3,6 +3,7 @@ import { BuildResult } from "./geometry";
 import { PostprocessingPipeline, RenderPipeline } from "./postprocessing";
 import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
+import { createFrostMaps } from "./frost";
 
 export type { RenderPipeline };
 
@@ -79,10 +80,14 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
 
+  const frost = createFrostMaps();
+
   const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color("#ffffff"),
     metalness: 0,
-    roughness: 0.15,
+    // Multiplied by the frost roughness map (green). Peaks frost over, facets stay glossier.
+    roughness: 0.28,
+    roughnessMap: frost.roughnessMap,
     transmission: 0.85,
     thickness: 0.5,
     ior: 1.31,
@@ -93,6 +98,12 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     iridescence: 0.8,
     iridescenceIOR: 1.31,
     iridescenceThicknessRange: [150, 380],
+    iridescenceThicknessMap: frost.roughnessMap,
+    normalMap: frost.normalMap,
+    normalScale: new THREE.Vector2(0.18, 0.18),
+    sheen: 0.18,
+    sheenColor: new THREE.Color("#e4f1ff"),
+    sheenRoughness: 0.6,
     transparent: true,
     opacity: 0.9,
     emissive: new THREE.Color("#e0f0ff"),
@@ -100,6 +111,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   });
 
   const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, true);
+  branchGeom.computeTangents();
   const coreMesh = new THREE.Mesh(branchGeom, material);
   let branchMesh: THREE.InstancedMesh | null = null;
   let currentFlakeData: BuildResult | null = null;
@@ -203,6 +215,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       branchMesh?.dispose();
       branchGeom.dispose();
       material.dispose();
+      frost.roughnessMap.dispose();
+      frost.normalMap.dispose();
       particles.dispose();
     },
     setAutoRotate: (enabled: boolean) => {
