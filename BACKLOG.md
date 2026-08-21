@@ -8,11 +8,6 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - Goal: allow users to export watertight 3D models of generated crystals for 3D printing.
 - Scope: merge instanced matrices into unified geometry and export binary `.stl` or `.gltf`.
 
-### Advanced Ice Crystal Shaders (#235)
-- Goal: elevate visual realism with optical physics.
-- Remaining: Photo Mode depth of field.
-- Done: thin-film iridescence; procedural frost roughness/normal maps and sheen on the shared ice material.
-
 ### Add production monitoring
 - Goal: catch live runtime errors and deploy regressions quickly.
 - Ideas: Cloudflare Web Analytics, Worker logs, browser error reporting, uptime check.
@@ -42,6 +37,7 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ## Completed
 
+- [x] **Ice crystal shaders (#235):** Thin-film iridescence, procedural frost grain, and Photo Mode depth of field.
 - [x] **Vector SVG path export (#236):** 2D projection of hexagonal-cylinder instances to filled SVG polygons, 100mm long-axis export, `E` shortcut.
 - [x] **Modularize monolithic files (#237):** Extracted UI and scene subsystems from `main.ts` and `scene.ts` into `src/ui/` and `src/snowflake/` domain modules.
 - [x] **Configure canonical domain behavior:** Added `<link rel="canonical" href="https://frostbomb.com/" />` and domain metadata.

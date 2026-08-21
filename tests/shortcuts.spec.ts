@@ -55,6 +55,16 @@ test("field guide documents the reset-view shortcut", async ({ page }) => {
   await expect(resetShortcut.locator("dt")).toHaveText("V");
 });
 
+test("field guide documents Photo Mode depth of field", async ({ page }) => {
+  await page.keyboard.press("g");
+
+  const photoShortcut = page
+    .locator(".shortcut-item")
+    .filter({ hasText: "Photo Mode" });
+  await expect(photoShortcut.locator("dt")).toHaveText("H");
+  await expect(photoShortcut.locator("dd")).toContainText("depth of field");
+});
+
 test("wordmark links back to the root path", async ({ page }) => {
   const wordmark = page.getByRole("link", {
     name: "Grow a new frostbomb snowflake",

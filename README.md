@@ -17,7 +17,7 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
 - **Visual Modes:**
   - **Pink Mode:** A soft, glowing aesthetic.
   - **Prism Mode:** Dynamic HSL color cycling and chromatic dispersion.
-  - **Photo Mode (UI Hide):** Clear away overlays for clean viewing and screenshots.
+  - **Photo Mode (UI Hide):** Clear away overlays for clean viewing and screenshots, with depth of field on the crystal.
 - **Full Accessibility:** Keyboard navigation, skip-to-controls bypass link, roving tabindex for history, screen reader live regions, and `prefers-reduced-motion` synchronization.
 - **Interactive Controls:** Full 3D orbit controls, inertia, camera reset, accelerated rotation shortcuts, and smooth growth animations.
 - **Export & Share:** Copy full shareable URLs (`?seed=xxxxx`), copy raw seed strings with one click, export high-resolution PNGs, or download vector SVG paths for laser cutters and plotters.
@@ -30,7 +30,7 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
 | `L` | Toggle **Lab Mode** (manual controls & seed input) |
 | `G` | Toggle **Field Guide** |
 | `?` | Open Field Guide to **Keyboard Shortcuts** |
-| `H` | Toggle **Photo Mode** (Hide/Show UI) |
+| `H` | Toggle **Photo Mode** (hide UI, depth of field) |
 | `P` | Toggle **Pink Mode** |
 | `M` | Toggle **Prism Mode** (chromatic dispersion) |
 | `S` | **Save** current snowflake as high-resolution PNG |
@@ -87,7 +87,7 @@ The snowflake generator benchmarks approximately **173-181x faster** than the in
 
 - **Vite** + **TypeScript**
 - **Three.js** — WebGL rendering with `MeshPhysicalMaterial` for realistic ice (IOR 1.31, dispersion, transmission, thin-film iridescence, procedural frost).
-- **postprocessing** — High-quality bloom and SMAA.
+- **postprocessing** — Bloom, SMAA, and Photo Mode depth of field.
 - **Tweakpane** — Lightweight UI for Lab Mode.
 - **simplex-noise** — Organic variation in branch thickness and angles.
 - **Cloudflare Workers** — Fast edge hosting and static asset delivery.
