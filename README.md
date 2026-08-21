@@ -86,7 +86,7 @@ The snowflake generator benchmarks approximately **173-181x faster** than the in
 ## 🛠️ Tech Stack
 
 - **Vite** + **TypeScript**
-- **Three.js** — WebGL rendering with `MeshPhysicalMaterial` for realistic ice (IOR 1.31, dispersion, transmission).
+- **Three.js** — WebGL rendering with `MeshPhysicalMaterial` for realistic ice (IOR 1.31, dispersion, transmission, thin-film iridescence).
 - **postprocessing** — High-quality bloom and SMAA.
 - **Tweakpane** — Lightweight UI for Lab Mode.
 - **simplex-noise** — Organic variation in branch thickness and angles.

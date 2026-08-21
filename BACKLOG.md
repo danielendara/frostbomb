@@ -10,11 +10,8 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ### Advanced Ice Crystal Shaders (#235)
 - Goal: elevate visual realism with optical physics.
-- Scope: thin-film iridescence chromatic sheen on facet edges, subtle subsurface scattering, and procedural frost texture.
-
-### Vector SVG Path Export (#236)
-- Goal: export 2D vector geometry for physical fabrications (laser cutting, CNC, vinyl plotters).
-- Scope: project 2D branching lines/polygons across 6-fold rotational symmetry to clean SVG paths.
+- Remaining: procedural frost / micro-facet scattering, Photo Mode depth of field.
+- Done: thin-film iridescence on the shared `MeshPhysicalMaterial` (grazing chromatic sheen).
 
 ### Add production monitoring
 - Goal: catch live runtime errors and deploy regressions quickly.
@@ -45,6 +42,7 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ## Completed
 
+- [x] **Vector SVG path export (#236):** 2D projection of hexagonal-cylinder instances to filled SVG polygons, 100mm long-axis export, `E` shortcut.
 - [x] **Modularize monolithic files (#237):** Extracted UI and scene subsystems from `main.ts` and `scene.ts` into `src/ui/` and `src/snowflake/` domain modules.
 - [x] **Configure canonical domain behavior:** Added `<link rel="canonical" href="https://frostbomb.com/" />` and domain metadata.
 - [x] **Improve share previews:** Added Open Graph, Twitter Cards, responsive social preview metadata and OG image (`og-image.png`).
