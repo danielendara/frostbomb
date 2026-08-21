@@ -18,6 +18,7 @@ export interface KeyboardHandlerContext {
   onTogglePink: () => void;
   onTogglePrism: () => void;
   onSave: () => void;
+  onSaveSvg: () => void;
   onToggleAutoRotate: () => void;
   onCopyLink: () => void;
   onCopySeed: () => void;
@@ -130,6 +131,10 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
       case "s":
         ctx.onSave();
         visualPress("btn-save");
+        break;
+      case "e":
+        ctx.onSaveSvg();
+        visualPress("btn-save-svg");
         break;
       case "a":
         ctx.onToggleAutoRotate();
