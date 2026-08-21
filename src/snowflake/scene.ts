@@ -21,6 +21,7 @@ export interface Scene {
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
   setPrismMode: (enabled: boolean) => void;
+  setPhotoMode: (enabled: boolean) => void;
   updateFlake: (data: BuildResult, animate?: boolean) => void;
   resetView: () => void;
   rotateView: (dx: number, dy: number) => void;
@@ -252,6 +253,9 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
         sceneInterface.setPinkMode(sceneInterface.isPinkModeEnabled);
       }
       particles.setPrismMode(enabled, sceneInterface.isPinkModeEnabled);
+    },
+    setPhotoMode: (enabled: boolean) => {
+      pipeline.setPhotoMode(enabled);
     },
     resetView: () => {
       rotation.x = 0;

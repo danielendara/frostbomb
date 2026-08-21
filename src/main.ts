@@ -825,8 +825,14 @@ function toggleUI(forceShow?: boolean) {
     btnUI.classList.toggle("active", isUIHidden);
   }
 
+  scene.setPhotoMode(isUIHidden);
+
   if (isUIHidden) {
-    announce("UI hidden. Press H or Esc to show.");
+    announce(
+      motionQuery.matches
+        ? "Photo Mode. Press H or Esc to show UI."
+        : "Photo Mode. Depth of field on. Press H or Esc to show UI.",
+    );
   } else {
     announce("UI visible");
     setTimeout(() => btnUI?.focus(), 50);

@@ -270,6 +270,7 @@ test("Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
   // Hide UI (enter Photo Mode)
   await btnUI.click();
   await expect(masthead).toHaveClass(/ui-hidden/);
+  await expect(page.locator("#a11y-announcer")).toContainText(/depth of field/i);
 
   // Drag on the canvas to rotate the camera
   const box = await canvas.boundingBox();

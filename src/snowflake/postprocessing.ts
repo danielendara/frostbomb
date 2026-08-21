@@ -14,6 +14,9 @@ export class PostprocessingPipeline implements RenderPipeline {
   private isLoaded = false;
   private isLoading = false;
   private isRequested = false;
+  private photoMode = false;
+  private dofPass: { enabled: boolean } | null = null;
+  private readonly focusTarget = new THREE.Vector3(0, 0, 0);
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
     this.renderer = renderer;
@@ -36,6 +39,12 @@ export class PostprocessingPipeline implements RenderPipeline {
 
   public dispose(): void {
     this.currentComposer.dispose();
+    this.dofPass = null;
+  }
+
+  public setPhotoMode(enabled: boolean): void {
+    this.photoMode = enabled;
+    if (this.dofPass) this.dofPass.enabled = enabled;
   }
 
   public requestLoad(prefersReducedMotion: boolean): void {
@@ -58,6 +67,7 @@ export class PostprocessingPipeline implements RenderPipeline {
         BloomEffect,
         SMAAEffect,
         SMAAPreset,
+        DepthOfFieldEffect,
       } = await import("postprocessing");
 
       if (prefersReducedMotion) return;
@@ -73,14 +83,27 @@ export class PostprocessingPipeline implements RenderPipeline {
         radius: 0.75,
       });
 
+      const dofEffect = new DepthOfFieldEffect(this.camera, {
+        focusDistance: 10,
+        focusRange: 5,
+        bokehScale: 1.5,
+        resolutionScale: 0.5,
+      });
+      dofEffect.target = this.focusTarget;
+
+      const dofPass = new EffectPass(this.camera, dofEffect);
+      dofPass.enabled = this.photoMode;
+
       const smaaEffect = new SMAAEffect({ preset: SMAAPreset.HIGH });
 
       nextComposer.addPass(new EffectPass(this.camera, bloomEffect));
+      nextComposer.addPass(dofPass);
       nextComposer.addPass(new EffectPass(this.camera, smaaEffect));
       nextComposer.setSize(window.innerWidth, window.innerHeight);
 
       this.currentComposer.dispose();
       this.currentComposer = nextComposer;
+      this.dofPass = dofPass;
       this.isLoaded = true;
     } finally {
       this.isLoading = false;
