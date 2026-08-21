@@ -88,6 +88,11 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     ior: 1.31,
     dispersion: 0.02,
     reflectivity: 0.5,
+    // Thin-film interference on grazing facets. Stays enabled when Pink/Prism
+    // retint albedo and emissive — it is view-angle, not a base-color overlay.
+    iridescence: 0.8,
+    iridescenceIOR: 1.31,
+    iridescenceThicknessRange: [150, 380],
     transparent: true,
     opacity: 0.9,
     emissive: new THREE.Color("#e0f0ff"),
