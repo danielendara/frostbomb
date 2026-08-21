@@ -1,6 +1,7 @@
 import "./style.css";
 import { createScene } from "./snowflake/scene";
-import { buildSnowflake } from "./snowflake/geometry";
+import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
+import { buildSnowflakeSvg } from "./snowflake/svg-export";
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snowflake/nakaya";
 import { mulberry32, resolveSeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
@@ -38,6 +39,7 @@ let currentConditions: GrowthConditions;
 let lastHabit: string | null = null;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
+let lastFlake: BuildResult | null = null;
 let labToggleGeneration = 0;
 
 // History Manager
@@ -130,6 +132,7 @@ function grow(
   const conditions = manualConditions || sampleConditions(rand);
   currentConditions = conditions;
   const result = buildSnowflake(conditions, rand);
+  lastFlake = result;
 
   scene.updateFlake(result, animate);
   const isCanvasFocused = document.activeElement === nakayaCanvas;
@@ -677,11 +680,7 @@ async function saveSnowflake() {
       scene.composer.render();
 
       const dataUrl = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      const habit = currentConditions.habit.replace(/_/g, "-");
-      link.download = `frostbomb-${habit}-${currentSeedLabel}.png`;
-      link.href = dataUrl;
-      link.click();
+      downloadHref(exportFileName("png"), dataUrl);
 
       setTemporaryLabel("btn-save", "Saved!", "✓", false, true);
       announce("Snowflake saved");
@@ -694,6 +693,48 @@ async function saveSnowflake() {
 }
 
 document.getElementById("btn-save")?.addEventListener("click", saveSnowflake);
+
+function exportFileName(extension: string): string {
+  const habit = currentConditions.habit.replace(/_/g, "-");
+  return `frostbomb-${habit}-${currentSeedLabel}.${extension}`;
+}
+
+function downloadHref(filename: string, href: string) {
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = href;
+  link.click();
+}
+
+function saveSnowflakeSvg() {
+  setTemporaryLabel("btn-save-svg", "Saving...", "⌛");
+  visualPress("btn-save-svg");
+  announce("Saving snowflake as SVG");
+
+  try {
+    if (!lastFlake) {
+      throw new Error("No snowflake geometry to export");
+    }
+
+    const svg = buildSnowflakeSvg(lastFlake, {
+      habit: currentConditions.habit,
+      seed: currentSeedLabel,
+    });
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    downloadHref(exportFileName("svg"), url);
+    URL.revokeObjectURL(url);
+
+    setTemporaryLabel("btn-save-svg", "Saved!", "✓", false, true);
+    announce("Snowflake SVG saved");
+  } catch (err) {
+    console.error("Failed to save snowflake SVG:", err);
+    setTemporaryLabel("btn-save-svg", "Failed", "✕", true);
+    announce("Failed to save snowflake SVG");
+  }
+}
+
+document.getElementById("btn-save-svg")?.addEventListener("click", saveSnowflakeSvg);
 
 const btnPink = document.getElementById("btn-pink");
 
@@ -867,6 +908,9 @@ initKeyboardShortcuts({
   },
   onSave: () => {
     saveSnowflake();
+  },
+  onSaveSvg: () => {
+    saveSnowflakeSvg();
   },
   onToggleAutoRotate: () => {
     toggleAutoRotate();

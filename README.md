@@ -20,7 +20,7 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
   - **Photo Mode (UI Hide):** Clear away overlays for clean viewing and screenshots.
 - **Full Accessibility:** Keyboard navigation, skip-to-controls bypass link, roving tabindex for history, screen reader live regions, and `prefers-reduced-motion` synchronization.
 - **Interactive Controls:** Full 3D orbit controls, inertia, camera reset, accelerated rotation shortcuts, and smooth growth animations.
-- **Export & Share:** Copy full shareable URLs (`?seed=xxxxx`), copy raw seed strings with one click, or export high-resolution PNGs.
+- **Export & Share:** Copy full shareable URLs (`?seed=xxxxx`), copy raw seed strings with one click, export high-resolution PNGs, or download vector SVG paths for laser cutters and plotters.
 
 ### ⌨️ Keyboard Shortcuts
 
@@ -34,6 +34,7 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
 | `P` | Toggle **Pink Mode** |
 | `M` | Toggle **Prism Mode** (chromatic dispersion) |
 | `S` | **Save** current snowflake as high-resolution PNG |
+| `E` | **Save** current snowflake as vector SVG (laser / plotter) |
 | `A` | Toggle **Auto-Rotate** (respects `prefers-reduced-motion`) |
 | `C` | **Copy Link** to current snowflake URL |
 | `K` | **Copy Seed** string only |

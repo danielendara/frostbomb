@@ -111,6 +111,49 @@ test("S key triggers save (downloads file) and provides feedback", async ({
   await download.delete();
 });
 
+test("E key downloads SVG vector export and provides feedback", async ({
+  page,
+}) => {
+  const saveBtn = page.locator("#btn-save-svg");
+  const label = saveBtn.locator(".action-btn__label");
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.keyboard.press("e"),
+  ]);
+
+  await expect(async () => {
+    const text = await label.textContent();
+    expect(["Saved!", "Save SVG"]).toContain(text);
+  }).toPass();
+
+  expect(download.suggestedFilename()).toMatch(/^frostbomb-.*-.*\.svg$/);
+
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  if (!stream) {
+    throw new Error("SVG download stream was empty");
+  }
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  const svg = Buffer.concat(chunks).toString("utf8");
+  expect(svg).toContain("<svg");
+  expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+  expect(svg).toContain("<polygon");
+  expect(svg).toMatch(/width="[\d.]+mm"/);
+  await download.delete();
+});
+
+test("field guide documents the SVG export shortcut", async ({ page }) => {
+  await page.keyboard.press("g");
+
+  const svgShortcut = page
+    .locator(".shortcut-item")
+    .filter({ hasText: "Save as SVG" });
+  await expect(svgShortcut.locator("dt")).toHaveText("E");
+});
+
 test("C key triggers copy feedback on buttons", async ({ page }) => {
   const seedDisplay = page.locator("#seed-display");
   const copyLabel = page.locator("#btn-copy .action-btn__label");

@@ -16,10 +16,6 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - Goal: export 2D vector geometry for physical fabrications (laser cutting, CNC, vinyl plotters).
 - Scope: project 2D branching lines/polygons across 6-fold rotational symmetry to clean SVG paths.
 
-### Modularize Monolithic Files (#237)
-- Goal: improve maintainability by breaking up large monolithic files (`main.ts`, `scene.ts`).
-- Scope: extract `ui/history.ts`, `ui/keyboard.ts`, `ui/lab-panel.ts`, and `ui/announcer.ts`.
-
 ### Add production monitoring
 - Goal: catch live runtime errors and deploy regressions quickly.
 - Ideas: Cloudflare Web Analytics, Worker logs, browser error reporting, uptime check.
@@ -49,6 +45,7 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ## Completed
 
+- [x] **Modularize monolithic files (#237):** Extracted UI and scene subsystems from `main.ts` and `scene.ts` into `src/ui/` and `src/snowflake/` domain modules.
 - [x] **Configure canonical domain behavior:** Added `<link rel="canonical" href="https://frostbomb.com/" />` and domain metadata.
 - [x] **Improve share previews:** Added Open Graph, Twitter Cards, responsive social preview metadata and OG image (`og-image.png`).
 - [x] **Add install/run documentation for Workers:** Documented development, testing, preview, and deployment commands in `README.md`.
@@ -57,6 +54,6 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - [x] **Add seed persistence affordances:** Implemented Recent Seeds list with `localStorage` persistence, clear history with undo, direct seed input in Lab Mode, and a dedicated Copy Seed button/shortcut (`K`).
 - [x] **Add dependency update cadence:** Configured automated weekly dependency updates with GitHub Dependabot (`.github/dependabot.yml`).
 - [x] **Photo Mode & UI Toggle:** Added full UI hide/show toggle (`H`) for clean screenshots and immersive viewing.
-- [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `L`, `G`, `?`, `H`, `P`, `M`, `S`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
+- [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `L`, `G`, `?`, `H`, `P`, `M`, `S`, `E`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
 - [x] **High-Performance Geometry Engine (Bolt):** Optimized geometry generation to sub-millisecond execution (<0.014ms per flake, ~181x faster than initial) via sequential TypedArray write grouping, stride-8 segment packing, in-place quicksort, pre-calculated branch decay, and LUT easing.
 
