@@ -379,6 +379,7 @@ test("Palette: main action buttons have explicit fallback aria-labels on load", 
   await expect(page.locator("#btn-copy")).toHaveAttribute("aria-label", "Copy share link (C)");
   await expect(page.locator("#btn-save")).toHaveAttribute("aria-label", "Save as PNG (S)");
   await expect(page.locator("#btn-save-svg")).toHaveAttribute("aria-label", "Save as SVG (E)");
+  await expect(page.locator("#btn-save-3d")).toHaveAttribute("aria-label", "Save as STL and GLB (T)");
   await expect(page.locator("#refresh")).toHaveAttribute("aria-label", "Grow another snowflake (R, Space)");
 });
 
