@@ -45,6 +45,12 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
   await expect(seedButtonsAfter.first()).toHaveText(secondSeed);
   await expect(seedButtonsAfter.nth(1)).toHaveText(firstSeed);
 
+  const firstBox = await seedButtonsAfter.first().boundingBox();
+  const secondBox = await seedButtonsAfter.nth(1).boundingBox();
+  expect(firstBox).not.toBeNull();
+  expect(secondBox).not.toBeNull();
+  expect(secondBox!.x).toBeGreaterThanOrEqual(firstBox!.x + firstBox!.width);
+
   // Test clicking the first seed button restores it
   await seedButtonsAfter.nth(1).click();
   await expect(seedDisplay).toHaveText(firstSeed);
