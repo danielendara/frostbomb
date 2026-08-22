@@ -188,6 +188,20 @@ body.pink-mode {
   color: var(--accent);
 }
 
+/* History chips reuse .seed-btn, whose negative margin is for the masthead
+   inline seed control. Reset it so pills sit in an even row. */
+#recent-seeds-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#recent-seeds-list .seed-btn {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
 #seed-display {
   color: var(--ink);
 }
