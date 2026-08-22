@@ -164,6 +164,37 @@ test("field guide documents the SVG export shortcut", async ({ page }) => {
   await expect(svgShortcut.locator("dt")).toHaveText("E");
 });
 
+test("T key downloads STL and GLB and provides feedback", async ({ page }) => {
+  const saveBtn = page.locator("#btn-save-3d");
+  const label = saveBtn.locator(".action-btn__label");
+  const names: string[] = [];
+
+  page.on("download", (download) => {
+    names.push(download.suggestedFilename());
+    void download.delete();
+  });
+
+  await page.keyboard.press("t");
+
+  await expect(async () => {
+    const text = await label.textContent();
+    expect(["Saved!", "Save 3D"]).toContain(text);
+  }).toPass();
+
+  await expect.poll(() => names.length).toBeGreaterThanOrEqual(2);
+  expect(names.some((name) => /^frostbomb-.*-.*\.stl$/.test(name))).toBe(true);
+  expect(names.some((name) => /^frostbomb-.*-.*\.glb$/.test(name))).toBe(true);
+});
+
+test("field guide documents the 3D export shortcut", async ({ page }) => {
+  await page.keyboard.press("g");
+
+  const modelShortcut = page
+    .locator(".shortcut-item")
+    .filter({ hasText: "Save as STL / GLB" });
+  await expect(modelShortcut.locator("dt")).toHaveText("T");
+});
+
 test("C key triggers copy feedback on buttons", async ({ page }) => {
   const seedDisplay = page.locator("#seed-display");
   const copyLabel = page.locator("#btn-copy .action-btn__label");

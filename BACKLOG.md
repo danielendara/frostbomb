@@ -4,10 +4,6 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ## Next
 
-### 3D Model Export (STL / GLTF) for 3D Printing (#234)
-- Goal: allow users to export watertight 3D models of generated crystals for 3D printing.
-- Scope: merge instanced matrices into unified geometry and export binary `.stl` or `.gltf`.
-
 ### Add production monitoring
 - Goal: catch live runtime errors and deploy regressions quickly.
 - Ideas: Cloudflare Web Analytics, Worker logs, browser error reporting, uptime check.
@@ -37,6 +33,7 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ## Completed
 
+- [x] **3D model export (#234):** Merged instanced hex-cylinders to binary STL + GLB (50mm long axis). Overlapping segments, not a watertight boolean union.
 - [x] **Ice crystal shaders (#235):** Thin-film iridescence, procedural frost grain, and Photo Mode depth of field.
 - [x] **Vector SVG path export (#236):** 2D projection of hexagonal-cylinder instances to filled SVG polygons, 100mm long-axis export, `E` shortcut.
 - [x] **Modularize monolithic files (#237):** Extracted UI and scene subsystems from `main.ts` and `scene.ts` into `src/ui/` and `src/snowflake/` domain modules.
@@ -48,6 +45,6 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - [x] **Add seed persistence affordances:** Implemented Recent Seeds list with `localStorage` persistence, clear history with undo, direct seed input in Lab Mode, and a dedicated Copy Seed button/shortcut (`K`).
 - [x] **Add dependency update cadence:** Configured automated weekly dependency updates with GitHub Dependabot (`.github/dependabot.yml`).
 - [x] **Photo Mode & UI Toggle:** Added full UI hide/show toggle (`H`) for clean screenshots and immersive viewing.
-- [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `L`, `G`, `?`, `H`, `P`, `M`, `S`, `E`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
+- [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `L`, `G`, `?`, `H`, `P`, `M`, `S`, `E`, `T`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
 - [x] **High-Performance Geometry Engine (Bolt):** Optimized geometry generation to sub-millisecond execution (<0.014ms per flake, ~181x faster than initial) via sequential TypedArray write grouping, stride-8 segment packing, in-place quicksort, pre-calculated branch decay, and LUT easing.
 

@@ -736,6 +736,48 @@ function saveSnowflakeSvg() {
 
 document.getElementById("btn-save-svg")?.addEventListener("click", saveSnowflakeSvg);
 
+async function saveSnowflake3d() {
+  setTemporaryLabel("btn-save-3d", "Saving...", "⌛");
+  visualPress("btn-save-3d");
+  announce("Saving snowflake as STL and GLB");
+
+  try {
+    if (!lastFlake) {
+      throw new Error("No snowflake geometry to export");
+    }
+
+    const snapshot = {
+      armCount: lastFlake.armCount,
+      delays: lastFlake.delays.slice(),
+      matrices: lastFlake.matrices.slice(),
+      branchCount: lastFlake.branchCount,
+      core: lastFlake.core,
+    };
+
+    const { exportSnowflakeModels } = await import("./snowflake/mesh-export");
+    const { stl, glb } = await exportSnowflakeModels(snapshot);
+
+    const stlUrl = URL.createObjectURL(stl);
+    downloadHref(exportFileName("stl"), stlUrl);
+    URL.revokeObjectURL(stlUrl);
+
+    const glbUrl = URL.createObjectURL(glb);
+    downloadHref(exportFileName("glb"), glbUrl);
+    URL.revokeObjectURL(glbUrl);
+
+    setTemporaryLabel("btn-save-3d", "Saved!", "✓", false, true);
+    announce("Snowflake 3D model saved");
+  } catch (err) {
+    console.error("Failed to save snowflake 3D model:", err);
+    setTemporaryLabel("btn-save-3d", "Failed", "✕", true);
+    announce("Failed to save snowflake 3D model");
+  }
+}
+
+document.getElementById("btn-save-3d")?.addEventListener("click", () => {
+  void saveSnowflake3d();
+});
+
 const btnPink = document.getElementById("btn-pink");
 
 function togglePinkMode() {
@@ -917,6 +959,9 @@ initKeyboardShortcuts({
   },
   onSaveSvg: () => {
     saveSnowflakeSvg();
+  },
+  onSave3d: () => {
+    void saveSnowflake3d();
   },
   onToggleAutoRotate: () => {
     toggleAutoRotate();
