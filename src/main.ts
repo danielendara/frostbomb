@@ -16,6 +16,7 @@ import {
 import { SeedHistoryManager } from "./ui/history";
 import { LabPanel } from "./ui/lab-panel";
 import { initKeyboardShortcuts } from "./ui/keyboard";
+import { downloadHref, downloadObjectUrls } from "./ui/download";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const scene = createScene(canvas);
@@ -699,13 +700,6 @@ function exportFileName(extension: string): string {
   return `frostbomb-${habit}-${currentSeedLabel}.${extension}`;
 }
 
-function downloadHref(filename: string, href: string) {
-  const link = document.createElement("a");
-  link.download = filename;
-  link.href = href;
-  link.click();
-}
-
 function saveSnowflakeSvg() {
   setTemporaryLabel("btn-save-svg", "Saving...", "⌛");
   visualPress("btn-save-svg");
@@ -721,9 +715,7 @@ function saveSnowflakeSvg() {
       seed: currentSeedLabel,
     });
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    downloadHref(exportFileName("svg"), url);
-    URL.revokeObjectURL(url);
+    downloadHref(exportFileName("svg"), URL.createObjectURL(blob));
 
     setTemporaryLabel("btn-save-svg", "Saved!", "✓", false, true);
     announce("Snowflake SVG saved");
@@ -757,13 +749,10 @@ async function saveSnowflake3d() {
     const { exportSnowflakeModels } = await import("./snowflake/mesh-export");
     const { stl, glb } = await exportSnowflakeModels(snapshot);
 
-    const stlUrl = URL.createObjectURL(stl);
-    downloadHref(exportFileName("stl"), stlUrl);
-    URL.revokeObjectURL(stlUrl);
-
-    const glbUrl = URL.createObjectURL(glb);
-    downloadHref(exportFileName("glb"), glbUrl);
-    URL.revokeObjectURL(glbUrl);
+    await downloadObjectUrls([
+      { filename: exportFileName("stl"), href: URL.createObjectURL(stl) },
+      { filename: exportFileName("glb"), href: URL.createObjectURL(glb) },
+    ]);
 
     setTemporaryLabel("btn-save-3d", "Saved!", "✓", false, true);
     announce("Snowflake 3D model saved");

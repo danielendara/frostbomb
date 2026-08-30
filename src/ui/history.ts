@@ -57,16 +57,16 @@ export class SeedHistoryManager {
   public addSeed(seedVal: string): void {
     if (!seedVal || !/^[a-z0-9]{3,12}$/i.test(seedVal)) return;
 
+    // Lab/Nakaya grow(keepSeed) during the undo window would otherwise miss the
+    // newest-seed guard (clear emptied recentSeeds) and clobber the backup.
+    if (this.undoTimeoutId !== null || this.backupRecentSeeds !== null) {
+      return;
+    }
+
     // Performance optimization: prevent redundant localStorage/DOM writes if seed is already newest
     if (this.recentSeeds[0] === seedVal) {
       return;
     }
-
-    if (this.undoTimeoutId !== null) {
-      clearTimeout(this.undoTimeoutId);
-      this.undoTimeoutId = null;
-    }
-    this.backupRecentSeeds = null;
 
     this.recentSeeds = [seedVal, ...this.recentSeeds.filter((s) => s !== seedVal)].slice(0, 5);
     this.saveToStorage();
