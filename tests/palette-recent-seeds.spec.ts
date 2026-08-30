@@ -244,6 +244,58 @@ test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page
   await expect(seedButtons.nth(1)).toHaveAttribute('tabindex', '-1');
 });
 
+test('Second Clear during the undo window does not wipe the seed backup', async ({ page }) => {
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 60000; });
+
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+  const clearBtn = page.locator('#btn-clear-history');
+
+  await expect(seedDisplay).not.toHaveText('·····');
+  const activeSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  await expect(clearBtn).toBeVisible();
+  await expect(clearBtn).toBeEnabled();
+  await clearBtn.click();
+
+  const undoBtn = page.locator('#btn-undo-history');
+  await expect(undoBtn).toBeVisible();
+  await expect(undoBtn).toBeFocused();
+
+  // Header Clear control must not remain clickable while Undo is showing
+  await expect(clearBtn).toBeHidden();
+  await expect(clearBtn).toBeDisabled();
+
+  // Force a second Clear (the previous bug overwrote backupRecentSeeds with [])
+  await clearBtn.dispatchEvent('click');
+
+  await expect(undoBtn).toBeVisible();
+  await undoBtn.click();
+
+  const seedButtons = recentSeedsList.locator('button');
+  await expect(seedButtons).toHaveCount(1);
+  await expect(seedButtons.first()).toHaveText(activeSeed);
+  await expect(clearBtn).toBeVisible();
+  await expect(clearBtn).toBeEnabled();
+
+  const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
+  expect(JSON.parse(storedValue || '[]')).toContain(activeSeed);
+});
+
+test('Recent Seeds list is labelled but not a live region', async ({ page }) => {
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const announcer = page.locator('#a11y-announcer');
+  const seedDisplay = page.locator('#seed-display');
+
+  await expect(seedDisplay).not.toHaveText('·····');
+  await expect(recentSeedsList).toBeVisible();
+
+  await expect(recentSeedsList).not.toHaveAttribute('aria-live');
+  await expect(recentSeedsList).toHaveAttribute('aria-labelledby', 'recent-seeds-label');
+  await expect(announcer).toHaveAttribute('aria-live', 'polite');
+  await expect(announcer).toHaveAttribute('role', 'status');
+});
+
 test('Recent Seeds buttons announce state on click', async ({ page }) => {
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
