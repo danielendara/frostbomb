@@ -165,6 +165,10 @@ test("field guide documents the SVG export shortcut", async ({ page }) => {
 });
 
 test("T key downloads STL and GLB and provides feedback", async ({ page }) => {
+  await page.evaluate(() => {
+    (window as any).__FROSTBOMB_OBJECT_URL_REVOKE_MS__ = 15000;
+  });
+
   const saveBtn = page.locator("#btn-save-3d");
   const label = saveBtn.locator(".action-btn__label");
   const names: string[] = [];
@@ -184,6 +188,70 @@ test("T key downloads STL and GLB and provides feedback", async ({ page }) => {
   await expect.poll(() => names.length).toBeGreaterThanOrEqual(2);
   expect(names.some((name) => /^frostbomb-.*-.*\.stl$/.test(name))).toBe(true);
   expect(names.some((name) => /^frostbomb-.*-.*\.glb$/.test(name))).toBe(true);
+  await expect(page.locator('a[download][href^="blob:"]')).toHaveCount(2);
+});
+
+test("sequential blob downloads append anchors, delay the second click, and revoke later", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    (window as any).__FROSTBOMB_DOWNLOAD_GAP_MS__ = 120;
+    (window as any).__FROSTBOMB_OBJECT_URL_REVOKE_MS__ = 400;
+  });
+
+  const names: string[] = [];
+  const times: number[] = [];
+  page.on("download", (download) => {
+    names.push(download.suggestedFilename());
+    times.push(Date.now());
+    void download.delete();
+  });
+
+  const snapshot = await page.evaluate(async () => {
+    const download = (window as any).__FROSTBOMB_DOWNLOAD_OBJECT_URLS__;
+    if (typeof download !== "function") {
+      return { helper: typeof download, appended: [] as string[], remaining: [] as string[] };
+    }
+
+    const appended: string[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of Array.from(record.addedNodes)) {
+          if (node instanceof HTMLAnchorElement) {
+            appended.push(`${node.download}:${node.href.startsWith("blob:") ? "blob" : node.href.slice(0, 8)}`);
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true });
+
+    const stl = URL.createObjectURL(new Blob(["stl"], { type: "application/octet-stream" }));
+    const glb = URL.createObjectURL(new Blob(["glb"], { type: "application/octet-stream" }));
+    await download([
+      { filename: "frostbomb-test.stl", href: stl },
+      { filename: "frostbomb-test.glb", href: glb },
+    ]);
+    observer.disconnect();
+
+    const remaining = Array.from(document.querySelectorAll("a[download]")).map(
+      (el) => (el as HTMLAnchorElement).download,
+    );
+    return { helper: "function", appended, remaining };
+  });
+
+  expect(snapshot.helper).toBe("function");
+  expect(snapshot.appended).toEqual(["frostbomb-test.stl:blob", "frostbomb-test.glb:blob"]);
+  expect(snapshot.remaining).toEqual(["frostbomb-test.stl", "frostbomb-test.glb"]);
+
+  await expect.poll(() => names.length).toBe(2);
+  expect(names).toEqual(["frostbomb-test.stl", "frostbomb-test.glb"]);
+  expect(times[1] - times[0]).toBeGreaterThanOrEqual(100);
+
+  await expect.poll(async () => {
+    return page.evaluate(() =>
+      Array.from(document.querySelectorAll("a[download]")).map((el) => (el as HTMLAnchorElement).download),
+    );
+  }).toEqual([]);
 });
 
 test("field guide documents the 3D export shortcut", async ({ page }) => {

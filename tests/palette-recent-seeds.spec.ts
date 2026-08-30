@@ -282,7 +282,7 @@ test('Second Clear during the undo window does not wipe the seed backup', async 
   expect(JSON.parse(storedValue || '[]')).toContain(activeSeed);
 });
 
-test('Recent Seeds list is labelled but not a live region', async ({ page }) => {
+test('Masthead seed and recent seeds list are labelled but not live regions', async ({ page }) => {
   const recentSeedsList = page.locator('#recent-seeds-list');
   const announcer = page.locator('#a11y-announcer');
   const seedDisplay = page.locator('#seed-display');
@@ -290,10 +290,61 @@ test('Recent Seeds list is labelled but not a live region', async ({ page }) => 
   await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsList).toBeVisible();
 
+  await expect(seedDisplay).not.toHaveAttribute('aria-live');
   await expect(recentSeedsList).not.toHaveAttribute('aria-live');
   await expect(recentSeedsList).toHaveAttribute('aria-labelledby', 'recent-seeds-label');
   await expect(announcer).toHaveAttribute('aria-live', 'polite');
   await expect(announcer).toHaveAttribute('role', 'status');
+});
+
+test('Lab Mode grow during the undo window does not wipe the seed backup', async ({ page }) => {
+  test.slow();
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 60000; });
+
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+  const clearBtn = page.locator('#btn-clear-history');
+  const labToggle = page.locator('#lab-toggle');
+  const refreshBtn = page.locator('#refresh');
+
+  await expect(seedDisplay).not.toHaveText('·····');
+  const firstSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  await refreshBtn.click();
+  await expect(async () => {
+    const currentSeed = (await seedDisplay.textContent())?.trim() || '';
+    expect(currentSeed).not.toBe(firstSeed);
+  }).toPass({ timeout: 5000 });
+  const secondSeed = (await seedDisplay.textContent())?.trim() || '';
+
+  await expect(recentSeedsList.locator('button')).toHaveCount(2);
+
+  await clearBtn.click();
+  const undoBtn = page.locator('#btn-undo-history');
+  await expect(undoBtn).toBeVisible();
+  await expect(undoBtn).toBeFocused();
+
+  await labToggle.click();
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#lab-controls')).toBeVisible();
+  await expect(page.locator('#lab-status')).toHaveText('ON');
+  await expect(labToggle).toBeEnabled();
+
+  await labToggle.click();
+  await expect(labToggle).toHaveAttribute('aria-pressed', 'false');
+
+  await expect(undoBtn).toBeVisible();
+  await undoBtn.click();
+
+  const seedButtons = recentSeedsList.locator('button');
+  await expect(seedButtons).toHaveCount(2);
+  await expect(seedButtons.first()).toHaveText(secondSeed);
+  await expect(seedButtons.nth(1)).toHaveText(firstSeed);
+  await expect(clearBtn).toBeVisible();
+  await expect(clearBtn).toBeEnabled();
+
+  const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
+  expect(JSON.parse(storedValue || '[]')).toEqual([secondSeed, firstSeed]);
 });
 
 test('Recent Seeds buttons announce state on click', async ({ page }) => {
