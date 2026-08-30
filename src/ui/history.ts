@@ -73,6 +73,8 @@ export class SeedHistoryManager {
   }
 
   public clear(currentSeedLabel: string, isLabMode: boolean, isGuideOpen: boolean): void {
+    if (this.recentSeeds.length === 0) return;
+
     if (this.undoTimeoutId !== null) {
       clearTimeout(this.undoTimeoutId);
       this.undoTimeoutId = null;
@@ -142,6 +144,22 @@ export class SeedHistoryManager {
     });
   }
 
+  private setClearButtonAvailable(available: boolean): void {
+    const clearBtn = document.getElementById("btn-clear-history");
+    if (!(clearBtn instanceof HTMLButtonElement)) return;
+
+    clearBtn.hidden = !available;
+    clearBtn.disabled = !available;
+
+    if (!available) return;
+
+    const count = this.recentSeeds.length;
+    const itemLabel = `${count} item${count === 1 ? "" : "s"}`;
+    clearBtn.textContent = `Clear (${count})`;
+    clearBtn.title = `Clear seed history (${itemLabel})`;
+    clearBtn.setAttribute("aria-label", `Clear seed history (${itemLabel})`);
+  }
+
   public updateUI(currentSeedLabel: string, isLabMode: boolean, isGuideOpen: boolean): void {
     const container = document.getElementById("recent-seeds-container");
     const listEl = document.getElementById("recent-seeds-list");
@@ -172,6 +190,7 @@ export class SeedHistoryManager {
 
     if (this.recentSeeds.length === 0) {
       if (this.backupRecentSeeds && this.backupRecentSeeds.length > 0) {
+        this.setClearButtonAvailable(false);
         container.style.display = "flex";
         listEl.innerHTML = "";
 
@@ -223,21 +242,14 @@ export class SeedHistoryManager {
         return;
       }
 
+      this.setClearButtonAvailable(false);
       container.style.display = "none";
       return;
     }
 
     container.style.display = "flex";
     listEl.innerHTML = "";
-
-    const clearBtn = document.getElementById("btn-clear-history");
-    if (clearBtn) {
-      const count = this.recentSeeds.length;
-      const itemLabel = `${count} item${count === 1 ? "" : "s"}`;
-      clearBtn.textContent = `Clear (${count})`;
-      clearBtn.title = `Clear seed history (${itemLabel})`;
-      clearBtn.setAttribute("aria-label", `Clear seed history (${itemLabel})`);
-    }
+    this.setClearButtonAvailable(true);
 
     const activeIndex = this.recentSeeds.indexOf(currentSeedLabel);
     const primaryIndex = activeIndex !== -1 ? activeIndex : 0;
