@@ -204,7 +204,8 @@ test("Main canvas is an interactive orbit control in the accessibility tree", as
   const scene = page.locator("#scene");
 
   await expect(seedDisplay).not.toHaveText("·····");
-  await expect(scene).toHaveAttribute("role", "application");
+  await expect(scene).toHaveAttribute("role", "region");
+  await expect(scene).not.toHaveAttribute("tabindex");
   await expect(scene).toHaveAttribute(
     "aria-label",
     /Interactive 3D snowflake:.*Drag to rotate, arrow keys to orbit, double-click or V to reset view/i,
