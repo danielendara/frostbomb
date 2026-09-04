@@ -147,18 +147,68 @@ test("Nakaya diagram displays live-hover preview and reverts on leave", async ({
   // Initially, status should show Active state
   await expect(status).toBeVisible();
   await expect(status).toContainText("Active:");
+  await expect(status).toHaveAttribute("aria-live", "polite");
 
   // Hover over Nakaya diagram
   await nakaya.hover({ position: { x: 150, y: 100 } });
 
   // Status should change to Preview mode
   await expect(status).toContainText("Preview:");
+  await expect(status).toHaveAttribute("aria-live", "off");
 
   // Move cursor away (move to 0,0 to guarantee pointerleave)
   await page.mouse.move(0, 0);
 
   // Status should revert to Active mode
   await expect(status).toContainText("Active:");
+  await expect(status).toHaveAttribute("aria-live", "polite");
+});
+
+test("Nakaya commit announces through the status live region only", async ({
+  page,
+}) => {
+  const guideToggle = page.locator("#guide-toggle");
+  const fieldGuide = page.locator("#field-guide");
+  const nakaya = page.locator("#nakaya-diagram");
+  const status = page.locator("#nakaya-status");
+  const announcer = page.locator("#a11y-announcer");
+
+  await guideToggle.click();
+  await expect(fieldGuide).toBeVisible();
+  await expect(status).toContainText("Active:");
+
+  const beforeStatus = (await status.textContent()) ?? "";
+  await nakaya.click({ position: { x: 50, y: 50 }, force: true });
+  await expect(status).not.toHaveText(beforeStatus);
+  await expect(status).toContainText("Active:");
+  await expect(status).toHaveAttribute("aria-live", "polite");
+
+  const afterClick = (await status.textContent()) ?? "";
+  await nakaya.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(status).not.toHaveText(afterClick);
+  await expect(status).toContainText("Active:");
+  await expect(status).toHaveAttribute("aria-live", "polite");
+
+  // announcer debounce is 50ms — wait past it so a stray Temperature line would have landed
+  await page.waitForTimeout(200);
+  const announced = (await announcer.textContent()) ?? "";
+  expect(announced).not.toMatch(/Temperature:/);
+  expect(announced).not.toMatch(/Habit changed to:/);
+});
+
+test("Main canvas is an interactive orbit control in the accessibility tree", async ({
+  page,
+}) => {
+  const seedDisplay = page.locator("#seed-display");
+  const scene = page.locator("#scene");
+
+  await expect(seedDisplay).not.toHaveText("·····");
+  await expect(scene).toHaveAttribute("role", "application");
+  await expect(scene).toHaveAttribute(
+    "aria-label",
+    /Interactive 3D snowflake:.*Drag to rotate, arrow keys to orbit, double-click or V to reset view/i,
+  );
 });
 
 test("Close Lab Mode button in Lab controls works", async ({ page }) => {

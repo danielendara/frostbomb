@@ -163,6 +163,8 @@ test('Recent Seeds clearing can be undone, restoring items and focusing clear bu
   await expect(recentSeedsContainer).toBeVisible();
   const undoBtn = page.locator('#btn-undo-history');
   await expect(undoBtn).toBeVisible();
+  await expect(undoBtn).toHaveClass(/undo-armed/);
+  await expect(recentSeedsContainer).toHaveClass(/undo-armed/);
 
   // Undo button should receive focus
   await expect(undoBtn).toBeFocused();
@@ -174,6 +176,8 @@ test('Recent Seeds clearing can be undone, restoring items and focusing clear bu
   const seedButtons = recentSeedsList.locator('button');
   await expect(seedButtons).toHaveCount(1);
   await expect(seedButtons.first()).toHaveText(activeSeed);
+  await expect(recentSeedsContainer).not.toHaveClass(/undo-armed/);
+  await expect(page.locator('#btn-undo-history')).toHaveCount(0);
 
   // Clear button should receive focus
   await expect(clearBtn).toBeFocused();
@@ -345,6 +349,44 @@ test('Lab Mode grow during the undo window does not wipe the seed backup', async
 
   const storedValue = await page.evaluate(() => localStorage.getItem('frostbomb-recent-seeds'));
   expect(JSON.parse(storedValue || '[]')).toEqual([secondSeed, firstSeed]);
+});
+
+test('Clear history undo stays visually armed until timeout, then chrome returns to normal', async ({ page }) => {
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 800; });
+
+  const recentSeedsContainer = page.locator('#recent-seeds-container');
+  const seedDisplay = page.locator('#seed-display');
+  const clearBtn = page.locator('#btn-clear-history');
+
+  await expect(seedDisplay).not.toHaveText('·····');
+  await expect(recentSeedsContainer).toBeVisible();
+
+  await clearBtn.click();
+  const undoBtn = page.locator('#btn-undo-history');
+  await expect(undoBtn).toBeVisible();
+  await expect(undoBtn).toHaveClass(/undo-armed/);
+  await expect(recentSeedsContainer).toHaveClass(/undo-armed/);
+  await expect(undoBtn).toHaveCSS('border-color', 'rgb(158, 201, 255)');
+
+  await expect(recentSeedsContainer).not.toBeVisible({ timeout: 5000 });
+  await expect(undoBtn).not.toBeVisible();
+  await expect(recentSeedsContainer).not.toHaveClass(/undo-armed/);
+});
+
+test('History undo pulse is disabled when prefers-reduced-motion is set', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 60000; });
+
+  const seedDisplay = page.locator('#seed-display');
+  const clearBtn = page.locator('#btn-clear-history');
+
+  await expect(seedDisplay).not.toHaveText('·····');
+  await clearBtn.click();
+
+  const undoBtn = page.locator('#btn-undo-history');
+  await expect(undoBtn).toBeVisible();
+  await expect(undoBtn).toHaveClass(/undo-armed/);
+  await expect(undoBtn).toHaveCSS('animation-name', 'none');
 });
 
 test('Recent Seeds buttons announce state on click', async ({ page }) => {
