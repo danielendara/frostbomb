@@ -109,14 +109,12 @@ export class SeedHistoryManager {
         : 10000;
 
     this.undoTimeoutId = window.setTimeout(() => {
+      const undoWasFocused = document.activeElement?.id === "btn-undo-history";
       this.backupRecentSeeds = null;
       this.undoTimeoutId = null;
       this.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
-      if (document.activeElement?.id === "btn-undo-history") {
-        const focusTarget = document.getElementById("guide-toggle");
-        if (focusTarget) {
-          focusTarget.focus();
-        }
+      if (undoWasFocused) {
+        document.getElementById("guide-toggle")?.focus();
       }
     }, timeoutDuration);
   }
@@ -220,6 +218,7 @@ export class SeedHistoryManager {
       this.setClearButtonAvailable(false);
       container.classList.remove("undo-armed");
       container.style.display = "none";
+      listEl.innerHTML = "";
       return;
     }
 

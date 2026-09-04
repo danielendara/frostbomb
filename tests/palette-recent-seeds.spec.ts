@@ -352,14 +352,15 @@ test('Lab Mode grow during the undo window does not wipe the seed backup', async
 });
 
 test('Clear history undo stays visually armed until timeout, then chrome returns to normal', async ({ page }) => {
-  await page.evaluate(() => { (window as any).__FROSTBOMB_UNDO_TIMEOUT__ = 800; });
-
   const recentSeedsContainer = page.locator('#recent-seeds-container');
   const seedDisplay = page.locator('#seed-display');
   const clearBtn = page.locator('#btn-clear-history');
 
   await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsContainer).toBeVisible();
+
+  // After grow: an 800ms real timeout raced slow CI before the first assert.
+  await page.clock.install();
 
   await clearBtn.click();
   const undoBtn = page.locator('#btn-undo-history');
@@ -368,8 +369,9 @@ test('Clear history undo stays visually armed until timeout, then chrome returns
   await expect(recentSeedsContainer).toHaveClass(/undo-armed/);
   await expect(undoBtn).toHaveCSS('border-color', 'rgb(158, 201, 255)');
 
-  await expect(recentSeedsContainer).not.toBeVisible({ timeout: 5000 });
-  await expect(undoBtn).not.toBeVisible();
+  await page.clock.fastForward(10000);
+  await expect(recentSeedsContainer).not.toBeVisible();
+  await expect(undoBtn).toHaveCount(0);
   await expect(recentSeedsContainer).not.toHaveClass(/undo-armed/);
 });
 
