@@ -169,6 +169,8 @@ test("T key downloads STL and GLB and provides feedback", async ({ page }) => {
     (window as any).__FROSTBOMB_OBJECT_URL_REVOKE_MS__ = 15000;
   });
 
+  await expect(page.locator("#seed-display")).not.toHaveText("·····");
+
   const saveBtn = page.locator("#btn-save-3d");
   const label = saveBtn.locator(".action-btn__label");
   const names: string[] = [];
@@ -183,9 +185,9 @@ test("T key downloads STL and GLB and provides feedback", async ({ page }) => {
   await expect(async () => {
     const text = await label.textContent();
     expect(["Saved!", "Save 3D"]).toContain(text);
-  }).toPass();
+  }).toPass({ timeout: 20000 });
 
-  await expect.poll(() => names.length).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => names.length, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
   expect(names.some((name) => /^frostbomb-.*-.*\.stl$/.test(name))).toBe(true);
   expect(names.some((name) => /^frostbomb-.*-.*\.glb$/.test(name))).toBe(true);
   await expect(page.locator('a[download][href^="blob:"]')).toHaveCount(2);

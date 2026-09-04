@@ -109,14 +109,12 @@ export class SeedHistoryManager {
         : 10000;
 
     this.undoTimeoutId = window.setTimeout(() => {
+      const undoWasFocused = document.activeElement?.id === "btn-undo-history";
       this.backupRecentSeeds = null;
       this.undoTimeoutId = null;
       this.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
-      if (document.activeElement?.id === "btn-undo-history") {
-        const focusTarget = document.getElementById("guide-toggle");
-        if (focusTarget) {
-          focusTarget.focus();
-        }
+      if (undoWasFocused) {
+        document.getElementById("guide-toggle")?.focus();
       }
     }, timeoutDuration);
   }
@@ -184,6 +182,7 @@ export class SeedHistoryManager {
     this.lastHasBackup = hasBackup;
 
     if (isGuideOpen || isLabMode) {
+      container.classList.remove("undo-armed");
       container.style.display = "none";
       return;
     }
@@ -191,46 +190,20 @@ export class SeedHistoryManager {
     if (this.recentSeeds.length === 0) {
       if (this.backupRecentSeeds && this.backupRecentSeeds.length > 0) {
         this.setClearButtonAvailable(false);
+        container.classList.add("undo-armed");
         container.style.display = "flex";
         listEl.innerHTML = "";
 
         const infoSpan = document.createElement("span");
-        infoSpan.style.color = "var(--ink-dim)";
-        infoSpan.style.fontSize = "0.65rem";
+        infoSpan.className = "undo-banner";
         infoSpan.textContent = "History cleared. ";
 
         const undoBtn = document.createElement("button");
         undoBtn.id = "btn-undo-history";
-        undoBtn.className = "seed-btn";
-        undoBtn.style.padding = "0.15rem 0.35rem";
-        undoBtn.style.fontSize = "0.65rem";
-        undoBtn.style.border = "1px solid var(--rule)";
-        undoBtn.style.borderRadius = "4px";
-        undoBtn.style.background = "transparent";
-        undoBtn.style.color = "var(--accent)";
-        undoBtn.style.fontFamily = "var(--mono)";
-        undoBtn.style.cursor = "pointer";
-        undoBtn.style.textTransform = "lowercase";
+        undoBtn.className = "seed-btn undo-armed";
         undoBtn.title = "Undo clearing seed history";
         undoBtn.setAttribute("aria-label", "Undo clearing seed history");
         undoBtn.textContent = "undo";
-
-        undoBtn.addEventListener("mouseenter", () => {
-          undoBtn.style.background = "rgba(230, 237, 245, 0.1)";
-          undoBtn.style.color = "var(--ink)";
-        });
-        undoBtn.addEventListener("mouseleave", () => {
-          undoBtn.style.background = "transparent";
-          undoBtn.style.color = "var(--accent)";
-        });
-        undoBtn.addEventListener("focus", () => {
-          undoBtn.style.background = "rgba(230, 237, 245, 0.1)";
-          undoBtn.style.color = "var(--ink)";
-        });
-        undoBtn.addEventListener("blur", () => {
-          undoBtn.style.background = "transparent";
-          undoBtn.style.color = "var(--accent)";
-        });
 
         undoBtn.addEventListener("click", () => {
           visualPress(undoBtn);
@@ -243,10 +216,13 @@ export class SeedHistoryManager {
       }
 
       this.setClearButtonAvailable(false);
+      container.classList.remove("undo-armed");
       container.style.display = "none";
+      listEl.innerHTML = "";
       return;
     }
 
+    container.classList.remove("undo-armed");
     container.style.display = "flex";
     listEl.innerHTML = "";
     this.setClearButtonAvailable(true);

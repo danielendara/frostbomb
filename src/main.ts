@@ -146,7 +146,7 @@ function grow(
   );
 
   if (canvas) {
-    const canvasAria = `3D procedural snowflake visualization: a ${habitLabel[conditions.habit]} (Seed: ${label})`;
+    const canvasAria = `Interactive 3D snowflake: a ${habitLabel[conditions.habit]} (Seed: ${label}). Drag to rotate, arrow keys to orbit, double-click or V to reset view.`;
     if (lastCanvasAria !== canvasAria) {
       canvas.setAttribute("aria-label", canvasAria);
       lastCanvasAria = canvasAria;
@@ -298,7 +298,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     if (labStatus) {
       labStatus.textContent = "ON";
     }
-    updateFromPane(false);
+    updateFromPane();
     if (shouldFocus) {
       requestAnimationFrame(() => {
         if (labControls) {
@@ -427,7 +427,7 @@ function handleNakayaPointer(e: PointerEvent) {
   if (!isLabMode) {
     toggleLabMode(false);
   } else {
-    updateFromPane(false);
+    updateFromPane();
   }
 }
 
@@ -548,13 +548,13 @@ nakayaCanvas?.addEventListener("keydown", (e: Event) => {
 
       if (changed) {
         visualPress("nakaya-diagram");
-        updateFromPane(true);
+        updateFromPane();
       }
     }
   }
 });
 
-function updateFromPane(shouldAnnounce = false) {
+function updateFromPane() {
   const t = labPanel.params.temperature;
   const ss = labPanel.params.supersaturation / 100;
   const habit = getHabit(t, ss);
@@ -568,9 +568,9 @@ function updateFromPane(shouldAnnounce = false) {
     }
   }
 
-  if (shouldAnnounce) {
-    announce(`Temperature: ${t.toFixed(1)}°C, Humidity: ${labPanel.params.supersaturation.toFixed(0)}%: ${habitText}`);
-  } else if (lastHabit && lastHabit !== habitText) {
+  // Field Guide's #nakaya-status is the live region for committed conditions.
+  // Lab sliders still announce habit changes when that region is hidden.
+  if (!isGuideOpen && lastHabit && lastHabit !== habitText) {
     announce(`Habit changed to: ${habitText}`);
   }
 
