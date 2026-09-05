@@ -2,10 +2,11 @@ import "./style.css";
 import { createScene } from "./snowflake/scene";
 import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
 import { buildSnowflakeSvg } from "./snowflake/svg-export";
-import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snowflake/nakaya";
+import { sampleConditions, habitLabel, GrowthConditions } from "./snowflake/nakaya";
 import { mulberry32, resolveSeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
 import { announce } from "./ui/announcer";
+import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
 import {
   visualPress,
   setTemporaryLabel,
@@ -97,22 +98,6 @@ function updateRecentSeedsUI() {
 document.getElementById("btn-clear-history")?.addEventListener("click", () => {
   historyManager.clear(currentSeedLabel, isLabMode, isGuideOpen);
 });
-
-function updateNakayaStatus(temp: number, ss: number, isPreview: boolean) {
-  const statusEl = document.getElementById("nakaya-status");
-  if (!statusEl) return;
-  const habit = getHabit(temp, ss);
-  const habitText = habitLabel[habit];
-  const humPct = Math.round(ss * 100);
-  const tempStr = temp.toFixed(1);
-  if (isPreview) {
-    statusEl.setAttribute("aria-live", "off");
-    statusEl.innerHTML = `Preview: <span style="color: var(--accent);">${tempStr}°C</span>, <span style="color: var(--accent);">${humPct}%</span> • <em>${habitText}</em>`;
-  } else {
-    statusEl.setAttribute("aria-live", "polite");
-    statusEl.innerHTML = `Active: <span style="color: var(--accent-hot);">${tempStr}°C</span>, <span style="color: var(--accent-hot);">${humPct}%</span> • <strong>${habitText}</strong>`;
-  }
-}
 
 function grow(
   manualConditions?: GrowthConditions,
@@ -555,31 +540,22 @@ nakayaCanvas?.addEventListener("keydown", (e: Event) => {
 });
 
 function updateFromPane() {
-  const t = labPanel.params.temperature;
-  const ss = labPanel.params.supersaturation / 100;
-  const habit = getHabit(t, ss);
-  const habitText = habitLabel[habit];
+  const { habitText, conditions } = commitNakayaConditions({
+    temperatureC: labPanel.params.temperature,
+    supersaturation: labPanel.params.supersaturation / 100,
+    isGuideOpen,
+    lastHabit,
+    announce,
+  });
 
   if (nakayaCanvas) {
-    const nakayaAria = `Nakaya morphology diagram: ${t.toFixed(1)}°C, ${labPanel.params.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitText}. Use arrow keys to adjust.`;
+    const nakayaAria = `Nakaya morphology diagram: ${labPanel.params.temperature.toFixed(1)}°C, ${labPanel.params.supersaturation.toFixed(0)}% humidity. Resulting habit: ${habitText}. Use arrow keys to adjust.`;
     if (lastNakayaAria !== nakayaAria) {
       nakayaCanvas.setAttribute("aria-label", nakayaAria);
       lastNakayaAria = nakayaAria;
     }
   }
 
-  // Field Guide's #nakaya-status is the live region for committed conditions.
-  // Lab sliders still announce habit changes when that region is hidden.
-  if (!isGuideOpen && lastHabit && lastHabit !== habitText) {
-    announce(`Habit changed to: ${habitText}`);
-  }
-
-  const conditions: GrowthConditions = {
-    temperatureC: t,
-    supersaturation: ss,
-    habit: habit,
-    path: [{ temp: t, ss: ss }],
-  };
   labPanel.params.habit = habitText;
   labPanel.refresh();
 
