@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "pretest": "npm run test:unit",
     "test": "playwright test",
+    "test:unit": "vitest run",
     "performance:inventory": "node scripts/generate-performance-inventory.mjs",
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy"
@@ -28,6 +30,7 @@
     "@types/three": "^0.185.4",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
+    "vitest": "^5.0.0",
     "wrangler": "^4.127.0"
   }
 }
