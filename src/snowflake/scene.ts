@@ -111,15 +111,21 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     emissiveIntensity: 0.25,
   });
 
-  void loadFrostMaps().then((maps) => {
-    material.roughnessMap = maps.roughnessMap;
-    material.iridescenceThicknessMap = maps.roughnessMap;
-    material.normalMap = maps.normalMap;
-    material.needsUpdate = true;
-    frost.roughnessMap.dispose();
-    frost.normalMap.dispose();
-    frost = maps;
-  });
+  void loadFrostMaps()
+    .then((maps) => {
+      material.roughnessMap = maps.roughnessMap;
+      material.iridescenceThicknessMap = maps.roughnessMap;
+      material.normalMap = maps.normalMap;
+      material.needsUpdate = true;
+      frost.roughnessMap.dispose();
+      frost.normalMap.dispose();
+      frost = maps;
+    })
+    .catch((err) => {
+      // Keep the 1x1 placeholder textures (still assigned on `material`);
+      // the flake just renders without frost detail until next load.
+      console.error("Failed to load frost maps:", err);
+    });
 
   const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, true);
   branchGeom.computeTangents();
