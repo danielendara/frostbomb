@@ -51,7 +51,16 @@ export class PostprocessingPipeline implements RenderPipeline {
     if (this.isRequested || this.isLoaded || this.isLoading || prefersReducedMotion) return;
     this.isRequested = true;
     window.setTimeout(() => {
-      this.load(prefersReducedMotion);
+      this.load(prefersReducedMotion)
+        .catch((err) => {
+          console.error("Failed to load postprocessing effects:", err);
+        })
+        .finally(() => {
+          // Allow a later frame to retry (e.g. after a transient chunk-load
+          // failure). Harmless once `isLoaded` is true, since `load()` and
+          // `requestLoad()` both bail out early in that case.
+          this.isRequested = false;
+        });
     }, 0);
   }
 
