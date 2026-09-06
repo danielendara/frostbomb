@@ -1,39 +1,5 @@
 import * as THREE from "three";
-import { createNoise4D } from "simplex-noise";
-import { mulberry32 } from "./random";
-
-const SIZE = 256;
-const OCTAVES = 5;
-const NORMAL_STRENGTH = 2.5;
-// 'fros' — stable grain so the surface look does not change across reloads.
-const FROST_SEED = 0x66726f73;
-
-function fbm(
-  noise: (x: number, y: number, z: number, w: number) => number,
-  u: number,
-  v: number,
-): number {
-  let sum = 0;
-  let amp = 0.5;
-  let freq = 3;
-  let norm = 0;
-  for (let i = 0; i < OCTAVES; i++) {
-    const a = u * Math.PI * 2;
-    const b = v * Math.PI * 2;
-    sum +=
-      amp *
-      noise(
-        Math.cos(a) * freq,
-        Math.sin(a) * freq,
-        Math.cos(b) * freq,
-        Math.sin(b) * freq,
-      );
-    norm += amp;
-    amp *= 0.5;
-    freq *= 2;
-  }
-  return sum / norm;
-}
+import { FROST_SIZE, generateFrostBuffers, type FrostBuffers } from "./frost-data";
 
 function configureMap(texture: THREE.DataTexture): THREE.DataTexture {
   texture.wrapS = THREE.RepeatWrapping;
@@ -50,6 +16,35 @@ function configureMap(texture: THREE.DataTexture): THREE.DataTexture {
   return texture;
 }
 
+function buffersToTextures(buffers: FrostBuffers): {
+  roughnessMap: THREE.DataTexture;
+  normalMap: THREE.DataTexture;
+} {
+  const roughnessMap = configureMap(
+    new THREE.DataTexture(buffers.roughnessData, FROST_SIZE, FROST_SIZE, THREE.RGBAFormat),
+  );
+  const normalMap = configureMap(
+    new THREE.DataTexture(buffers.normalData, FROST_SIZE, FROST_SIZE, THREE.RGBAFormat),
+  );
+  return { roughnessMap, normalMap };
+}
+
+/** Flat 1×1 stand-in until the async bake lands (base roughness, up-facing normal). */
+export function createFrostPlaceholders(): {
+  roughnessMap: THREE.DataTexture;
+  normalMap: THREE.DataTexture;
+} {
+  const roughness = new Uint8Array([89, 89, 89, 255]);
+  const normal = new Uint8Array([128, 128, 255, 255]);
+  const roughnessMap = new THREE.DataTexture(roughness, 1, 1, THREE.RGBAFormat);
+  const normalMap = new THREE.DataTexture(normal, 1, 1, THREE.RGBAFormat);
+  roughnessMap.colorSpace = THREE.NoColorSpace;
+  normalMap.colorSpace = THREE.NoColorSpace;
+  roughnessMap.needsUpdate = true;
+  normalMap.needsUpdate = true;
+  return { roughnessMap, normalMap };
+}
+
 /**
  * Seamless procedural frost maps for the shared ice material.
  * Roughness (green) and iridescence thickness share one texture;
@@ -59,57 +54,36 @@ export function createFrostMaps(): {
   roughnessMap: THREE.DataTexture;
   normalMap: THREE.DataTexture;
 } {
-  const noise = createNoise4D(mulberry32(FROST_SEED));
-  const height = new Float32Array(SIZE * SIZE);
+  return buffersToTextures(generateFrostBuffers());
+}
 
-  for (let y = 0; y < SIZE; y++) {
-    const v = y / SIZE;
-    for (let x = 0; x < SIZE; x++) {
-      const n = fbm(noise, x / SIZE, v);
-      height[y * SIZE + x] = n * 0.5 + 0.5;
-    }
+let frostWorker: Worker | null = null;
+
+/** Bake frost maps off the main thread; falls back to sync when Workers are unavailable. */
+export function loadFrostMaps(): Promise<{
+  roughnessMap: THREE.DataTexture;
+  normalMap: THREE.DataTexture;
+}> {
+  if (typeof Worker === "undefined") {
+    return Promise.resolve(createFrostMaps());
   }
 
-  const roughnessData = new Uint8Array(SIZE * SIZE * 4);
-  const normalData = new Uint8Array(SIZE * SIZE * 4);
+  return new Promise((resolve, reject) => {
+    frostWorker ??= new Worker(new URL("./frost.worker.ts", import.meta.url), {
+      type: "module",
+    });
 
-  const wrap = (i: number) => ((i % SIZE) + SIZE) % SIZE;
+    const worker = frostWorker;
+    frostWorker = null;
 
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++) {
-      const i = y * SIZE + x;
-      const h = height[i];
-      // Keep most of the facet glassy; raise roughness only on frost peaks.
-      const frost = h * h;
-      const roughness = 0.35 + frost * 0.5;
+    worker.onmessage = (event: MessageEvent<FrostBuffers>) => {
+      worker.terminate();
+      resolve(buffersToTextures(event.data));
+    };
 
-      const o = i * 4;
-      const g = Math.round(roughness * 255);
-      roughnessData[o] = g;
-      roughnessData[o + 1] = g;
-      roughnessData[o + 2] = g;
-      roughnessData[o + 3] = 255;
-
-      const dx = height[y * SIZE + wrap(x + 1)] - height[y * SIZE + wrap(x - 1)];
-      const dy = height[wrap(y + 1) * SIZE + x] - height[wrap(y - 1) * SIZE + x];
-      const nx = -dx * NORMAL_STRENGTH;
-      const ny = -dy * NORMAL_STRENGTH;
-      const nz = 1;
-      const invLen = 1 / Math.hypot(nx, ny, nz);
-
-      normalData[o] = Math.round((nx * invLen * 0.5 + 0.5) * 255);
-      normalData[o + 1] = Math.round((ny * invLen * 0.5 + 0.5) * 255);
-      normalData[o + 2] = Math.round((nz * invLen * 0.5 + 0.5) * 255);
-      normalData[o + 3] = 255;
-    }
-  }
-
-  const roughnessMap = configureMap(
-    new THREE.DataTexture(roughnessData, SIZE, SIZE, THREE.RGBAFormat),
-  );
-  const normalMap = configureMap(
-    new THREE.DataTexture(normalData, SIZE, SIZE, THREE.RGBAFormat),
-  );
-
-  return { roughnessMap, normalMap };
+    worker.onerror = (event) => {
+      worker.terminate();
+      reject(event.error ?? new Error("Frost worker failed"));
+    };
+  });
 }
