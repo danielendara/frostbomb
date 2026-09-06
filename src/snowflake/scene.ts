@@ -3,7 +3,7 @@ import { BuildResult } from "./geometry";
 import { PostprocessingPipeline, RenderPipeline } from "./postprocessing";
 import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
-import { createFrostMaps } from "./frost";
+import { createFrostPlaceholders, loadFrostMaps } from "./frost";
 
 export type { RenderPipeline };
 
@@ -81,7 +81,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
 
-  const frost = createFrostMaps();
+  let frost = createFrostPlaceholders();
 
   const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color("#ffffff"),
@@ -109,6 +109,16 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     opacity: 0.9,
     emissive: new THREE.Color("#e0f0ff"),
     emissiveIntensity: 0.25,
+  });
+
+  void loadFrostMaps().then((maps) => {
+    material.roughnessMap = maps.roughnessMap;
+    material.iridescenceThicknessMap = maps.roughnessMap;
+    material.normalMap = maps.normalMap;
+    material.needsUpdate = true;
+    frost.roughnessMap.dispose();
+    frost.normalMap.dispose();
+    frost = maps;
   });
 
   const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, true);
