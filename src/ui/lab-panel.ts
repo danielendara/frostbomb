@@ -39,7 +39,7 @@ export class LabPanel {
     if (this.pane) return this.pane;
     if (this.panePromise) return this.panePromise;
 
-    this.panePromise = import("tweakpane").then(({ Pane }) => {
+    const promise = import("tweakpane").then(({ Pane }) => {
       const paneContainer = document.getElementById("pane-mount");
       const p = new Pane({
         container: paneContainer ?? undefined,
@@ -121,6 +121,14 @@ export class LabPanel {
 
       this.pane = p;
       return p;
+    });
+
+    this.panePromise = promise;
+    promise.catch(() => {
+      // Allow a later call (e.g. re-opening Lab Mode) to retry instead of
+      // permanently replaying this rejection after a transient failure
+      // (network hiccup, ad blocker, etc.).
+      if (this.panePromise === promise) this.panePromise = null;
     });
 
     return this.panePromise;
