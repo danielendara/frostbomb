@@ -24,9 +24,9 @@
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.54.1",
+    "@cloudflare/vite-plugin": "^1.54.4",
     "@playwright/test": "^1.62.1",
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "@types/three": "^0.185.4",
     "happy-dom": "^20.14.0",
     "typescript": "^7.0.2",
