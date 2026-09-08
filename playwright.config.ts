@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: './tests',
   testIgnore: ['**/unit/**'],
   timeout: 60000,
+  fullyParallel: true,
+  workers: process.env.CI ? 2 : undefined,
   use: {
     baseURL: 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
