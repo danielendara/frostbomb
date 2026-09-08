@@ -315,13 +315,17 @@ test("Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
   const masthead = page.locator(".masthead");
   const canvas = page.locator("#scene");
 
-  // Verify initial state: UI is visible
+  // Verify initial state: UI is visible and the first flake has rendered
   await expect(masthead).not.toHaveClass(/ui-hidden/);
+  await expect(page.locator("#seed-display")).not.toHaveText("·····");
 
-  // Hide UI (enter Photo Mode)
+  // Hide UI (enter Photo Mode). announce() writes after 50ms; on cold CI that
+  // timer can sit behind the first DoF/WebGL compile, so wait longer than 5s.
   await btnUI.click();
   await expect(masthead).toHaveClass(/ui-hidden/);
-  await expect(page.locator("#a11y-announcer")).toContainText(/depth of field/i);
+  await expect(page.locator("#a11y-announcer")).toContainText(/depth of field/i, {
+    timeout: 15_000,
+  });
 
   // Drag on the canvas to rotate the camera
   const box = await canvas.boundingBox();
