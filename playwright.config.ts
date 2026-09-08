@@ -4,8 +4,8 @@ export default defineConfig({
   testDir: './tests',
   testIgnore: ['**/unit/**'],
   timeout: 60000,
-  fullyParallel: true,
-  workers: process.env.CI ? 2 : undefined,
+  // CI shares one Vite webServer + WebGL; multi-worker races Lab/palette; browser cache PR is the wall-clock win.
+  workers: process.env.CI ? 1 : undefined,
   use: {
     baseURL: 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
