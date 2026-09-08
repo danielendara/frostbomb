@@ -455,6 +455,8 @@ test("Palette: active history seed button has aria-current='true'", async ({ pag
 });
 
 test("Palette: buttons update kbd styles and other visual child/parent cues on keyboard focus matching hover", async ({ page }) => {
+  await expect(page.locator("#seed-display")).not.toHaveText("·····");
+
   const btnReset = page.locator("#btn-reset");
   const btnResetKbd = btnReset.locator(".btn-kbd");
 
