@@ -458,15 +458,15 @@ test("Palette: buttons update kbd styles and other visual child/parent cues on k
   const btnReset = page.locator("#btn-reset");
   const btnResetKbd = btnReset.locator(".btn-kbd");
 
-  // Initial state should not be focused or have active styles
   await expect(btnReset).toBeVisible();
 
-  // Focus the reset button
+  // locator.focus() sets :focus but not :focus-visible, and on slow CI the
+  // canvas/UI can steal that focus before the kbd color transition settles.
+  // Tab away and back so the highlight is keyboard-originated.
   await btnReset.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
   await expect(btnReset).toBeFocused();
-
-  // Ensure the keyboard focus applies the matching kbd and focus-visible styling
-  // toHaveCSS waits for CSS transition to settle
   await expect(btnResetKbd).toHaveCSS("color", "rgb(158, 201, 255)");
 });
 
