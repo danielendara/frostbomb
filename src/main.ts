@@ -819,13 +819,79 @@ function toggleAutoRotate() {
 btnRotate?.addEventListener("click", toggleAutoRotate);
 
 const btnUI = document.getElementById("btn-ui");
+const PHOTO_MODE_UI_SELECTOR = ".masthead, .field-notes, .footer, .lab-controls";
+
+function getPhotoModeUIElements(): NodeListOf<Element> {
+  return document.querySelectorAll(PHOTO_MODE_UI_SELECTOR);
+}
+
+function isFocusInPhotoModeUI(el: Element | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  return Array.from(getPhotoModeUIElements()).some((root) => root.contains(el));
+}
+
+function setPhotoModeUIInert(inert: boolean): void {
+  getPhotoModeUIElements().forEach((el) => {
+    if (inert) {
+      el.setAttribute("inert", "");
+    } else {
+      el.removeAttribute("inert");
+    }
+  });
+}
+
+function focusSceneForPhotoMode(): void {
+  if (!canvas.hasAttribute("tabindex")) {
+    canvas.setAttribute("tabindex", "-1");
+  }
+  canvas.focus({ preventScroll: true });
+}
+
+function restorePhotoModeUIFocus(): void {
+  const focusBtn = () => {
+    if (btnUI instanceof HTMLElement) {
+      btnUI.focus({ preventScroll: true });
+    }
+  };
+
+  const footer = document.querySelector(".footer");
+  if (!(footer instanceof HTMLElement)) {
+    setTimeout(focusBtn, 50);
+    return;
+  }
+
+  let focused = false;
+  const finish = () => {
+    if (focused) return;
+    focused = true;
+    focusBtn();
+  };
+
+  const onTransitionEnd = (event: TransitionEvent) => {
+    if (event.target !== footer || event.propertyName !== "visibility") return;
+    footer.removeEventListener("transitionend", onTransitionEnd);
+    finish();
+  };
+
+  footer.addEventListener("transitionend", onTransitionEnd);
+  // Footer/masthead use a 300ms visibility transition; focus before that fails silently.
+  setTimeout(finish, 400);
+}
+
+document.addEventListener("focusin", (e) => {
+  if (!isUIHidden) return;
+  const target = e.target;
+  if (target instanceof HTMLElement && target.closest(".ui-hidden")) {
+    focusSceneForPhotoMode();
+  }
+});
 
 function toggleUI(forceShow?: boolean) {
   isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
   visualPress("btn-ui");
 
-  const uiElements = document.querySelectorAll(".masthead, .field-notes, .footer, .lab-controls");
-  uiElements.forEach((el) => el.classList.toggle("ui-hidden", isUIHidden));
+  getPhotoModeUIElements().forEach((el) => el.classList.toggle("ui-hidden", isUIHidden));
+  setPhotoModeUIInert(isUIHidden);
 
   if (btnUI) {
     btnUI.setAttribute("aria-pressed", isUIHidden.toString());
@@ -840,9 +906,13 @@ function toggleUI(forceShow?: boolean) {
         ? "Photo Mode. Press H or Esc to show UI."
         : "Photo Mode. Depth of field on. Press H or Esc to show UI.",
     );
+    if (isFocusInPhotoModeUI(document.activeElement)) {
+      focusSceneForPhotoMode();
+    }
   } else {
-    announce("UI visible");
-    setTimeout(() => btnUI?.focus(), 50);
+    canvas.removeAttribute("tabindex");
+    announce("Photo Mode exited. UI restored.");
+    restorePhotoModeUIFocus();
   }
 }
 

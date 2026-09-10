@@ -348,6 +348,48 @@ test("Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
 
   // Verify UI becomes visible again
   await expect(masthead).not.toHaveClass(/ui-hidden/);
+  await expect(page.locator("#a11y-announcer")).toContainText(/Photo Mode exited.*UI restored/i, {
+    timeout: 15_000,
+  });
+  await expect(btnUI).toBeFocused();
+});
+
+test("Photo Mode keeps focus out of hidden UI and restores it to btn-ui via Esc and H", async ({
+  page,
+}) => {
+  test.slow();
+  const btnUI = page.locator("#btn-ui");
+  const btnReset = page.locator("#btn-reset");
+  const masthead = page.locator(".masthead");
+  const announcer = page.locator("#a11y-announcer");
+  const canvas = page.locator("#scene");
+
+  await btnReset.focus();
+  await expect(btnReset).toBeFocused();
+
+  await page.keyboard.press("h");
+  await expect(masthead).toHaveClass(/ui-hidden/);
+  await expect(btnReset).not.toBeFocused();
+  await expect(btnUI).not.toBeFocused();
+  await expect(canvas).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(masthead).not.toHaveClass(/ui-hidden/);
+  await expect(announcer).toContainText(/Photo Mode exited.*UI restored/i, {
+    timeout: 15_000,
+  });
+  await expect(btnUI).toBeFocused();
+
+  await page.keyboard.press("h");
+  await expect(masthead).toHaveClass(/ui-hidden/);
+  await expect(canvas).toBeFocused();
+
+  await page.keyboard.press("h");
+  await expect(masthead).not.toHaveClass(/ui-hidden/);
+  await expect(announcer).toContainText(/Photo Mode exited.*UI restored/i, {
+    timeout: 15_000,
+  });
+  await expect(btnUI).toBeFocused();
 });
 
 test("Lab Mode container receives focus when Lab Mode is activated", async ({
