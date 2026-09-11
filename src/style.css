@@ -603,6 +603,12 @@ kbd {
   background: rgba(230, 237, 245, 0.05);
 }
 
+.action-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  pointer-events: none;
+}
+
 .action-btn:active {
   transform: scale(0.97);
 }
