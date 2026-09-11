@@ -862,28 +862,11 @@ function restorePhotoModeUIFocus(): void {
     }
   };
 
-  const footer = document.querySelector(".footer");
-  if (!(footer instanceof HTMLElement)) {
-    setTimeout(focusBtn, 50);
-    return;
-  }
-
-  let focused = false;
-  const finish = () => {
-    if (focused) return;
-    focused = true;
-    focusBtn();
-  };
-
-  const onTransitionEnd = (event: TransitionEvent) => {
-    if (event.target !== footer || event.propertyName !== "visibility") return;
-    footer.removeEventListener("transitionend", onTransitionEnd);
-    finish();
-  };
-
-  footer.addEventListener("transitionend", onTransitionEnd);
-  // Footer/masthead use a 300ms visibility transition; focus before that fails silently.
-  setTimeout(finish, 400);
+  // Visibility is animated, so retry after layout and once it has completed.
+  // The latter also covers browsers that do not dispatch transitionend here.
+  requestAnimationFrame(() => requestAnimationFrame(focusBtn));
+  setTimeout(focusBtn, 350);
+  setTimeout(focusBtn, 700);
 }
 
 document.addEventListener("focusin", (e) => {
