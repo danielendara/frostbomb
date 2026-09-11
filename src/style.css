@@ -998,6 +998,87 @@ kbd {
   }
 }
 
+/* Phone-width crowding: keep masthead, field notes, and the action rail
+   in separate bands so primary actions stay tappable at 360×640. */
+@media (max-width: 420px) {
+  :root {
+    --pad: 0.75rem;
+  }
+
+  .masthead {
+    mix-blend-mode: normal;
+    align-items: flex-start;
+    padding-top: 0.65rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .wordmark {
+    font-size: 1.55rem;
+  }
+
+  .wordmark__subtitle {
+    font-size: 0.48rem;
+    margin-top: 0.1rem;
+  }
+
+  .edition {
+    font-size: 0.55rem;
+  }
+
+  .field-notes {
+    top: 4.85rem;
+    left: var(--pad);
+    right: var(--pad);
+    bottom: auto;
+    max-width: none;
+    max-height: min(34vh, calc(100dvh - 19rem));
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .field-notes__header {
+    gap: 0.4rem;
+  }
+
+  .footer {
+    left: var(--pad);
+    right: var(--pad);
+    bottom: var(--pad);
+    max-width: none;
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem;
+  }
+
+  .actions__group {
+    display: contents;
+  }
+
+  .actions__divider {
+    display: block;
+    grid-column: 1 / -1;
+    margin: 0.05rem 0;
+  }
+
+  .action-btn,
+  .refresh {
+    width: 100%;
+    min-height: 40px;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.55rem;
+  }
+
+  .refresh {
+    grid-column: 1 / -1;
+  }
+}
+
 /* --- Shortcut Badges on Buttons --- */
 .btn-kbd {
   display: inline-flex;
