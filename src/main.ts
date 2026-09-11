@@ -1,5 +1,9 @@
 import "./style.css";
 import { createScene } from "./snowflake/scene";
+import {
+  WEBGL_CONTEXT_LOST_ANNOUNCEMENT,
+  showReloadCrystalAffordance,
+} from "./snowflake/context-loss";
 import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
 import { buildSnowflakeSvg } from "./snowflake/svg-export";
 import { sampleConditions, habitLabel, GrowthConditions } from "./snowflake/nakaya";
@@ -20,7 +24,16 @@ import { initKeyboardShortcuts } from "./ui/keyboard";
 import { downloadHref, downloadObjectUrls } from "./ui/download";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
-const scene = createScene(canvas);
+const scene = createScene(canvas, {
+  onContextLost: () => {
+    announce(WEBGL_CONTEXT_LOST_ANNOUNCEMENT);
+    showReloadCrystalAffordance();
+  },
+});
+
+document.getElementById("btn-reload-crystal")?.addEventListener("click", () => {
+  window.location.reload();
+});
 
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 

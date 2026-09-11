@@ -4,6 +4,7 @@ import { PostprocessingPipeline, RenderPipeline } from "./postprocessing";
 import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
 import { createFrostPlaceholders, loadFrostMaps } from "./frost";
+import { preventSilentContextLoss } from "./context-loss";
 
 export type { RenderPipeline };
 
@@ -27,7 +28,11 @@ export interface Scene {
   rotateView: (dx: number, dy: number) => void;
 }
 
-export function createScene(canvas: HTMLCanvasElement): Scene {
+export interface SceneOptions {
+  onContextLost?: () => void;
+}
+
+export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {}): Scene {
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   let prefersReducedMotion = reducedMotionQuery.matches;
   const maxPixelRatio = Math.min(window.devicePixelRatio, prefersReducedMotion ? 1 : 2);
@@ -196,6 +201,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let frameId = 0;
   let time = 0;
   let isRunning = false;
+  let contextLost = false;
   let averageDelta = 1 / 60;
   let slowFrameCount = 0;
 
@@ -211,7 +217,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     isPinkModeEnabled: false,
     isPrismModeEnabled: false,
     start: () => {
-      if (!isRunning && !document.hidden) {
+      if (!isRunning && !document.hidden && !contextLost) {
         isRunning = true;
         frameId = requestAnimationFrame(animate);
       }
@@ -225,6 +231,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       canvas.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("resize", updateCamera);
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       reducedMotionQuery.removeEventListener("change", handleReducedMotionChange);
       renderer.dispose();
@@ -366,12 +373,24 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   const timer = new THREE.Timer();
   timer.connect(document);
 
+  function handleContextLost(event: Event) {
+    preventSilentContextLoss(event);
+    contextLost = true;
+    isRunning = false;
+    cancelAnimationFrame(frameId);
+    options.onContextLost?.();
+  }
+
+  canvas.addEventListener("webglcontextlost", handleContextLost);
+
   function handleVisibilityChange() {
     if (document.hidden) {
       isRunning = false;
       cancelAnimationFrame(frameId);
       return;
     }
+
+    if (contextLost) return;
 
     timer.reset();
     if (!isRunning) {
