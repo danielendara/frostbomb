@@ -802,6 +802,10 @@ kbd {
   opacity: 0;
 }
 
+.webgl-recovery[hidden] {
+  display: none;
+}
+
 .webgl-recovery {
   position: fixed;
   inset: 0;
