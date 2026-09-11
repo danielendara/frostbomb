@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { MARK_POSTPROCESSING_READY, markOnce } from "./perf-marks";
 
 export interface PostprocessingSkipHints {
   prefersReducedMotion: boolean;
@@ -90,7 +91,12 @@ export class PostprocessingPipeline implements RenderPipeline {
   }
 
   public requestLoad(skipEffects: boolean): void {
-    if (this.isRequested || this.isLoaded || this.isLoading || skipEffects) return;
+    if (this.isLoaded) return;
+    if (skipEffects) {
+      markOnce(MARK_POSTPROCESSING_READY);
+      return;
+    }
+    if (this.isRequested || this.isLoading) return;
     this.isRequested = true;
     window.setTimeout(() => {
       this.load(skipEffects)
@@ -107,7 +113,12 @@ export class PostprocessingPipeline implements RenderPipeline {
   }
 
   public async load(skipEffects: boolean): Promise<void> {
-    if (this.isLoaded || this.isLoading || skipEffects) return;
+    if (this.isLoaded) return;
+    if (skipEffects) {
+      markOnce(MARK_POSTPROCESSING_READY);
+      return;
+    }
+    if (this.isLoading) return;
     this.isLoading = true;
 
     try {
@@ -121,7 +132,10 @@ export class PostprocessingPipeline implements RenderPipeline {
         DepthOfFieldEffect,
       } = await import("postprocessing");
 
-      if (skipEffects) return;
+      if (skipEffects) {
+        markOnce(MARK_POSTPROCESSING_READY);
+        return;
+      }
 
       const nextComposer = new EffectComposer(this.renderer);
       nextComposer.addPass(new RenderPass(this.scene, this.camera));
@@ -156,6 +170,7 @@ export class PostprocessingPipeline implements RenderPipeline {
       this.currentComposer = nextComposer;
       this.dofPass = dofPass;
       this.isLoaded = true;
+      markOnce(MARK_POSTPROCESSING_READY);
     } finally {
       this.isLoading = false;
     }
