@@ -18,6 +18,7 @@ import { SeedHistoryManager } from "./ui/history";
 import { LabPanel } from "./ui/lab-panel";
 import { initKeyboardShortcuts } from "./ui/keyboard";
 import { downloadHref, downloadObjectUrls } from "./ui/download";
+import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const scene = createScene(canvas);
@@ -119,6 +120,7 @@ function grow(
   currentConditions = conditions;
   const result = buildSnowflake(conditions, rand);
   lastFlake = result;
+  markOnce(MARK_FIRST_FLAKE_BUILT);
 
   scene.updateFlake(result, animate);
   const isCanvasFocused = document.activeElement === nakayaCanvas;

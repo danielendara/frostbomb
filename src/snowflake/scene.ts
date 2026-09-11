@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { BuildResult } from "./geometry";
 import { PostprocessingPipeline, RenderPipeline } from "./postprocessing";
+import { MARK_FIRST_FRAME_RENDERED, markOnce } from "./perf-marks";
 import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
 import { createFrostPlaceholders, loadFrostMaps } from "./frost";
@@ -198,6 +199,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
   let isRunning = false;
   let averageDelta = 1 / 60;
   let slowFrameCount = 0;
+  let firstFrameMarked = false;
+  let sceneNonblank = false;
 
   const tempColor = new THREE.Color();
 
@@ -363,6 +366,32 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     },
   };
 
+  function noteNonblankFrame(glRenderer: THREE.WebGLRenderer, target: HTMLCanvasElement): void {
+    try {
+      const gl = glRenderer.getContext();
+      const w = target.width;
+      const h = target.height;
+      if (!gl || w < 2 || h < 2) return;
+      const px = new Uint8Array(4);
+      const samples: Array<[number, number]> = [
+        [0.5, 0.5],
+        [0.42, 0.5],
+        [0.58, 0.5],
+        [0.5, 0.42],
+        [0.5, 0.58],
+      ];
+      for (const [u, v] of samples) {
+        gl.readPixels((w * u) | 0, (h * v) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        if (px[0] > 4 || px[1] > 4 || px[2] > 4 || px[3] > 4) {
+          target.setAttribute("data-scene-nonblank", "true");
+          return;
+        }
+      }
+    } catch {
+      // readPixels can throw if the context is lost; the smoke test will time out.
+    }
+  }
+
   const timer = new THREE.Timer();
   timer.connect(document);
 
@@ -457,6 +486,19 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
     }
 
     pipeline.render(delta);
+
+    if (!firstFrameMarked) {
+      firstFrameMarked = true;
+      markOnce(MARK_FIRST_FRAME_RENDERED);
+    }
+
+    if (!sceneNonblank) {
+      noteNonblankFrame(renderer, canvas);
+      if (canvas.getAttribute("data-scene-nonblank") === "true") {
+        sceneNonblank = true;
+      }
+    }
+
     pipeline.requestLoad(prefersReducedMotion);
   }
 
