@@ -17,6 +17,14 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: ['**/*.smoke.spec.ts'],
+    },
+    {
+      name: 'sequential-smoke',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/*.smoke.spec.ts',
+      fullyParallel: false,
+      workers: 1,
     },
   ],
 });
