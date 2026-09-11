@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { BuildResult } from "./geometry";
-import { PostprocessingPipeline, RenderPipeline } from "./postprocessing";
+import {
+  PostprocessingPipeline,
+  RenderPipeline,
+  skipPostprocessingFromEnvironment,
+} from "./postprocessing";
 import { MARK_FIRST_FRAME_RENDERED, markOnce } from "./perf-marks";
 import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
@@ -419,8 +423,8 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       animator.cancelEntryTween();
       animator.entryState.progress = 1;
       animator.syncEntryState();
-    } else {
-      pipeline.load(prefersReducedMotion);
+    } else if (!skipPostprocessingFromEnvironment(prefersReducedMotion)) {
+      pipeline.load(false);
     }
     updateCamera();
   }
@@ -499,7 +503,7 @@ export function createScene(canvas: HTMLCanvasElement): Scene {
       }
     }
 
-    pipeline.requestLoad(prefersReducedMotion);
+    pipeline.requestLoad(skipPostprocessingFromEnvironment(prefersReducedMotion));
   }
 
   return sceneInterface;

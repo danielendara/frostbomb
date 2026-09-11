@@ -18,6 +18,7 @@ import { SeedHistoryManager } from "./ui/history";
 import { LabPanel } from "./ui/lab-panel";
 import { initKeyboardShortcuts } from "./ui/keyboard";
 import { downloadHref, downloadObjectUrls } from "./ui/download";
+import { runExportAction } from "./ui/export-action";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
@@ -649,96 +650,88 @@ document.getElementById("btn-seed")?.addEventListener("click", copyLink);
 document.getElementById("btn-copy-seed")?.addEventListener("click", copySeedOnly);
 
 async function saveSnowflake() {
-  setTemporaryLabel("btn-save", "Saving...", "⌛");
-  visualPress("btn-save");
-  announce("Saving snowflake as PNG");
-
-  setTimeout(() => {
-    try {
+  await runExportAction(
+    "btn-save",
+    {
+      start: "Saving snowflake as PNG",
+      success: "Snowflake saved",
+      failure: "Failed to save snowflake",
+    },
+    async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
       triggerFlash(motionQuery.matches);
       scene.composer.render();
-
-      const dataUrl = canvas.toDataURL("image/png");
-      downloadHref(exportFileName("png"), dataUrl);
-
-      setTemporaryLabel("btn-save", "Saved!", "✓", false, true);
-      announce("Snowflake saved");
-    } catch (err) {
-      console.error("Failed to save snowflake:", err);
-      setTemporaryLabel("btn-save", "Failed", "✕", true);
-      announce("Failed to save snowflake");
-    }
-  }, 100);
+      downloadHref(exportFileName("png"), canvas.toDataURL("image/png"));
+    },
+  );
 }
 
-document.getElementById("btn-save")?.addEventListener("click", saveSnowflake);
+document.getElementById("btn-save")?.addEventListener("click", () => {
+  void saveSnowflake();
+});
 
 function exportFileName(extension: string): string {
   const habit = currentConditions.habit.replace(/_/g, "-");
   return `frostbomb-${habit}-${currentSeedLabel}.${extension}`;
 }
 
-function saveSnowflakeSvg() {
-  setTemporaryLabel("btn-save-svg", "Saving...", "⌛");
-  visualPress("btn-save-svg");
-  announce("Saving snowflake as SVG");
+async function saveSnowflakeSvg() {
+  await runExportAction(
+    "btn-save-svg",
+    {
+      start: "Saving snowflake as SVG",
+      success: "Snowflake SVG saved",
+      failure: "Failed to save snowflake SVG",
+    },
+    () => {
+      if (!lastFlake) {
+        throw new Error("No snowflake geometry to export");
+      }
 
-  try {
-    if (!lastFlake) {
-      throw new Error("No snowflake geometry to export");
-    }
-
-    const svg = buildSnowflakeSvg(lastFlake, {
-      habit: currentConditions.habit,
-      seed: currentSeedLabel,
-    });
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    downloadHref(exportFileName("svg"), URL.createObjectURL(blob));
-
-    setTemporaryLabel("btn-save-svg", "Saved!", "✓", false, true);
-    announce("Snowflake SVG saved");
-  } catch (err) {
-    console.error("Failed to save snowflake SVG:", err);
-    setTemporaryLabel("btn-save-svg", "Failed", "✕", true);
-    announce("Failed to save snowflake SVG");
-  }
+      const svg = buildSnowflakeSvg(lastFlake, {
+        habit: currentConditions.habit,
+        seed: currentSeedLabel,
+      });
+      const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+      downloadHref(exportFileName("svg"), URL.createObjectURL(blob));
+    },
+  );
 }
 
-document.getElementById("btn-save-svg")?.addEventListener("click", saveSnowflakeSvg);
+document.getElementById("btn-save-svg")?.addEventListener("click", () => {
+  void saveSnowflakeSvg();
+});
 
 async function saveSnowflake3d() {
-  setTemporaryLabel("btn-save-3d", "Saving...", "⌛");
-  visualPress("btn-save-3d");
-  announce("Saving snowflake as STL and GLB");
+  await runExportAction(
+    "btn-save-3d",
+    {
+      start: "Saving snowflake as STL and GLB",
+      success: "Snowflake 3D model saved",
+      failure: "Failed to save snowflake 3D model",
+    },
+    async () => {
+      if (!lastFlake) {
+        throw new Error("No snowflake geometry to export");
+      }
 
-  try {
-    if (!lastFlake) {
-      throw new Error("No snowflake geometry to export");
-    }
+      const snapshot = {
+        armCount: lastFlake.armCount,
+        delays: lastFlake.delays.slice(),
+        matrices: lastFlake.matrices.slice(),
+        branchCount: lastFlake.branchCount,
+        core: lastFlake.core,
+      };
 
-    const snapshot = {
-      armCount: lastFlake.armCount,
-      delays: lastFlake.delays.slice(),
-      matrices: lastFlake.matrices.slice(),
-      branchCount: lastFlake.branchCount,
-      core: lastFlake.core,
-    };
+      const { exportSnowflakeModels } = await import("./snowflake/mesh-export");
+      const { stl, glb } = await exportSnowflakeModels(snapshot);
 
-    const { exportSnowflakeModels } = await import("./snowflake/mesh-export");
-    const { stl, glb } = await exportSnowflakeModels(snapshot);
-
-    await downloadObjectUrls([
-      { filename: exportFileName("stl"), href: URL.createObjectURL(stl) },
-      { filename: exportFileName("glb"), href: URL.createObjectURL(glb) },
-    ]);
-
-    setTemporaryLabel("btn-save-3d", "Saved!", "✓", false, true);
-    announce("Snowflake 3D model saved");
-  } catch (err) {
-    console.error("Failed to save snowflake 3D model:", err);
-    setTemporaryLabel("btn-save-3d", "Failed", "✕", true);
-    announce("Failed to save snowflake 3D model");
-  }
+      await downloadObjectUrls([
+        { filename: exportFileName("stl"), href: URL.createObjectURL(stl) },
+        { filename: exportFileName("glb"), href: URL.createObjectURL(glb) },
+      ]);
+    },
+  );
 }
 
 document.getElementById("btn-save-3d")?.addEventListener("click", () => {
