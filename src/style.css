@@ -658,6 +658,12 @@ kbd {
   background: rgba(230, 237, 245, 0.05);
 }
 
+.action-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  pointer-events: none;
+}
+
 .action-btn:active {
   transform: scale(0.97);
 }
@@ -855,6 +861,55 @@ kbd {
   z-index: 9999;
   pointer-events: none;
   opacity: 0;
+}
+
+.webgl-recovery[hidden] {
+  display: none;
+}
+
+.webgl-recovery {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 9, 18, 0.78);
+  padding: var(--pad);
+}
+
+.webgl-recovery__panel {
+  max-width: 22rem;
+  padding: 1.25rem 1.35rem;
+  background: var(--paper-lift);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-family: var(--display);
+  text-align: center;
+}
+
+#webgl-recovery-title {
+  font-size: 1.15rem;
+  margin-bottom: 0.4rem;
+}
+
+#webgl-recovery-copy {
+  font-size: 0.95rem;
+  color: var(--ink-dim);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+#btn-reload-crystal {
+  appearance: none;
+  background: var(--paper-lift);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 0.55rem 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 @keyframes camera-flash {
