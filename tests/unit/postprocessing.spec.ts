@@ -1,5 +1,63 @@
 /** @vitest-environment happy-dom */
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { shouldSkipPostprocessing } from "../../src/snowflake/postprocessing.ts";
+
+describe("shouldSkipPostprocessing", () => {
+  it("skips bloom when prefers-reduced-motion is set", () => {
+    expect(
+      shouldSkipPostprocessing({
+        prefersReducedMotion: true,
+        saveData: false,
+        deviceMemory: 8,
+        hardwareConcurrency: 8,
+      }),
+    ).toBe(true);
+  });
+
+  it("skips bloom when Save-Data is requested", () => {
+    expect(
+      shouldSkipPostprocessing({
+        prefersReducedMotion: false,
+        saveData: true,
+        deviceMemory: 8,
+        hardwareConcurrency: 8,
+      }),
+    ).toBe(true);
+  });
+
+  it("skips bloom on the low-power deviceMemory heuristic", () => {
+    expect(
+      shouldSkipPostprocessing({
+        prefersReducedMotion: false,
+        saveData: false,
+        deviceMemory: 4,
+        hardwareConcurrency: 8,
+      }),
+    ).toBe(true);
+  });
+
+  it("skips bloom on the low-power hardwareConcurrency heuristic", () => {
+    expect(
+      shouldSkipPostprocessing({
+        prefersReducedMotion: false,
+        saveData: false,
+        deviceMemory: 8,
+        hardwareConcurrency: 2,
+      }),
+    ).toBe(true);
+  });
+
+  it("loads bloom on a capable desktop client", () => {
+    expect(
+      shouldSkipPostprocessing({
+        prefersReducedMotion: false,
+        saveData: false,
+        deviceMemory: 8,
+        hardwareConcurrency: 8,
+      }),
+    ).toBe(false);
+  });
+});
 
 describe("PostprocessingPipeline.requestLoad retry behavior", () => {
   beforeEach(() => {
@@ -60,5 +118,58 @@ describe("PostprocessingPipeline.requestLoad retry behavior", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(importAttempts).toBe(2);
+  });
+});
+
+describe("PostprocessingPipeline skip gate", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+  });
+
+  it("does not load bloom when skipped, and photo-mode still renders without DoF", async () => {
+    let importAttempts = 0;
+
+    vi.doMock("postprocessing", () => {
+      importAttempts++;
+      class Stub {
+        addPass() {}
+        setSize() {}
+        dispose() {}
+      }
+      return {
+        EffectComposer: Stub,
+        EffectPass: class extends Stub {
+          constructor() {
+            super();
+          }
+        },
+        RenderPass: class {},
+        BloomEffect: class {},
+        SMAAEffect: class {},
+        SMAAPreset: { HIGH: 1 },
+        DepthOfFieldEffect: class {
+          constructor() {}
+        },
+      };
+    });
+
+    const { PostprocessingPipeline } = await import(
+      "../../src/snowflake/postprocessing.ts"
+    );
+
+    const fakeRenderer = { render: vi.fn() } as unknown as import("three").WebGLRenderer;
+    const fakeScene = {} as unknown as import("three").Scene;
+    const fakeCamera = {} as unknown as import("three").PerspectiveCamera;
+
+    const pipeline = new PostprocessingPipeline(fakeRenderer, fakeScene, fakeCamera);
+    pipeline.requestLoad(true);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(importAttempts).toBe(0);
+
+    pipeline.setPhotoMode(true);
+    pipeline.render();
+    expect(fakeRenderer.render).toHaveBeenCalled();
   });
 });

@@ -213,6 +213,18 @@
     <div class="grain" aria-hidden="true"></div>
 
     <div id="flash-overlay" class="flash-overlay" aria-hidden="true"></div>
+    <div id="webgl-recovery" class="webgl-recovery" hidden>
+      <div
+        class="webgl-recovery__panel"
+        role="alertdialog"
+        aria-labelledby="webgl-recovery-title"
+        aria-describedby="webgl-recovery-copy"
+      >
+        <p id="webgl-recovery-title">Graphics interrupted</p>
+        <p id="webgl-recovery-copy">The 3D view lost its WebGL context. Reload the crystal to continue.</p>
+        <button type="button" id="btn-reload-crystal">Reload crystal</button>
+      </div>
+    </div>
     <div id="a11y-announcer" class="sr-only" aria-live="polite" role="status"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -122,8 +122,10 @@ pnpm test # Runs Playwright end-to-end tests
 
 ### Deployment
 ```bash
-pnpm deploy # Deploys to Cloudflare Workers
+pnpm deploy # Deploys to Cloudflare Workers (`npm run build && wrangler deploy`)
 ```
+
+Full Worker release steps (build, unit, e2e, live CSP / `_headers` / postprocessing-not-modulepreloaded check, rollback): [docs/RELEASE.md](docs/RELEASE.md).
 
 ---
 
