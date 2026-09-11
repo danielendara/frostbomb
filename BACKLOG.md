@@ -24,15 +24,11 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - Ideas: test narrow devices, reduce footer crowding, tune field guide height.
 - Done means: core controls are comfortable at 360px width with no overlap.
 
-### Add release checklist
-- Goal: make deploys predictable.
-- Ideas: build, test, deploy, live header check, live smoke check, rollback note.
-- Done means: a short checklist exists and matches the Worker deploy flow.
-
 ---
 
 ## Completed
 
+- [x] **Add release checklist (#280):** `docs/RELEASE.md` covers Worker build, unit, e2e, `npm run build && wrangler deploy`, live CSP/`_headers`/postprocessing-not-modulepreloaded checks, and rollback.
 - [x] **3D model export (#234):** Merged instanced hex-cylinders to binary STL + GLB (50mm long axis). Overlapping segments, not a watertight boolean union.
 - [x] **Ice crystal shaders (#235):** Thin-film iridescence, procedural frost grain, and Photo Mode depth of field.
 - [x] **Vector SVG path export (#236):** 2D projection of hexagonal-cylinder instances to filled SVG polygons, 100mm long-axis export, `E` shortcut.
