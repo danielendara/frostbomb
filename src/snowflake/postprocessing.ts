@@ -1,5 +1,47 @@
 import * as THREE from "three";
 
+export interface PostprocessingSkipHints {
+  prefersReducedMotion: boolean;
+  saveData?: boolean;
+  deviceMemory?: number;
+  hardwareConcurrency?: number;
+}
+
+type NavigatorHints = Navigator & {
+  connection?: { saveData?: boolean };
+  deviceMemory?: number;
+};
+
+/** Skip bloom/DoF/SMAA on reduced motion, Save-Data, or a low-power client. */
+export function shouldSkipPostprocessing(hints: PostprocessingSkipHints): boolean {
+  if (hints.prefersReducedMotion) return true;
+  if (hints.saveData) return true;
+  if (typeof hints.deviceMemory === "number" && hints.deviceMemory > 0 && hints.deviceMemory <= 4) {
+    return true;
+  }
+  if (
+    typeof hints.hardwareConcurrency === "number" &&
+    hints.hardwareConcurrency > 0 &&
+    hints.hardwareConcurrency <= 2
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function skipPostprocessingFromEnvironment(
+  prefersReducedMotion: boolean,
+  nav: Navigator = navigator,
+): boolean {
+  const hints = nav as NavigatorHints;
+  return shouldSkipPostprocessing({
+    prefersReducedMotion,
+    saveData: hints.connection?.saveData === true,
+    deviceMemory: hints.deviceMemory,
+    hardwareConcurrency: nav.hardwareConcurrency,
+  });
+}
+
 export interface RenderPipeline {
   render: (delta?: number) => void;
   setSize: (width: number, height: number) => void;
@@ -47,11 +89,11 @@ export class PostprocessingPipeline implements RenderPipeline {
     if (this.dofPass) this.dofPass.enabled = enabled;
   }
 
-  public requestLoad(prefersReducedMotion: boolean): void {
-    if (this.isRequested || this.isLoaded || this.isLoading || prefersReducedMotion) return;
+  public requestLoad(skipEffects: boolean): void {
+    if (this.isRequested || this.isLoaded || this.isLoading || skipEffects) return;
     this.isRequested = true;
     window.setTimeout(() => {
-      this.load(prefersReducedMotion)
+      this.load(skipEffects)
         .catch((err) => {
           console.error("Failed to load postprocessing effects:", err);
         })
@@ -64,8 +106,8 @@ export class PostprocessingPipeline implements RenderPipeline {
     }, 0);
   }
 
-  public async load(prefersReducedMotion: boolean): Promise<void> {
-    if (this.isLoaded || this.isLoading || prefersReducedMotion) return;
+  public async load(skipEffects: boolean): Promise<void> {
+    if (this.isLoaded || this.isLoading || skipEffects) return;
     this.isLoading = true;
 
     try {
@@ -79,7 +121,7 @@ export class PostprocessingPipeline implements RenderPipeline {
         DepthOfFieldEffect,
       } = await import("postprocessing");
 
-      if (prefersReducedMotion) return;
+      if (skipEffects) return;
 
       const nextComposer = new EffectComposer(this.renderer);
       nextComposer.addPass(new RenderPass(this.scene, this.camera));
