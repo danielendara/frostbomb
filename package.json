@@ -11,6 +11,8 @@
     "build": "tsc && vite build",
     "pretest": "npm run test:unit",
     "test": "playwright test",
+    "test:e2e:smoke": "FROSTBOMB_E2E=smoke playwright test --project=sequential-smoke",
+    "test:e2e:full": "FROSTBOMB_E2E=full playwright test",
     "test:unit": "vitest run",
     "performance:inventory": "node scripts/generate-performance-inventory.mjs",
     "preview": "npm run build && wrangler dev",

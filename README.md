@@ -117,7 +117,7 @@ pnpm preview # Serves the Worker locally with Wrangler
 
 ### Testing
 ```bash
-pnpm test # Runs Playwright end-to-end tests
+pnpm test:e2e:smoke # Default CI: thin smoke e2e; pnpm test:e2e:full for full suite
 ```
 
 ### Deployment
