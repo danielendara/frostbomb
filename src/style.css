@@ -1108,7 +1108,8 @@ kbd {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.3rem;
+    gap: 0.25rem;
+    padding: 0.3rem;
   }
 
   .actions__group {
@@ -1131,6 +1132,14 @@ kbd {
 
   .refresh {
     grid-column: 1 / -1;
+  }
+
+  /* Primary actions (Grow / Photo Mode / Save) keep >=44px tap targets;
+     secondary controls stay at the denser 40px sizing above (issue #295). */
+  #refresh,
+  #btn-ui,
+  #btn-save {
+    min-height: 44px;
   }
 }
 

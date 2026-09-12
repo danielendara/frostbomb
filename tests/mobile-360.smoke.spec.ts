@@ -64,6 +64,7 @@ test("360×640 keeps masthead, field notes, and actions from overlapping", async
   const notes = await boxOf(page.locator(".field-notes"));
   const actions = await boxOf(page.locator(".actions"));
   const refresh = await boxOf(page.locator("#refresh"));
+  const photoMode = await boxOf(page.locator("#btn-ui"));
   const savePng = await boxOf(page.locator("#btn-save"));
 
   expect(overlaps(masthead, notes)).toBe(false);
@@ -71,9 +72,29 @@ test("360×640 keeps masthead, field notes, and actions from overlapping", async
   expect(overlaps(notes, actions)).toBe(false);
 
   expect(inViewport(refresh)).toBe(true);
+  expect(inViewport(photoMode)).toBe(true);
   expect(inViewport(savePng)).toBe(true);
 
+  // Primary actions (Grow / Photo Mode / Save) keep >=44px tap targets even
+  // as secondary controls (e.g. Reset) densify more aggressively (#295).
+  for (const primary of [refresh, photoMode, savePng]) {
+    expect(primary.height).toBeGreaterThanOrEqual(44);
+  }
+
+  // No horizontal scroll/overflow on the chrome at this width.
+  const scrollWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
+  );
+  const clientWidth = await page.evaluate(
+    () => document.documentElement.clientWidth,
+  );
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+  for (const box of [notes, actions]) {
+    expect(box.x + box.width).toBeLessThanOrEqual(clientWidth + 1);
+  }
+
   await expect(page.locator("#refresh")).toBeVisible();
+  await expect(page.locator("#btn-ui")).toBeEnabled();
   await expect(page.locator("#btn-save")).toBeEnabled();
   await page.locator("#refresh").click();
   await expect(page.locator("#seed-display")).not.toHaveText("·····");
