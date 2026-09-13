@@ -578,8 +578,16 @@ function updateFromPane() {
   grow(conditions, true, false);
 }
 
+function buildShareUrl(): string {
+  const params = new URLSearchParams();
+  params.set("seed", currentSeedLabel);
+  if (scene.isPinkModeEnabled) params.set("pink", "1");
+  if (scene.isPrismModeEnabled) params.set("prism", "1");
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+}
+
 async function copyLink() {
-  const url = `${window.location.origin}${window.location.pathname}?seed=${currentSeedLabel}`;
+  const url = buildShareUrl();
   visualPress("btn-copy");
   visualPress("btn-seed");
 
@@ -764,6 +772,7 @@ function togglePinkMode() {
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle("pink-mode", enabled);
+  syncModeParam("pink", enabled);
   announce(`Pink mode ${enabled ? "enabled" : "disabled"}`);
 }
 
@@ -782,10 +791,39 @@ function togglePrismMode() {
   }
   scene.setPrismMode(enabled);
   document.body.classList.toggle("prism-mode", enabled);
+  syncModeParam("prism", enabled);
   announce(`Prism mode ${enabled ? "enabled" : "disabled"}`);
 }
 
 btnPrism?.addEventListener("click", togglePrismMode);
+
+// Keeps the share URL an accurate snapshot of the current pink/prism state,
+// mirroring how seed changes already keep the URL in sync (see
+// historyManager.onSelectSeed / labPanel.onSeedChange above). Unknown/absent
+// flags mean "off", so we omit the param entirely rather than writing `=0`.
+function syncModeParam(name: "pink" | "prism", enabled: boolean) {
+  const url = new URL(window.location.href);
+  if (enabled) {
+    url.searchParams.set(name, "1");
+  } else {
+    url.searchParams.delete(name);
+  }
+  window.history.replaceState(null, "", url.pathname + url.search);
+}
+
+// Applies ?pink=1 / ?prism=1 from the URL at boot, using the same toggle
+// functions (and thus the same visual/announce/URL-sync path) as clicking
+// the buttons. Called right after the first grow(), matching the timing of
+// the existing ?seed= bootstrap (resolveSeed() runs inside that same grow()).
+function applyBootModesFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("pink") === "1") {
+    togglePinkMode();
+  }
+  if (params.get("prism") === "1") {
+    togglePrismMode();
+  }
+}
 
 const btnRotate = document.getElementById("btn-rotate") as HTMLButtonElement | null;
 
@@ -1001,4 +1039,5 @@ initKeyboardShortcuts({
 });
 
 grow();
+applyBootModesFromUrl();
 scene.start();
