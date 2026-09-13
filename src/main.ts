@@ -70,10 +70,11 @@ const historyManager = new SeedHistoryManager({
       seed: hashString(seedVal),
       label: seedVal,
     };
+    const { conditions } = grow(undefined, true, true);
     const url = new URL(window.location.href);
     url.searchParams.set("seed", seedVal);
+    setLabConditionsParams(url.searchParams, conditions);
     window.history.replaceState(null, "", url.pathname + url.search);
-    const { conditions } = grow(undefined, true, true);
     announce(`Loaded seed ${seedVal}: ${habitLabel[conditions.habit]}`);
   },
 });
@@ -86,17 +87,19 @@ const labPanel = new LabPanel({
       seed: hashString(val),
       label: val,
     };
+    const { conditions } = grow(currentConditions, true, false);
     const url = new URL(window.location.href);
     url.searchParams.set("seed", val);
+    setLabConditionsParams(url.searchParams, conditions);
     window.history.replaceState(null, "", url.pathname + url.search);
 
-    grow(currentConditions, true, false);
     announce(`Seed changed to ${val}`);
   },
   onRandomizeSeed: () => {
     const result = grow(currentConditions, false, false);
     const url = new URL(window.location.href);
     url.searchParams.set("seed", result.label);
+    setLabConditionsParams(url.searchParams, result.conditions);
     window.history.replaceState(null, "", url.pathname + url.search);
     announce(`Randomized seed to ${result.label}`);
   },
@@ -576,6 +579,18 @@ function updateFromPane() {
   labPanel.refresh();
 
   grow(conditions, true, false);
+
+  const url = new URL(window.location.href);
+  setLabConditionsParams(url.searchParams, conditions);
+  window.history.replaceState(null, "", url.pathname + url.search);
+}
+
+// Shared by buildShareUrl and every place that keeps the URL honest after a
+// seed/conditions change (onSelectSeed, onSeedChange, onRandomizeSeed,
+// updateFromPane) — one formula for the `t`/`ss` params, not five.
+function setLabConditionsParams(params: URLSearchParams, conditions: GrowthConditions) {
+  params.set("t", conditions.temperatureC.toFixed(1));
+  params.set("ss", Math.round(conditions.supersaturation * 100).toString());
 }
 
 function buildShareUrl(): string {
@@ -583,6 +598,7 @@ function buildShareUrl(): string {
   params.set("seed", currentSeedLabel);
   if (scene.isPinkModeEnabled) params.set("pink", "1");
   if (scene.isPrismModeEnabled) params.set("prism", "1");
+  setLabConditionsParams(params, currentConditions);
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
 
@@ -814,6 +830,25 @@ function syncModeParam(name: "pink" | "prism", enabled: boolean) {
   window.history.replaceState(null, "", url.pathname + url.search);
 }
 
+// Reads ?t=/?ss= (Lab temperature °C, supersaturation %) from the URL at
+// boot. Out-of-range or unparsable values are ignored (safe defaults —
+// falls through to the normal random sample), matching the seed/pink/prism
+// convention of "absent or invalid = today's behavior".
+function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation: number } | null {
+  const params = new URLSearchParams(window.location.search);
+  const tRaw = params.get("t");
+  const ssRaw = params.get("ss");
+  if (tRaw === null || ssRaw === null) return null;
+
+  const temperatureC = Number(tRaw);
+  const ssPercent = Number(ssRaw);
+  if (!Number.isFinite(temperatureC) || !Number.isFinite(ssPercent)) return null;
+  if (temperatureC < -40 || temperatureC > 0) return null;
+  if (ssPercent < 0 || ssPercent > 100) return null;
+
+  return { temperatureC, supersaturation: ssPercent / 100 };
+}
+
 // Applies ?pink=1 / ?prism=1 from the URL at boot, using the same toggle
 // functions (and thus the same visual/announce/URL-sync path) as clicking
 // the buttons. Called right after the first grow(), matching the timing of
@@ -1041,6 +1076,21 @@ initKeyboardShortcuts({
   },
 });
 
-grow();
+const bootLabConditions = readBootLabConditionsFromUrl();
+if (bootLabConditions) {
+  // Same path manual Lab edits use (commitNakayaConditions derives habit +
+  // path from the fixed point) so the shared flake's habit matches exactly,
+  // rather than sampleConditions()'s random roll.
+  const { conditions } = commitNakayaConditions({
+    temperatureC: bootLabConditions.temperatureC,
+    supersaturation: bootLabConditions.supersaturation,
+    isGuideOpen,
+    lastHabit,
+    announce,
+  });
+  grow(conditions, true, true);
+} else {
+  grow();
+}
 applyBootModesFromUrl();
 scene.start();
