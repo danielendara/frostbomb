@@ -828,6 +828,41 @@ function syncModeParam(name: "pink" | "prism", enabled: boolean) {
     url.searchParams.delete(name);
   }
   window.history.replaceState(null, "", url.pathname + url.search);
+  saveModePrefs();
+}
+
+const MODE_PREFS_KEY = "frostbomb-mode-prefs";
+
+interface ModePrefs {
+  pink: boolean;
+  prism: boolean;
+}
+
+/** Mirrors src/ui/history.ts's try/catch-and-warn localStorage pattern: a
+ * blocked/quota-exceeded/private-mode write is silent, never thrown. */
+function saveModePrefs(): void {
+  try {
+    const prefs: ModePrefs = { pink: scene.isPinkModeEnabled, prism: scene.isPrismModeEnabled };
+    localStorage.setItem(MODE_PREFS_KEY, JSON.stringify(prefs));
+  } catch (e) {
+    console.warn("Failed to save pink/prism prefs to localStorage:", e);
+  }
+}
+
+/** A blocked/missing/corrupt value all fall back to both-off, same default as today. */
+function loadModePrefs(): ModePrefs {
+  try {
+    const stored = localStorage.getItem(MODE_PREFS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object") {
+        return { pink: parsed.pink === true, prism: parsed.prism === true };
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to parse pink/prism prefs from localStorage:", e);
+  }
+  return { pink: false, prism: false };
 }
 
 // Reads ?t=/?ss= (Lab temperature °C, supersaturation %) from the URL at
@@ -853,12 +888,22 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
 // functions (and thus the same visual/announce/URL-sync path) as clicking
 // the buttons. Called right after the first grow(), matching the timing of
 // the existing ?seed= bootstrap (resolveSeed() runs inside that same grow()).
+//
+// The URL wins whenever a param is present (including an explicit `=0`-ish
+// absence of `=1`, which still means "off" per the existing convention) —
+// only a genuinely absent param falls back to the last-remembered
+// localStorage prefs, so a plain revisit with no query string restores
+// last visit's look instead of always booting both modes off.
 function applyBootModesFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get("pink") === "1") {
+  const stored = loadModePrefs();
+
+  const pinkParam = params.get("pink");
+  if (pinkParam !== null ? pinkParam === "1" : stored.pink) {
     togglePinkMode();
   }
-  if (params.get("prism") === "1") {
+  const prismParam = params.get("prism");
+  if (prismParam !== null ? prismParam === "1" : stored.prism) {
     togglePrismMode();
   }
 }

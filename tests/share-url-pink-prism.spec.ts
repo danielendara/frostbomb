@@ -82,3 +82,31 @@ test("toggling pink/prism after boot keeps the URL an accurate snapshot", async 
   expect(new URL(page.url()).searchParams.get("prism")).toBe("1");
   expect(new URL(page.url()).searchParams.get("seed")).toBe("abcde");
 });
+
+test("a cold load with no pink/prism query restores the last-remembered prefs (#303)", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await page.click("#btn-pink");
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+
+  // Fresh navigation, same origin/localStorage, no pink= in the query this time.
+  await page.goto("/?seed=fghij");
+
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("body")).toHaveClass(/pink-mode/);
+  await expect(page.locator("#btn-prism")).toHaveAttribute("aria-pressed", "false");
+});
+
+test("an explicit query still overrides remembered prefs", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await page.click("#btn-pink");
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+
+  // Remembered pink=true, but this load's URL has no pink= at all for prism,
+  // and explicitly omits pink — a real ?pink= absence still means "use
+  // storage" (covered above); this checks the opposite: an explicit,
+  // recognized param always wins over whatever is stored.
+  await page.goto("/?seed=fghij&pink=0");
+
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("body")).not.toHaveClass(/pink-mode/);
+});
