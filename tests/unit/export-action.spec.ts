@@ -86,4 +86,68 @@ describe("runExportAction", () => {
     expect(await first).toBe(true);
     expect(download).toHaveBeenCalledTimes(1);
   });
+
+  function makeRotateControl(initial: boolean) {
+    let enabled = initial;
+    return {
+      get isAutoRotateEnabled() {
+        return enabled;
+      },
+      setAutoRotate: vi.fn((next: boolean) => {
+        enabled = next;
+      }),
+    };
+  }
+
+  it("pauses auto-rotate during export and restores it on success", async () => {
+    const rotate = makeRotateControl(true);
+    let rotatingDuringExport: boolean | undefined;
+
+    const result = await runExportAction(
+      "btn-save-svg",
+      MESSAGES,
+      () => {
+        rotatingDuringExport = rotate.isAutoRotateEnabled;
+      },
+      rotate,
+    );
+
+    expect(result).toBe(true);
+    expect(rotatingDuringExport).toBe(false);
+    expect(rotate.isAutoRotateEnabled).toBe(true);
+    expect(rotate.setAutoRotate).toHaveBeenNthCalledWith(1, false);
+    expect(rotate.setAutoRotate).toHaveBeenNthCalledWith(2, true);
+  });
+
+  it("restores auto-rotate after a failed export (finally semantics)", async () => {
+    const rotate = makeRotateControl(true);
+
+    const result = await runExportAction(
+      "btn-save-svg",
+      MESSAGES,
+      () => {
+        throw new Error("export failed");
+      },
+      rotate,
+    );
+
+    expect(result).toBe(false);
+    expect(rotate.isAutoRotateEnabled).toBe(true);
+    expect(rotate.setAutoRotate).toHaveBeenNthCalledWith(1, false);
+    expect(rotate.setAutoRotate).toHaveBeenNthCalledWith(2, true);
+  });
+
+  it("does not turn rotation on if it was already off before the export", async () => {
+    const rotate = makeRotateControl(false);
+
+    await runExportAction("btn-save-svg", MESSAGES, () => {}, rotate);
+
+    expect(rotate.isAutoRotateEnabled).toBe(false);
+    expect(rotate.setAutoRotate).not.toHaveBeenCalled();
+  });
+
+  it("leaves rotation untouched when no rotate control is provided", async () => {
+    const result = await runExportAction("btn-save-svg", MESSAGES, () => {});
+    expect(result).toBe(true);
+  });
 });

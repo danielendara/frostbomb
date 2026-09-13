@@ -684,6 +684,7 @@ async function saveSnowflake() {
       scene.composer.render();
       downloadHref(exportFileName("png"), canvas.toDataURL("image/png"));
     },
+    scene,
   );
 }
 
@@ -716,6 +717,7 @@ async function saveSnowflakeSvg() {
       const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
       downloadHref(exportFileName("svg"), URL.createObjectURL(blob));
     },
+    scene,
   );
 }
 
@@ -752,6 +754,7 @@ async function saveSnowflake3d() {
         { filename: exportFileName("glb"), href: URL.createObjectURL(glb) },
       ]);
     },
+    scene,
   );
 }
 
