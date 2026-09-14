@@ -110,3 +110,62 @@ test("an explicit query still overrides remembered prefs", async ({ page }) => {
   await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("body")).not.toHaveClass(/pink-mode/);
 });
+
+test("?rotate=1 enables auto-rotate; ?rotate=0 disables it (#307)", async ({ page }) => {
+  await page.goto("/?seed=abcde&rotate=1");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+
+  await page.goto("/?seed=abcde&rotate=0");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+});
+
+test("copying the link includes rotate=1 when on and rotate=0 when explicitly off (#307)", async ({
+  page,
+}) => {
+  await stubClipboard(page);
+  await page.goto("/?seed=abcde&rotate=1");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+
+  await page.click("#btn-copy");
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__copiedText as string | null))
+    .not.toBeNull();
+  let copied = (await page.evaluate(() => (window as any).__copiedText)) as string;
+  expect(new URL(copied).searchParams.get("rotate")).toBe("1");
+
+  await page.goto("/?seed=abcde");
+  await page.click("#btn-rotate");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+
+  await page.click("#btn-copy");
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__copiedText as string | null))
+    .not.toBeNull();
+  copied = (await page.evaluate(() => (window as any).__copiedText)) as string;
+  expect(new URL(copied).searchParams.get("rotate")).toBe("0");
+});
+
+test("a cold load with no rotate query restores the last-remembered pref (#307)", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await page.click("#btn-rotate");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+
+  await page.goto("/?seed=fghij");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+});
+
+test("an explicit rotate query overrides remembered pref (#307)", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await page.click("#btn-rotate");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+
+  await page.goto("/?seed=fghij&rotate=1");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("prefers-reduced-motion keeps auto-rotate off even with ?rotate=1 (#307)", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/?seed=abcde&rotate=1");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#btn-rotate")).toBeDisabled();
+});
