@@ -836,33 +836,48 @@ const MODE_PREFS_KEY = "frostbomb-mode-prefs";
 interface ModePrefs {
   pink: boolean;
   prism: boolean;
+  /** `undefined` = never explicitly toggled — leave the scene's own
+   * `!prefersReducedMotion` construction-time default alone rather than
+   * forcing a value. Explicit `true`/`false` only ever gets saved from
+   * toggleAutoRotate(), which already refuses to run under reduced-motion,
+   * so a stored value is always a genuine, reduced-motion-free choice. */
+  rotate?: boolean;
 }
 
 /** Mirrors src/ui/history.ts's try/catch-and-warn localStorage pattern: a
  * blocked/quota-exceeded/private-mode write is silent, never thrown. */
 function saveModePrefs(): void {
   try {
-    const prefs: ModePrefs = { pink: scene.isPinkModeEnabled, prism: scene.isPrismModeEnabled };
+    const prefs: ModePrefs = {
+      pink: scene.isPinkModeEnabled,
+      prism: scene.isPrismModeEnabled,
+      rotate: scene.isAutoRotateEnabled,
+    };
     localStorage.setItem(MODE_PREFS_KEY, JSON.stringify(prefs));
   } catch (e) {
-    console.warn("Failed to save pink/prism prefs to localStorage:", e);
+    console.warn("Failed to save pink/prism/rotate prefs to localStorage:", e);
   }
 }
 
-/** A blocked/missing/corrupt value all fall back to both-off, same default as today. */
+/** A blocked/missing/corrupt value all fall back to pink/prism off and rotate unset
+ * (today's default), same as before rotate prefs existed. */
 function loadModePrefs(): ModePrefs {
   try {
     const stored = localStorage.getItem(MODE_PREFS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (parsed && typeof parsed === "object") {
-        return { pink: parsed.pink === true, prism: parsed.prism === true };
+        return {
+          pink: parsed.pink === true,
+          prism: parsed.prism === true,
+          rotate: typeof parsed.rotate === "boolean" ? parsed.rotate : undefined,
+        };
       }
     }
   } catch (e) {
-    console.warn("Failed to parse pink/prism prefs from localStorage:", e);
+    console.warn("Failed to parse pink/prism/rotate prefs from localStorage:", e);
   }
-  return { pink: false, prism: false };
+  return { pink: false, prism: false, rotate: undefined };
 }
 
 // Reads ?t=/?ss= (Lab temperature °C, supersaturation %) from the URL at
@@ -933,6 +948,19 @@ function updateRotateButtonUI() {
   }
 }
 
+// Restore a previously chosen rotate preference — only when reduced-motion
+// isn't currently active (updateRotateButtonUI() below re-asserts that
+// override unconditionally regardless, but there's no point calling
+// setAutoRotate() to a value it would immediately force back off) and only
+// when one was ever actually saved (`undefined` means never toggled, so the
+// scene's own construction-time default stands).
+{
+  const storedRotate = loadModePrefs().rotate;
+  if (!motionQuery.matches && storedRotate !== undefined && storedRotate !== scene.isAutoRotateEnabled) {
+    scene.setAutoRotate(storedRotate);
+  }
+}
+
 updateRotateButtonUI();
 motionQuery.addEventListener("change", updateRotateButtonUI);
 
@@ -942,6 +970,7 @@ function toggleAutoRotate() {
   visualPress("btn-rotate");
   scene.setAutoRotate(enabled);
   updateRotateButtonUI();
+  saveModePrefs();
   announce(`Auto-rotation ${enabled ? "enabled" : "disabled"}`);
 }
 
