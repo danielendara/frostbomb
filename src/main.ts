@@ -598,6 +598,11 @@ function buildShareUrl(): string {
   params.set("seed", currentSeedLabel);
   if (scene.isPinkModeEnabled) params.set("pink", "1");
   if (scene.isPrismModeEnabled) params.set("prism", "1");
+  if (scene.isAutoRotateEnabled) {
+    params.set("rotate", "1");
+  } else if (loadModePrefs().rotate === false) {
+    params.set("rotate", "0");
+  }
   setLabConditionsParams(params, currentConditions);
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
@@ -899,10 +904,11 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
   return { temperatureC, supersaturation: ssPercent / 100 };
 }
 
-// Applies ?pink=1 / ?prism=1 from the URL at boot, using the same toggle
-// functions (and thus the same visual/announce/URL-sync path) as clicking
-// the buttons. Called right after the first grow(), matching the timing of
-// the existing ?seed= bootstrap (resolveSeed() runs inside that same grow()).
+// Applies ?pink=1 / ?prism=1 / ?rotate=1|0 from the URL at boot, using the
+// same toggle functions (and thus the same visual/announce/URL-sync path) as
+// clicking the buttons. Called right after the first grow(), matching the
+// timing of the existing ?seed= bootstrap (resolveSeed() runs inside that
+// same grow()).
 //
 // The URL wins whenever a param is present (including an explicit `=0`-ish
 // absence of `=1`, which still means "off" per the existing convention) —
@@ -921,6 +927,23 @@ function applyBootModesFromUrl() {
   if (prismParam !== null ? prismParam === "1" : stored.prism) {
     togglePrismMode();
   }
+
+  const rotateParam = params.get("rotate");
+  if (rotateParam !== null) {
+    if (!motionQuery.matches) {
+      const wantRotate = rotateParam === "1";
+      if (wantRotate !== scene.isAutoRotateEnabled) {
+        scene.setAutoRotate(wantRotate);
+      }
+    }
+  } else if (
+    !motionQuery.matches &&
+    stored.rotate !== undefined &&
+    stored.rotate !== scene.isAutoRotateEnabled
+  ) {
+    scene.setAutoRotate(stored.rotate);
+  }
+  updateRotateButtonUI();
 }
 
 const btnRotate = document.getElementById("btn-rotate") as HTMLButtonElement | null;
@@ -945,19 +968,6 @@ function updateRotateButtonUI() {
     btnRotate.disabled = false;
     btnRotate.title = "Toggle auto-rotation (A)";
     btnRotate.removeAttribute("aria-label");
-  }
-}
-
-// Restore a previously chosen rotate preference — only when reduced-motion
-// isn't currently active (updateRotateButtonUI() below re-asserts that
-// override unconditionally regardless, but there's no point calling
-// setAutoRotate() to a value it would immediately force back off) and only
-// when one was ever actually saved (`undefined` means never toggled, so the
-// scene's own construction-time default stands).
-{
-  const storedRotate = loadModePrefs().rotate;
-  if (!motionQuery.matches && storedRotate !== undefined && storedRotate !== scene.isAutoRotateEnabled) {
-    scene.setAutoRotate(storedRotate);
   }
 }
 
