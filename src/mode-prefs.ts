@@ -1,0 +1,45 @@
+export const MODE_PREFS_KEY = "frostbomb-mode-prefs";
+
+export interface ModePrefs {
+  pink: boolean;
+  prism: boolean;
+  lab: boolean;
+  /** `undefined` = never explicitly toggled — leave the scene's own
+   * `!prefersReducedMotion` construction-time default alone rather than
+   * forcing a value. Explicit `true`/`false` only ever gets saved from
+   * toggleAutoRotate(), which already refuses to run under reduced-motion,
+   * so a stored value is always a genuine, reduced-motion-free choice. */
+  rotate?: boolean;
+}
+
+/** Mirrors src/ui/history.ts's try/catch-and-warn localStorage pattern: a
+ * blocked/quota-exceeded/private-mode write is silent, never thrown. */
+export function saveModePrefs(prefs: ModePrefs): void {
+  try {
+    localStorage.setItem(MODE_PREFS_KEY, JSON.stringify(prefs));
+  } catch (e) {
+    console.warn("Failed to save mode prefs to localStorage:", e);
+  }
+}
+
+/** A blocked/missing/corrupt value all fall back to pink/prism/lab off and rotate unset
+ * (today's default), same as before rotate prefs existed. */
+export function loadModePrefs(): ModePrefs {
+  try {
+    const stored = localStorage.getItem(MODE_PREFS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object") {
+        return {
+          pink: parsed.pink === true,
+          prism: parsed.prism === true,
+          lab: parsed.lab === true,
+          rotate: typeof parsed.rotate === "boolean" ? parsed.rotate : undefined,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to parse mode prefs from localStorage:", e);
+  }
+  return { pink: false, prism: false, lab: false, rotate: undefined };
+}

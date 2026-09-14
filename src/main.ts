@@ -24,6 +24,7 @@ import { initKeyboardShortcuts } from "./ui/keyboard";
 import { downloadHref, downloadObjectUrls } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
+import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const scene = createScene(canvas, {
@@ -294,6 +295,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
         labToggle.setAttribute("aria-expanded", "false");
       }
       announce("Failed to load Lab Mode controls");
+      persistModePrefs();
       return;
     } finally {
       if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
@@ -315,6 +317,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     announce("Lab Mode disabled");
     if (labToggle) labToggle.focus();
   }
+  persistModePrefs();
 }
 
 function toggleFieldGuide(target: HTMLElement | null | Event = null) {
@@ -833,56 +836,16 @@ function syncModeParam(name: "pink" | "prism", enabled: boolean) {
     url.searchParams.delete(name);
   }
   window.history.replaceState(null, "", url.pathname + url.search);
-  saveModePrefs();
+  persistModePrefs();
 }
 
-const MODE_PREFS_KEY = "frostbomb-mode-prefs";
-
-interface ModePrefs {
-  pink: boolean;
-  prism: boolean;
-  /** `undefined` = never explicitly toggled — leave the scene's own
-   * `!prefersReducedMotion` construction-time default alone rather than
-   * forcing a value. Explicit `true`/`false` only ever gets saved from
-   * toggleAutoRotate(), which already refuses to run under reduced-motion,
-   * so a stored value is always a genuine, reduced-motion-free choice. */
-  rotate?: boolean;
-}
-
-/** Mirrors src/ui/history.ts's try/catch-and-warn localStorage pattern: a
- * blocked/quota-exceeded/private-mode write is silent, never thrown. */
-function saveModePrefs(): void {
-  try {
-    const prefs: ModePrefs = {
-      pink: scene.isPinkModeEnabled,
-      prism: scene.isPrismModeEnabled,
-      rotate: scene.isAutoRotateEnabled,
-    };
-    localStorage.setItem(MODE_PREFS_KEY, JSON.stringify(prefs));
-  } catch (e) {
-    console.warn("Failed to save pink/prism/rotate prefs to localStorage:", e);
-  }
-}
-
-/** A blocked/missing/corrupt value all fall back to pink/prism off and rotate unset
- * (today's default), same as before rotate prefs existed. */
-function loadModePrefs(): ModePrefs {
-  try {
-    const stored = localStorage.getItem(MODE_PREFS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed && typeof parsed === "object") {
-        return {
-          pink: parsed.pink === true,
-          prism: parsed.prism === true,
-          rotate: typeof parsed.rotate === "boolean" ? parsed.rotate : undefined,
-        };
-      }
-    }
-  } catch (e) {
-    console.warn("Failed to parse pink/prism/rotate prefs from localStorage:", e);
-  }
-  return { pink: false, prism: false, rotate: undefined };
+function persistModePrefs(): void {
+  writeModePrefs({
+    pink: scene.isPinkModeEnabled,
+    prism: scene.isPrismModeEnabled,
+    lab: isLabMode,
+    rotate: scene.isAutoRotateEnabled,
+  });
 }
 
 // Reads ?t=/?ss= (Lab temperature °C, supersaturation %) from the URL at
@@ -944,6 +907,10 @@ function applyBootModesFromUrl() {
     scene.setAutoRotate(stored.rotate);
   }
   updateRotateButtonUI();
+
+  if (stored.lab) {
+    void toggleLabMode(false);
+  }
 }
 
 const btnRotate = document.getElementById("btn-rotate") as HTMLButtonElement | null;
@@ -980,7 +947,7 @@ function toggleAutoRotate() {
   visualPress("btn-rotate");
   scene.setAutoRotate(enabled);
   updateRotateButtonUI();
-  saveModePrefs();
+  persistModePrefs();
   announce(`Auto-rotation ${enabled ? "enabled" : "disabled"}`);
 }
 
