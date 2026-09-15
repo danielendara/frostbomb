@@ -28,6 +28,10 @@ test("toggling lab mode writes lab to localStorage (#312)", async ({ page }) => 
     MODE_PREFS_KEY,
   );
   expect(stored.lab).toBe(true);
+
+  // Leave lab off so the restore test below starts from a clean toggle.
+  await page.click("#lab-toggle");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "false");
 });
 
 test("a cold load with no lab query restores the last-remembered lab pref (#312)", async ({
@@ -64,18 +68,12 @@ test("corrupt mode prefs fall back to lab off (#312)", async ({ page }) => {
   await expect(page.locator("#lab-controls")).not.toBeVisible();
 });
 
-test("share URL never includes lab= (#312)", async ({ page }) => {
-  await stubClipboard(page);
+test("an explicit ?lab= query overrides remembered lab pref (#314)", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.click("#lab-toggle");
-  await expect(page.locator("#lab-status")).toHaveText("ON");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
 
-  await page.click("#btn-copy");
-  await expect
-    .poll(() => page.evaluate(() => (window as any).__copiedText as string | null))
-    .toMatch(/seed=abcde/);
-
-  const copied = (await page.evaluate(() => (window as any).__copiedText)) as string;
-  expect(new URL(copied).searchParams.get("lab")).toBeNull();
-  expect(new URL(page.url()).searchParams.get("lab")).toBeNull();
+  await page.goto("/?seed=fghij&lab=0");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#lab-controls")).not.toBeVisible();
 });

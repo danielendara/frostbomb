@@ -606,6 +606,11 @@ function buildShareUrl(): string {
   } else if (loadModePrefs().rotate === false) {
     params.set("rotate", "0");
   }
+  if (isLabMode) {
+    params.set("lab", "1");
+  } else if (loadModePrefs().lab === false) {
+    params.set("lab", "0");
+  }
   setLabConditionsParams(params, currentConditions);
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
@@ -867,7 +872,7 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
   return { temperatureC, supersaturation: ssPercent / 100 };
 }
 
-// Applies ?pink=1 / ?prism=1 / ?rotate=1|0 from the URL at boot, using the
+// Applies ?pink=1 / ?prism=1 / ?rotate=1|0 / ?lab=1|0 from the URL at boot, using the
 // same toggle functions (and thus the same visual/announce/URL-sync path) as
 // clicking the buttons. Called right after the first grow(), matching the
 // timing of the existing ?seed= bootstrap (resolveSeed() runs inside that
@@ -908,7 +913,13 @@ function applyBootModesFromUrl() {
   }
   updateRotateButtonUI();
 
-  if (stored.lab) {
+  const labParam = params.get("lab");
+  if (labParam !== null) {
+    const wantLab = labParam === "1";
+    if (wantLab !== isLabMode) {
+      void toggleLabMode(false);
+    }
+  } else if (stored.lab) {
     void toggleLabMode(false);
   }
 }

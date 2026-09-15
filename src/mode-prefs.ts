@@ -3,7 +3,9 @@ export const MODE_PREFS_KEY = "frostbomb-mode-prefs";
 export interface ModePrefs {
   pink: boolean;
   prism: boolean;
-  lab: boolean;
+  /** `undefined` = never explicitly toggled — default off. Explicit `true`/`false`
+   * only get saved from toggleLabMode(), matching the rotate pref convention. */
+  lab?: boolean;
   /** `undefined` = never explicitly toggled — leave the scene's own
    * `!prefersReducedMotion` construction-time default alone rather than
    * forcing a value. Explicit `true`/`false` only ever gets saved from
@@ -33,7 +35,7 @@ export function loadModePrefs(): ModePrefs {
         return {
           pink: parsed.pink === true,
           prism: parsed.prism === true,
-          lab: parsed.lab === true,
+          lab: typeof parsed.lab === "boolean" ? parsed.lab : undefined,
           rotate: typeof parsed.rotate === "boolean" ? parsed.rotate : undefined,
         };
       }
@@ -41,5 +43,5 @@ export function loadModePrefs(): ModePrefs {
   } catch (e) {
     console.warn("Failed to parse mode prefs from localStorage:", e);
   }
-  return { pink: false, prism: false, lab: false, rotate: undefined };
+  return { pink: false, prism: false, lab: undefined, rotate: undefined };
 }
