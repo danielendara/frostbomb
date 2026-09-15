@@ -169,3 +169,52 @@ test("prefers-reduced-motion keeps auto-rotate off even with ?rotate=1 (#307)", 
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#btn-rotate")).toBeDisabled();
 });
+
+test("?lab=1 enables lab mode; ?lab=0 disables it (#314)", async ({ page }) => {
+  await page.goto("/?seed=abcde&lab=1");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#lab-controls")).toBeVisible();
+
+  await page.goto("/?seed=abcde&lab=0");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#lab-controls")).not.toBeVisible();
+});
+
+test("copying the link includes lab=1 when on and lab=0 when explicitly off (#314)", async ({
+  page,
+}) => {
+  await stubClipboard(page);
+  await page.goto("/?seed=abcde&lab=1");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
+
+  await page.click("#btn-copy");
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__copiedText as string | null))
+    .not.toBeNull();
+  let copied = (await page.evaluate(() => (window as any).__copiedText)) as string;
+  expect(new URL(copied).searchParams.get("lab")).toBe("1");
+
+  await page.goto("/?seed=abcde");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
+  await page.click("#lab-toggle");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "false");
+
+  await page.click("#btn-copy");
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__copiedText as string | null))
+    .not.toBeNull();
+  copied = (await page.evaluate(() => (window as any).__copiedText)) as string;
+  expect(new URL(copied).searchParams.get("lab")).toBe("0");
+});
+
+test("a cold load with no lab query restores the last-remembered lab pref (#314)", async ({
+  page,
+}) => {
+  await page.goto("/?seed=abcde");
+  await page.click("#lab-toggle");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
+
+  await page.goto("/?seed=fghij");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#lab-controls")).toBeVisible();
+});

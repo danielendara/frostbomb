@@ -17,7 +17,7 @@ describe("mode prefs read/write (#312)", () => {
     expect(loadModePrefs()).toEqual({
       pink: false,
       prism: false,
-      lab: false,
+      lab: undefined,
       rotate: undefined,
     });
   });
@@ -27,14 +27,14 @@ describe("mode prefs read/write (#312)", () => {
     expect(loadModePrefs().lab).toBe(true);
   });
 
-  it("treats non-true lab values as off", () => {
+  it("treats non-boolean lab values as unset", () => {
     localStorage.setItem(MODE_PREFS_KEY, JSON.stringify({ lab: "yes" }));
-    expect(loadModePrefs().lab).toBe(false);
+    expect(loadModePrefs().lab).toBeUndefined();
   });
 
-  it("falls back to lab off when storage is corrupt", () => {
+  it("falls back to lab unset when storage is corrupt", () => {
     localStorage.setItem(MODE_PREFS_KEY, "not-json");
-    expect(loadModePrefs().lab).toBe(false);
+    expect(loadModePrefs().lab).toBeUndefined();
     expect(console.warn).toHaveBeenCalled();
   });
 
