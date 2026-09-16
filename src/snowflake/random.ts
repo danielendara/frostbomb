@@ -1,3 +1,4 @@
+import { parseCrystalUrlState } from '../url-state';
 const INV_2_32 = 1 / 4294967296;
 
 // Mulberry32 — small, fast, deterministic PRNG.
@@ -23,14 +24,21 @@ export function hashString(s: string): number {
   return h >>> 0;
 }
 
-// Read ?seed=... from URL, otherwise generate a fresh 5-char seed
+// Read ?seed=... from URL, otherwise generate a fresh 5-char seed.
+// Validation lives in the shared URL codec so cold load, share links, and
+// history restores all agree on what a usable seed is (#316).
 export function resolveSeed(): { seed: number; label: string } {
-  const params = new URLSearchParams(window.location.search);
-  const fromUrl = params.get('seed');
-  if (fromUrl && /^[a-z0-9]{3,12}$/i.test(fromUrl)) {
-    return { seed: hashString(fromUrl.toLowerCase()), label: fromUrl.toLowerCase() };
+  const fromUrl = parseCrystalUrlState(window.location.search).seed;
+  if (fromUrl) {
+    return { seed: hashString(fromUrl), label: fromUrl };
   }
-  // Generate a fresh label (base36, 5 chars, easy to share)
+  return randomSeed();
+}
+
+// A fresh label (base36, 5 chars, easy to share), independent of the URL.
+// Growing a new crystal uses this rather than rewriting `?seed=` first: the
+// previous entry has to survive for Back to return to it (#316).
+export function randomSeed(): { seed: number; label: string } {
   const label = Math.floor(Math.random() * 36 ** 5)
     .toString(36)
     .padStart(5, '0');
