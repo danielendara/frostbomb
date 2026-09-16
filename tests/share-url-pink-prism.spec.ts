@@ -218,3 +218,25 @@ test("a cold load with no lab query restores the last-remembered lab pref (#314)
   await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#lab-controls")).toBeVisible();
 });
+
+test("toggling rotate writes explicit rotate=1 / rotate=0 (#317)", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await page.click("#btn-rotate");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(() => new URL(page.url()).searchParams.get("rotate")).toBe("0");
+
+  await page.click("#btn-rotate");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => new URL(page.url()).searchParams.get("rotate")).toBe("1");
+});
+
+test("grow-another keeps pink/prism and rewrites seed (#317)", async ({ page }) => {
+  await page.goto("/?seed=abcde&pink=1");
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+
+  await page.click("#refresh");
+  await expect.poll(() => new URL(page.url()).searchParams.get("pink")).toBe("1");
+  expect(new URL(page.url()).searchParams.get("seed")).toBeTruthy();
+  expect(new URL(page.url()).searchParams.get("seed")).not.toBe("abcde");
+  expect(page.url()).not.toMatch(/\/$/);
+});

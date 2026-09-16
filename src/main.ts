@@ -236,8 +236,14 @@ function handleRefresh(e?: Event) {
     void (refreshIcon as HTMLElement).offsetWidth;
     refreshIcon.classList.add("animate-spin-once");
   }
-  window.history.replaceState(null, "", window.location.pathname);
+  // Drop `seed` so resolveSeed() samples a new crystal, then rewrite the
+  // snapshot (seed + current mode flags) instead of wiping to a bare path.
+  const pending = new URL(window.location.href);
+  pending.searchParams.delete("seed");
+  window.history.replaceState(null, "", pending.pathname + pending.search);
+  currentSeed = null;
   const { conditions, label } = grow(isLabMode ? currentConditions : undefined);
+  replaceShareUrlFromSnapshot();
   announce(`New snowflake grown: ${habitLabel[conditions.habit]} (Seed: ${label})`);
 }
 
@@ -296,6 +302,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
       }
       announce("Failed to load Lab Mode controls");
       persistModePrefs();
+      replaceShareUrlFromSnapshot();
       return;
     } finally {
       if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
@@ -318,6 +325,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     if (labToggle) labToggle.focus();
   }
   persistModePrefs();
+  replaceShareUrlFromSnapshot();
 }
 
 function toggleFieldGuide(target: HTMLElement | null | Event = null) {
@@ -596,7 +604,7 @@ function setLabConditionsParams(params: URLSearchParams, conditions: GrowthCondi
   params.set("ss", Math.round(conditions.supersaturation * 100).toString());
 }
 
-function buildShareUrl(): string {
+function shareSearchParams(): URLSearchParams {
   const params = new URLSearchParams();
   params.set("seed", currentSeedLabel);
   if (scene.isPinkModeEnabled) params.set("pink", "1");
@@ -612,7 +620,16 @@ function buildShareUrl(): string {
     params.set("lab", "0");
   }
   setLabConditionsParams(params, currentConditions);
-  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  return params;
+}
+
+function buildShareUrl(): string {
+  return `${window.location.origin}${window.location.pathname}?${shareSearchParams().toString()}`;
+}
+
+/** replaceState only — #316 can later wrap this with pushState per crystal. */
+function replaceShareUrlFromSnapshot(): void {
+  window.history.replaceState(null, "", `${window.location.pathname}?${shareSearchParams().toString()}`);
 }
 
 async function copyLink() {
@@ -829,14 +846,17 @@ function togglePrismMode() {
 
 btnPrism?.addEventListener("click", togglePrismMode);
 
-// Keeps the share URL an accurate snapshot of the current pink/prism state,
-// mirroring how seed changes already keep the URL in sync (see
-// historyManager.onSelectSeed / labPanel.onSeedChange above). Unknown/absent
-// flags mean "off", so we omit the param entirely rather than writing `=0`.
-function syncModeParam(name: "pink" | "prism", enabled: boolean) {
+// Keeps the share URL an accurate snapshot of the current mode flags.
+// Pink/prism: absent means off (omit `=0`). Lab/rotate: copy-link uses
+// explicit `=0` so a pasted URL does not fall through to the recipient's LS.
+// Always replaceState — #316 owns pushState crystal history.
+function syncModeParam(name: "pink" | "prism" | "lab" | "rotate", enabled: boolean) {
   const url = new URL(window.location.href);
+  const explicitZero = name === "lab" || name === "rotate";
   if (enabled) {
     url.searchParams.set(name, "1");
+  } else if (explicitZero) {
+    url.searchParams.set(name, "0");
   } else {
     url.searchParams.delete(name);
   }
@@ -959,6 +979,7 @@ function toggleAutoRotate() {
   scene.setAutoRotate(enabled);
   updateRotateButtonUI();
   persistModePrefs();
+  replaceShareUrlFromSnapshot();
   announce(`Auto-rotation ${enabled ? "enabled" : "disabled"}`);
 }
 
