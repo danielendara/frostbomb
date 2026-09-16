@@ -77,3 +77,23 @@ test("an explicit ?lab= query overrides remembered lab pref (#314)", async ({ pa
   await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#lab-controls")).not.toBeVisible();
 });
+
+test("toggling lab writes explicit lab=1 / lab=0 on the share URL (#317)", async ({ page }) => {
+  await stubClipboard(page);
+  await page.goto("/?seed=abcde");
+
+  await page.click("#lab-toggle");
+  await expect(page.locator("#lab-status")).toHaveText("ON");
+  await expect.poll(() => new URL(page.url()).searchParams.get("lab")).toBe("1");
+
+  await page.click("#btn-copy");
+  const copiedOn = new URL((await page.evaluate(() => (window as any).__copiedText as string)));
+  const liveOn = new URL(page.url());
+  expect(copiedOn.searchParams.get("lab")).toBe("1");
+  expect(copiedOn.searchParams.get("seed")).toBe(liveOn.searchParams.get("seed"));
+  expect(copiedOn.searchParams.get("lab")).toBe(liveOn.searchParams.get("lab"));
+
+  await page.click("#lab-toggle");
+  await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(() => new URL(page.url()).searchParams.get("lab")).toBe("0");
+});
