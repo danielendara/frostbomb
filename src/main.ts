@@ -7,9 +7,9 @@ import {
 import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
 import { buildSnowflakeSvg } from "./snowflake/svg-export";
 import { sampleConditions, habitLabel, GrowthConditions } from "./snowflake/nakaya";
-import { mulberry32, resolveSeed, hashString, Rand } from "./snowflake/random";
+import { mulberry32, resolveSeed, randomSeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
-import { announce } from "./ui/announcer";
+import { announce as announceRaw } from "./ui/announcer";
 import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
 import {
   visualPress,
@@ -25,6 +25,24 @@ import { downloadHref, downloadObjectUrls } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
 import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
+import {
+  crystalStatesEqual,
+  parseCrystalUrlState,
+  setLabConditionsParams,
+  type CrystalUrlState,
+} from "./url-state";
+
+/**
+ * Restoring a history entry re-applies look modes through the same toggles a
+ * click uses, and each of those announces. During a restore the single
+ * "restored seed X" line is the useful one, so per-mode chatter is suppressed.
+ */
+let restoringHistory = false;
+
+function announce(message: string): void {
+  if (restoringHistory) return;
+  announceRaw(message);
+}
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const scene = createScene(canvas, {
@@ -72,10 +90,8 @@ const historyManager = new SeedHistoryManager({
       label: seedVal,
     };
     const { conditions } = grow(undefined, true, true);
-    const url = new URL(window.location.href);
-    url.searchParams.set("seed", seedVal);
-    setLabConditionsParams(url.searchParams, conditions);
-    window.history.replaceState(null, "", url.pathname + url.search);
+    // Deliberate crystal change → its own history entry (#316).
+    syncCrystalUrl(seedVal, conditions, "push");
     announce(`Loaded seed ${seedVal}: ${habitLabel[conditions.habit]}`);
   },
 });
@@ -89,19 +105,15 @@ const labPanel = new LabPanel({
       label: val,
     };
     const { conditions } = grow(currentConditions, true, false);
-    const url = new URL(window.location.href);
-    url.searchParams.set("seed", val);
-    setLabConditionsParams(url.searchParams, conditions);
-    window.history.replaceState(null, "", url.pathname + url.search);
+    syncCrystalUrl(val, conditions, "push");
 
     announce(`Seed changed to ${val}`);
   },
   onRandomizeSeed: () => {
-    const result = grow(currentConditions, false, false);
-    const url = new URL(window.location.href);
-    url.searchParams.set("seed", result.label);
-    setLabConditionsParams(url.searchParams, result.conditions);
-    window.history.replaceState(null, "", url.pathname + url.search);
+    // Roll explicitly — the address bar always carries a seed now, so
+    // re-reading it would hand back the same crystal (#316).
+    const result = grow(currentConditions, false, false, undefined, randomSeed());
+    syncCrystalUrl(result.label, result.conditions, "push");
     announce(`Randomized seed to ${result.label}`);
   },
   onConditionsChange: () => {
@@ -122,11 +134,13 @@ function grow(
   manualConditions?: GrowthConditions,
   keepSeed = false,
   animate = true,
-  previewPoint?: { temp: number; ss: number }
+  previewPoint?: { temp: number; ss: number },
+  /** Explicit seed for a deliberate change, instead of re-reading the URL. */
+  forcedSeed?: { seed: number; label: string }
 ) {
-  const isNewSeed = !keepSeed || !currentSeed;
+  const isNewSeed = !keepSeed || !currentSeed || Boolean(forcedSeed);
   if (isNewSeed) {
-    currentSeed = resolveSeed();
+    currentSeed = forcedSeed ?? resolveSeed();
   }
 
   const { seed, label } = currentSeed!;
@@ -236,14 +250,17 @@ function handleRefresh(e?: Event) {
     void (refreshIcon as HTMLElement).offsetWidth;
     refreshIcon.classList.add("animate-spin-once");
   }
-  // Drop `seed` so resolveSeed() samples a new crystal, then rewrite the
-  // snapshot (seed + current mode flags) instead of wiping to a bare path.
-  const pending = new URL(window.location.href);
-  pending.searchParams.delete("seed");
-  window.history.replaceState(null, "", pending.pathname + pending.search);
-  currentSeed = null;
-  const { conditions, label } = grow(isLabMode ? currentConditions : undefined);
-  replaceShareUrlFromSnapshot();
+  // Roll the new seed explicitly rather than deleting `?seed=` first: that
+  // rewrite used to destroy the entry Back needs to return to (#316).
+  const { conditions, label } = grow(
+    isLabMode ? currentConditions : undefined,
+    false,
+    true,
+    undefined,
+    randomSeed(),
+  );
+
+  syncCrystalUrl(label, conditions, "push");
   announce(`New snowflake grown: ${habitLabel[conditions.habit]} (Seed: ${label})`);
 }
 
@@ -302,7 +319,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
       }
       announce("Failed to load Lab Mode controls");
       persistModePrefs();
-      replaceShareUrlFromSnapshot();
+      syncCrystalUrl(currentSeedLabel, currentConditions, "replace");
       return;
     } finally {
       if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
@@ -325,7 +342,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     if (labToggle) labToggle.focus();
   }
   persistModePrefs();
-  replaceShareUrlFromSnapshot();
+  syncCrystalUrl(currentSeedLabel, currentConditions, "replace");
 }
 
 function toggleFieldGuide(target: HTMLElement | null | Event = null) {
@@ -591,45 +608,21 @@ function updateFromPane() {
 
   grow(conditions, true, false);
 
-  const url = new URL(window.location.href);
-  setLabConditionsParams(url.searchParams, conditions);
-  window.history.replaceState(null, "", url.pathname + url.search);
-}
-
-// Shared by buildShareUrl and every place that keeps the URL honest after a
-// seed/conditions change (onSelectSeed, onSeedChange, onRandomizeSeed,
-// updateFromPane) — one formula for the `t`/`ss` params, not five.
-function setLabConditionsParams(params: URLSearchParams, conditions: GrowthConditions) {
-  params.set("t", conditions.temperatureC.toFixed(1));
-  params.set("ss", Math.round(conditions.supersaturation * 100).toString());
+  // Incidental tweak: coalesce into the current entry rather than pushing one
+  // history step per slider frame.
+  syncCrystalUrl(currentSeedLabel, conditions, "replace");
 }
 
 function shareSearchParams(): URLSearchParams {
   const params = new URLSearchParams();
   params.set("seed", currentSeedLabel);
-  if (scene.isPinkModeEnabled) params.set("pink", "1");
-  if (scene.isPrismModeEnabled) params.set("prism", "1");
-  if (scene.isAutoRotateEnabled) {
-    params.set("rotate", "1");
-  } else if (loadModePrefs().rotate === false) {
-    params.set("rotate", "0");
-  }
-  if (isLabMode) {
-    params.set("lab", "1");
-  } else if (loadModePrefs().lab === false) {
-    params.set("lab", "0");
-  }
+  writeCurrentModeParams(params);
   setLabConditionsParams(params, currentConditions);
   return params;
 }
 
 function buildShareUrl(): string {
   return `${window.location.origin}${window.location.pathname}?${shareSearchParams().toString()}`;
-}
-
-/** replaceState only — #316 can later wrap this with pushState per crystal. */
-function replaceShareUrlFromSnapshot(): void {
-  window.history.replaceState(null, "", `${window.location.pathname}?${shareSearchParams().toString()}`);
 }
 
 async function copyLink() {
@@ -846,20 +839,44 @@ function togglePrismMode() {
 
 btnPrism?.addEventListener("click", togglePrismMode);
 
-// Keeps the share URL an accurate snapshot of the current mode flags.
-// Pink/prism: absent means off (omit `=0`). Lab/rotate: copy-link uses
-// explicit `=0` so a pasted URL does not fall through to the recipient's LS.
-// Always replaceState — #316 owns pushState crystal history.
-function syncModeParam(name: "pink" | "prism" | "lab" | "rotate", enabled: boolean) {
-  const url = new URL(window.location.href);
-  const explicitZero = name === "lab" || name === "rotate";
-  if (enabled) {
-    url.searchParams.set(name, "1");
-  } else if (explicitZero) {
-    url.searchParams.set(name, "0");
-  } else {
-    url.searchParams.delete(name);
+type ShareModeParam = "pink" | "prism" | "lab" | "rotate";
+
+// Pink/prism: absent means off, so omit rather than write `=0`.
+// Lab/rotate: explicit `=1`/`=0` (copy-link convention); do not treat delete as off.
+function writeModeParam(params: URLSearchParams, name: ShareModeParam, enabled: boolean) {
+  if (name === "lab" || name === "rotate") {
+    params.set(name, enabled ? "1" : "0");
+    return;
   }
+  if (enabled) {
+    params.set(name, "1");
+  } else {
+    params.delete(name);
+  }
+}
+
+function writeCurrentModeParams(params: URLSearchParams) {
+  writeModeParam(params, "pink", scene.isPinkModeEnabled);
+  writeModeParam(params, "prism", scene.isPrismModeEnabled);
+  if (isLabMode) {
+    writeModeParam(params, "lab", true);
+  } else if (loadModePrefs().lab === false) {
+    writeModeParam(params, "lab", false);
+  }
+  if (scene.isAutoRotateEnabled) {
+    writeModeParam(params, "rotate", true);
+  } else if (loadModePrefs().rotate === false) {
+    writeModeParam(params, "rotate", false);
+  }
+}
+
+// Keeps the share URL an accurate snapshot of the current mode state,
+// mirroring how seed changes already keep the URL in sync (see
+// historyManager.onSelectSeed / labPanel.onSeedChange above). Always
+// replaceState — crystal Back history is #316.
+function syncModeParam(name: ShareModeParam, enabled: boolean) {
+  const url = new URL(window.location.href);
+  writeModeParam(url.searchParams, name, enabled);
   window.history.replaceState(null, "", url.pathname + url.search);
   persistModePrefs();
 }
@@ -878,18 +895,7 @@ function persistModePrefs(): void {
 // falls through to the normal random sample), matching the seed/pink/prism
 // convention of "absent or invalid = today's behavior".
 function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation: number } | null {
-  const params = new URLSearchParams(window.location.search);
-  const tRaw = params.get("t");
-  const ssRaw = params.get("ss");
-  if (tRaw === null || ssRaw === null) return null;
-
-  const temperatureC = Number(tRaw);
-  const ssPercent = Number(ssRaw);
-  if (!Number.isFinite(temperatureC) || !Number.isFinite(ssPercent)) return null;
-  if (temperatureC < -40 || temperatureC > 0) return null;
-  if (ssPercent < 0 || ssPercent > 100) return null;
-
-  return { temperatureC, supersaturation: ssPercent / 100 };
+  return parseCrystalUrlState(window.location.search).lab;
 }
 
 // Applies ?pink=1 / ?prism=1 / ?rotate=1|0 / ?lab=1|0 from the URL at boot, using the
@@ -904,22 +910,20 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
 // localStorage prefs, so a plain revisit with no query string restores
 // last visit's look instead of always booting both modes off.
 function applyBootModesFromUrl() {
-  const params = new URLSearchParams(window.location.search);
+  const { pink: pinkParam, prism: prismParam, lab: labParam, rotate: rotateParam } =
+    parseCrystalUrlState(window.location.search).modes;
   const stored = loadModePrefs();
 
-  const pinkParam = params.get("pink");
-  if (pinkParam !== null ? pinkParam === "1" : stored.pink) {
+  if (pinkParam !== null ? pinkParam : stored.pink) {
     togglePinkMode();
   }
-  const prismParam = params.get("prism");
-  if (prismParam !== null ? prismParam === "1" : stored.prism) {
+  if (prismParam !== null ? prismParam : stored.prism) {
     togglePrismMode();
   }
 
-  const rotateParam = params.get("rotate");
   if (rotateParam !== null) {
     if (!motionQuery.matches) {
-      const wantRotate = rotateParam === "1";
+      const wantRotate = rotateParam;
       if (wantRotate !== scene.isAutoRotateEnabled) {
         scene.setAutoRotate(wantRotate);
       }
@@ -933,16 +937,99 @@ function applyBootModesFromUrl() {
   }
   updateRotateButtonUI();
 
-  const labParam = params.get("lab");
   if (labParam !== null) {
-    const wantLab = labParam === "1";
-    if (wantLab !== isLabMode) {
+    if (labParam !== isLabMode) {
       void toggleLabMode(false);
     }
   } else if (stored.lab) {
     void toggleLabMode(false);
   }
 }
+
+/**
+ * Writes the full shareable state for the current crystal (#316).
+ *
+ * `push` for a deliberate crystal change — growing, picking a Recent Seeds
+ * pill, entering or randomizing a Lab seed — so Back returns to the previous
+ * crystal. `replace` for incidental tweaks (slider drags, look toggles), which
+ * coalesce into the current entry instead of filling history with 40 steps of
+ * one drag.
+ */
+function syncCrystalUrl(
+  seedLabel: string,
+  conditions: GrowthConditions,
+  mode: "push" | "replace",
+): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("seed", seedLabel);
+  writeCurrentModeParams(url.searchParams);
+  setLabConditionsParams(url.searchParams, conditions);
+  const next = url.pathname + url.search;
+  if (mode === "push") {
+    window.history.pushState(null, "", next);
+  } else {
+    window.history.replaceState(null, "", next);
+  }
+}
+
+/**
+ * Restores a popped history entry in place: same parse path as a cold load,
+ * so Back lands exactly where the equivalent share link would.
+ *
+ * A popped entry that matches what is on screen is a no-op — no regrow, no
+ * re-announce. Anything missing or foreign falls back to the normal defaults
+ * path (a fresh crystal), never a blank canvas.
+ */
+function restoreCrystalState(state: CrystalUrlState): void {
+  restoringHistory = true;
+  try {
+    applyBootModesFromUrl();
+
+    if (state.seed) {
+      currentSeed = { seed: hashString(state.seed), label: state.seed };
+    } else {
+      currentSeed = resolveSeed();
+    }
+
+    if (state.lab) {
+      const { conditions } = commitNakayaConditions({
+        temperatureC: state.lab.temperatureC,
+        supersaturation: state.lab.supersaturation,
+        isGuideOpen,
+        lastHabit,
+        announce,
+      });
+      grow(conditions, true, false);
+    } else {
+      grow(undefined, true, false);
+    }
+  } finally {
+    restoringHistory = false;
+  }
+
+  announce(`Loaded seed ${currentSeedLabel}: ${habitLabel[currentConditions.habit]}`);
+}
+
+window.addEventListener("popstate", () => {
+  const popped = parseCrystalUrlState(window.location.search);
+  const onScreen: CrystalUrlState = {
+    seed: currentSeedLabel,
+    lab: currentConditions
+      ? {
+          temperatureC: currentConditions.temperatureC,
+          supersaturation: currentConditions.supersaturation,
+        }
+      : null,
+    modes: {
+      pink: scene.isPinkModeEnabled,
+      prism: scene.isPrismModeEnabled,
+      lab: isLabMode,
+      rotate: scene.isAutoRotateEnabled,
+    },
+  };
+  if (crystalStatesEqual(popped, onScreen)) return;
+  restoreCrystalState(popped);
+});
 
 const btnRotate = document.getElementById("btn-rotate") as HTMLButtonElement | null;
 
@@ -979,7 +1066,7 @@ function toggleAutoRotate() {
   scene.setAutoRotate(enabled);
   updateRotateButtonUI();
   persistModePrefs();
-  replaceShareUrlFromSnapshot();
+  syncCrystalUrl(currentSeedLabel, currentConditions, "replace");
   announce(`Auto-rotation ${enabled ? "enabled" : "disabled"}`);
 }
 
@@ -1160,6 +1247,7 @@ initKeyboardShortcuts({
 });
 
 const bootLabConditions = readBootLabConditionsFromUrl();
+let boot: { conditions: GrowthConditions; label: string };
 if (bootLabConditions) {
   // Same path manual Lab edits use (commitNakayaConditions derives habit +
   // path from the fixed point) so the shared flake's habit matches exactly,
@@ -1171,9 +1259,15 @@ if (bootLabConditions) {
     lastHabit,
     announce,
   });
-  grow(conditions, true, true);
+  boot = grow(conditions, true, true);
 } else {
-  grow();
+  boot = grow();
 }
 applyBootModesFromUrl();
+// Entry-state neutrality (#316): the first entry is deliberately left exactly
+// as the visitor arrived — no decoration (see the bare-?seed= contract test),
+// and nothing pushed — so the first Back from a fresh load still leaves the
+// site. Popping back to a bare `?seed=` regrows the same crystal anyway: the
+// conditions are sampled from the seed.
+void boot;
 scene.start();
