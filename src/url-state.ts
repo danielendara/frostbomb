@@ -6,6 +6,16 @@
  * link would produce" a testable claim rather than a hope.
  */
 
+import {
+  SHARE_PARAM_LAB,
+  SHARE_PARAM_PINK,
+  SHARE_PARAM_PRISM,
+  SHARE_PARAM_ROTATE,
+  SHARE_PARAM_SEED,
+  readShareFlag,
+  type ShareFlagName,
+} from "./share-url-params";
+
 export interface LabConditionsState {
   temperatureC: number;
   /** 0–1, as the growth model wants it (the URL carries whole percent). */
@@ -49,8 +59,9 @@ function parseLab(tRaw: string | null, ssRaw: string | null): LabConditionsState
 }
 
 /** Present means the URL decides; `=1` is on and anything else is off. */
-function parseMode(raw: string | null): boolean | null {
-  return raw === null ? null : raw === "1";
+function parseMode(params: URLSearchParams, name: ShareFlagName): boolean | null {
+  const flag = readShareFlag(params, name);
+  return flag === null ? null : flag === "1";
 }
 
 export function parseCrystalUrlState(search: string): CrystalUrlState {
@@ -61,13 +72,13 @@ export function parseCrystalUrlState(search: string): CrystalUrlState {
     params = new URLSearchParams();
   }
   return {
-    seed: parseSeed(params.get("seed")),
+    seed: parseSeed(params.get(SHARE_PARAM_SEED)),
     lab: parseLab(params.get("t"), params.get("ss")),
     modes: {
-      pink: parseMode(params.get("pink")),
-      prism: parseMode(params.get("prism")),
-      lab: parseMode(params.get("lab")),
-      rotate: parseMode(params.get("rotate")),
+      pink: parseMode(params, SHARE_PARAM_PINK),
+      prism: parseMode(params, SHARE_PARAM_PRISM),
+      lab: parseMode(params, SHARE_PARAM_LAB),
+      rotate: parseMode(params, SHARE_PARAM_ROTATE),
     },
   };
 }
