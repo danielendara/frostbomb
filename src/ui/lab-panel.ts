@@ -1,5 +1,6 @@
 import { announce } from "./announcer";
 import { setTemporaryLabel } from "./feedback";
+import { SEED_PATTERN } from "../url-state";
 
 export type TweakpanePane = import("tweakpane").Pane;
 
@@ -53,7 +54,7 @@ export class LabPanel {
         const currentSeedLabel = this.callbacks.getCurrentSeedLabel();
         if (val === currentSeedLabel) return;
 
-        if (/^[a-z0-9]{3,12}$/.test(val)) {
+        if (SEED_PATTERN.test(val)) {
           this.callbacks.onSeedChange(val);
         } else {
           announce("Invalid seed. Seeds must be 3 to 12 alphanumeric characters.");
