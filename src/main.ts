@@ -31,6 +31,16 @@ import {
   setLabConditionsParams,
   type CrystalUrlState,
 } from "./url-state";
+import {
+  SHARE_PARAM_LAB,
+  SHARE_PARAM_PINK,
+  SHARE_PARAM_PRISM,
+  SHARE_PARAM_ROTATE,
+  SHARE_PARAM_SEED,
+  readShareFlag,
+  setShareFlag,
+  type ShareFlagName,
+} from "./share-url-params";
 
 /**
  * Restoring a history entry re-applies look modes through the same toggles a
@@ -615,7 +625,7 @@ function updateFromPane() {
 
 function shareSearchParams(): URLSearchParams {
   const params = new URLSearchParams();
-  params.set("seed", currentSeedLabel);
+  params.set(SHARE_PARAM_SEED, currentSeedLabel);
   writeCurrentModeParams(params);
   setLabConditionsParams(params, currentConditions);
   return params;
@@ -814,7 +824,7 @@ function togglePinkMode() {
   }
   scene.setPinkMode(enabled);
   document.body.classList.toggle("pink-mode", enabled);
-  syncModeParam("pink", enabled);
+  syncModeParam(SHARE_PARAM_PINK, enabled);
   announce(`Pink mode ${enabled ? "enabled" : "disabled"}`);
 }
 
@@ -833,40 +843,24 @@ function togglePrismMode() {
   }
   scene.setPrismMode(enabled);
   document.body.classList.toggle("prism-mode", enabled);
-  syncModeParam("prism", enabled);
+  syncModeParam(SHARE_PARAM_PRISM, enabled);
   announce(`Prism mode ${enabled ? "enabled" : "disabled"}`);
 }
 
 btnPrism?.addEventListener("click", togglePrismMode);
 
-type ShareModeParam = "pink" | "prism" | "lab" | "rotate";
-
-// Pink/prism: absent means off, so omit rather than write `=0`.
-// Lab/rotate: explicit `=1`/`=0` (copy-link convention); do not treat delete as off.
-function writeModeParam(params: URLSearchParams, name: ShareModeParam, enabled: boolean) {
-  if (name === "lab" || name === "rotate") {
-    params.set(name, enabled ? "1" : "0");
-    return;
-  }
-  if (enabled) {
-    params.set(name, "1");
-  } else {
-    params.delete(name);
-  }
-}
-
 function writeCurrentModeParams(params: URLSearchParams) {
-  writeModeParam(params, "pink", scene.isPinkModeEnabled);
-  writeModeParam(params, "prism", scene.isPrismModeEnabled);
+  setShareFlag(params, SHARE_PARAM_PINK, scene.isPinkModeEnabled);
+  setShareFlag(params, SHARE_PARAM_PRISM, scene.isPrismModeEnabled);
   if (isLabMode) {
-    writeModeParam(params, "lab", true);
+    setShareFlag(params, SHARE_PARAM_LAB, true);
   } else if (loadModePrefs().lab === false) {
-    writeModeParam(params, "lab", false);
+    setShareFlag(params, SHARE_PARAM_LAB, false);
   }
   if (scene.isAutoRotateEnabled) {
-    writeModeParam(params, "rotate", true);
+    setShareFlag(params, SHARE_PARAM_ROTATE, true);
   } else if (loadModePrefs().rotate === false) {
-    writeModeParam(params, "rotate", false);
+    setShareFlag(params, SHARE_PARAM_ROTATE, false);
   }
 }
 
@@ -874,9 +868,9 @@ function writeCurrentModeParams(params: URLSearchParams) {
 // mirroring how seed changes already keep the URL in sync (see
 // historyManager.onSelectSeed / labPanel.onSeedChange above). Always
 // replaceState — crystal Back history is #316.
-function syncModeParam(name: ShareModeParam, enabled: boolean) {
+function syncModeParam(name: ShareFlagName, enabled: boolean) {
   const url = new URL(window.location.href);
-  writeModeParam(url.searchParams, name, enabled);
+  setShareFlag(url.searchParams, name, enabled);
   window.history.replaceState(null, "", url.pathname + url.search);
   persistModePrefs();
 }
@@ -910,20 +904,22 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
 // localStorage prefs, so a plain revisit with no query string restores
 // last visit's look instead of always booting both modes off.
 function applyBootModesFromUrl() {
-  const { pink: pinkParam, prism: prismParam, lab: labParam, rotate: rotateParam } =
-    parseCrystalUrlState(window.location.search).modes;
+  const params = new URLSearchParams(window.location.search);
   const stored = loadModePrefs();
 
-  if (pinkParam !== null ? pinkParam : stored.pink) {
+  const pinkParam = readShareFlag(params, SHARE_PARAM_PINK);
+  if (pinkParam !== null ? pinkParam === "1" : stored.pink) {
     togglePinkMode();
   }
-  if (prismParam !== null ? prismParam : stored.prism) {
+  const prismParam = readShareFlag(params, SHARE_PARAM_PRISM);
+  if (prismParam !== null ? prismParam === "1" : stored.prism) {
     togglePrismMode();
   }
 
+  const rotateParam = readShareFlag(params, SHARE_PARAM_ROTATE);
   if (rotateParam !== null) {
     if (!motionQuery.matches) {
-      const wantRotate = rotateParam;
+      const wantRotate = rotateParam === "1";
       if (wantRotate !== scene.isAutoRotateEnabled) {
         scene.setAutoRotate(wantRotate);
       }
@@ -937,8 +933,10 @@ function applyBootModesFromUrl() {
   }
   updateRotateButtonUI();
 
+  const labParam = readShareFlag(params, SHARE_PARAM_LAB);
   if (labParam !== null) {
-    if (labParam !== isLabMode) {
+    const wantLab = labParam === "1";
+    if (wantLab !== isLabMode) {
       void toggleLabMode(false);
     }
   } else if (stored.lab) {
@@ -961,7 +959,7 @@ function syncCrystalUrl(
   mode: "push" | "replace",
 ): void {
   const url = new URL(window.location.href);
-  url.searchParams.set("seed", seedLabel);
+  url.searchParams.set(SHARE_PARAM_SEED, seedLabel);
   writeCurrentModeParams(url.searchParams);
   setLabConditionsParams(url.searchParams, conditions);
   const next = url.pathname + url.search;
