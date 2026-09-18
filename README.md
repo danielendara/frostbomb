@@ -100,29 +100,29 @@ The snowflake generator benchmarks approximately **173-181x faster** than the in
 
 ### Setup
 ```bash
-pnpm install
+npm ci
 ```
 
 ### Local Dev
 ```bash
-pnpm dev
+npm run dev
 ```
 Open `http://localhost:5173`.
 
 ### Build & Preview
 ```bash
-pnpm build
-pnpm preview # Serves the Worker locally with Wrangler
+npm run build
+npm run preview # Serves the Worker locally with Wrangler
 ```
 
 ### Testing
 ```bash
-pnpm test:e2e:smoke # Default CI: thin smoke e2e; pnpm test:e2e:full for full suite
+npm run test:e2e:smoke # Default CI: thin smoke e2e; npm run test:e2e:full for full suite
 ```
 
 ### Deployment
 ```bash
-pnpm deploy # Deploys to Cloudflare Workers (`npm run build && wrangler deploy`)
+npm run deploy # Deploys to Cloudflare Workers (`npm run build && wrangler deploy`)
 ```
 
 Full Worker release steps (build, unit, e2e, live CSP / `_headers` / postprocessing-not-modulepreloaded check, rollback): [docs/RELEASE.md](docs/RELEASE.md).
