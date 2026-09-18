@@ -1,5 +1,6 @@
 import { visualPress } from "./feedback";
 import { announce } from "./announcer";
+import { SEED_PATTERN } from "../url-state";
 
 export const STORAGE_KEY = "frostbomb-recent-seeds";
 
@@ -33,7 +34,7 @@ export class SeedHistoryManager {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           this.recentSeeds = parsed
-            .filter((s) => typeof s === "string" && /^[a-z0-9]{3,12}$/i.test(s))
+            .filter((s) => typeof s === "string" && SEED_PATTERN.test(s))
             .slice(0, 5);
         }
       }
@@ -55,7 +56,7 @@ export class SeedHistoryManager {
   }
 
   public addSeed(seedVal: string): void {
-    if (!seedVal || !/^[a-z0-9]{3,12}$/i.test(seedVal)) return;
+    if (!seedVal || !SEED_PATTERN.test(seedVal)) return;
 
     // Lab/Nakaya grow(keepSeed) during the undo window would otherwise miss the
     // newest-seed guard (clear emptied recentSeeds) and clobber the backup.
