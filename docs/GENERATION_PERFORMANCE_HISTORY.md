@@ -171,15 +171,14 @@ For meaningful future comparisons:
 6. Compare output branch counts and visual behavior before accepting a speedup.
 7. Run the production build and browser tests after changing geometry logic.
 
-The repository's existing `benchmark_bolt.ts` is a useful quick stress check,
-but it uses millisecond-resolution `Date.now()` and only 5,000 iterations.
-Performance claims should use `performance.now()`, more iterations, fresh
-processes, and both profiles described above.
+The repository's `benchmark.ts` script is a useful quick local stress check for
+`buildSnowflake`. Documented performance claims should still use fresh
+processes, both profiles described above, and median reporting—not a single
+in-process loop.
 
 ## Related performance work
 
 - [`PERFORMANCE_AUDIT.md`](./PERFORMANCE_AUDIT.md) covers live-site network,
   startup, and Lighthouse observations.
-- `benchmark.ts` and `benchmark_bolt.ts` provide lightweight local geometry
-  checks.
+- `benchmark.ts` provides a lightweight local geometry check.
 - `src/snowflake/geometry.ts` contains the current data-oriented generator.
