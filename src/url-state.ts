@@ -14,7 +14,9 @@ import {
   SHARE_PARAM_SEED,
   readShareFlag,
   type ShareFlagName,
+  type ShareFlagTriState,
 } from "./share-url-params";
+import type { ModePrefs } from "./mode-prefs";
 
 export interface LabConditionsState {
   temperatureC: number;
@@ -81,6 +83,46 @@ export function parseCrystalUrlState(search: string): CrystalUrlState {
       rotate: parseMode(params, SHARE_PARAM_ROTATE),
     },
   };
+}
+
+/** Where a set of look modes is being applied from. */
+export type ModeSource = "boot" | "restore";
+
+/** The look modes that share links encode by absence when off. */
+export interface LookModes {
+  pink: boolean;
+  prism: boolean;
+}
+
+/**
+ * The Pink/Prism state to apply, as a target value (never a flip).
+ *
+ * A present param always decides. Only an absent one differs by source:
+ *
+ * - `boot`: no opinion, so the remembered preference decides — a plain revisit
+ *   restores last visit's look.
+ * - `restore`: the popped entry is authoritative. `syncCrystalUrl` writes the
+ *   full look and Pink/Prism are omitted when off, so absent means off; falling
+ *   back to the preference would resolve it from the look currently on screen.
+ */
+export function resolveModes(
+  source: ModeSource,
+  params: URLSearchParams,
+  stored: Pick<ModePrefs, "pink" | "prism">,
+): LookModes {
+  return {
+    pink: resolveLookMode(source, readShareFlag(params, SHARE_PARAM_PINK), stored.pink),
+    prism: resolveLookMode(source, readShareFlag(params, SHARE_PARAM_PRISM), stored.prism),
+  };
+}
+
+function resolveLookMode(
+  source: ModeSource,
+  flag: ShareFlagTriState,
+  storedOn: boolean,
+): boolean {
+  if (flag !== null) return flag === "1";
+  return source === "boot" ? storedOn : false;
 }
 
 /** The `t`/`ss` formula — one place, not five. */

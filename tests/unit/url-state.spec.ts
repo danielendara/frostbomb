@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   crystalStatesEqual,
   parseCrystalUrlState,
+  resolveModes,
   setLabConditionsParams,
   type CrystalUrlState,
 } from "../../src/url-state";
@@ -83,5 +84,69 @@ describe("crystalStatesEqual", () => {
     expect(crystalStatesEqual(base, { ...base, lab: { temperatureC: -2, supersaturation: 0.8 } })).toBe(false);
     expect(crystalStatesEqual(base, { ...base, lab: null })).toBe(false);
     expect(crystalStatesEqual(base, { ...base, modes: { ...base.modes, prism: true } })).toBe(false);
+  });
+});
+
+describe("resolveModes (#331)", () => {
+  const off = { pink: false, prism: false };
+  const on = { pink: true, prism: true };
+  const params = (query: string) => new URLSearchParams(query);
+
+  describe("boot: URL wins when present, stored prefs apply when absent", () => {
+    it("uses the stored preference when the params are absent", () => {
+      expect(resolveModes("boot", params(""), on)).toEqual(on);
+      expect(resolveModes("boot", params(""), off)).toEqual(off);
+      expect(resolveModes("boot", params("seed=abcde"), { pink: true, prism: false })).toEqual({
+        pink: true,
+        prism: false,
+      });
+    });
+
+    it("lets a present param beat the stored preference, either way", () => {
+      expect(resolveModes("boot", params("pink=1&prism=1"), off)).toEqual(on);
+      expect(resolveModes("boot", params("pink=0&prism=0"), on)).toEqual(off);
+    });
+
+    it("resolves each mode independently", () => {
+      expect(resolveModes("boot", params("pink=1"), { pink: false, prism: true })).toEqual(on);
+      expect(resolveModes("boot", params("prism=1"), { pink: true, prism: false })).toEqual(on);
+    });
+
+    it("reads a present non-1 value as off, over a stored on", () => {
+      expect(resolveModes("boot", params("pink=yes&prism="), on)).toEqual(off);
+    });
+  });
+
+  describe("restore: the popped entry is authoritative", () => {
+    it("treats an absent param as off even when the stored preference is on", () => {
+      expect(resolveModes("restore", params("seed=abcde"), on)).toEqual(off);
+      expect(resolveModes("restore", params(""), on)).toEqual(off);
+    });
+
+    it("keeps a present =1 on, whatever the stored preference says", () => {
+      expect(resolveModes("restore", params("pink=1&prism=1"), off)).toEqual(on);
+      expect(resolveModes("restore", params("pink=1&prism=1"), on)).toEqual(on);
+    });
+
+    it("keeps a present non-1 value off", () => {
+      expect(resolveModes("restore", params("pink=0&prism=0"), on)).toEqual(off);
+    });
+
+    it("resolves each mode independently", () => {
+      expect(resolveModes("restore", params("pink=1"), on)).toEqual({ pink: true, prism: false });
+      expect(resolveModes("restore", params("prism=1"), on)).toEqual({ pink: false, prism: true });
+    });
+  });
+
+  it("agrees with parseCrystalUrlState on what a present param means", () => {
+    for (const query of ["?pink=1&prism=0", "?pink=0&prism=1", "?pink=x&prism=1"]) {
+      const { modes } = parseCrystalUrlState(query);
+      for (const source of ["boot", "restore"] as const) {
+        expect(resolveModes(source, params(query), on)).toEqual({
+          pink: modes.pink,
+          prism: modes.prism,
+        });
+      }
+    }
   });
 });
