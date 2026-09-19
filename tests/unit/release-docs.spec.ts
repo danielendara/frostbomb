@@ -15,7 +15,7 @@ describe("docs/RELEASE.md", () => {
     expect(release).toContain("npm run build && wrangler deploy");
     expect(release).toContain("test:unit");
     expect(release).toMatch(/e2e|Playwright/i);
-    expect(release).toMatch(/pnpm deploy/);
+    expect(release).toMatch(/npm run deploy/);
     expect(release).toMatch(/rollback/i);
   });
 

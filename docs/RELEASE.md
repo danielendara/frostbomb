@@ -2,13 +2,13 @@
 
 Use this checklist when deploying frostbomb to Cloudflare Workers. The live site is https://frostbomb.com.
 
-The package `deploy` script is `npm run build && wrangler deploy`. The README documents `pnpm deploy`, which runs that same script.
+The package `deploy` script is `npm run build && wrangler deploy`. The README documents `npm run deploy`, which runs that same script.
 
 ## Before deploy
 
-- [ ] **Build:** `npm run build` (or `pnpm build`) — `tsc && vite build`
-- [ ] **Unit:** `npm run test:unit` (or `pnpm test:unit`)
-- [ ] **E2E:** `npm test` (or `pnpm test`) — Playwright; `pretest` also runs unit tests
+- [ ] **Build:** `npm run build` — `tsc && vite build`
+- [ ] **Unit:** `npm run test:unit`
+- [ ] **E2E:** `npm test` — Playwright; `pretest` also runs unit tests
 - [ ] Confirm this release does not accidentally change the Worker deploy path (`wrangler.jsonc` name `frostbombsite`, SPA asset fallback, `package.json` `deploy` script)
 
 ## Deploy
@@ -21,8 +21,6 @@ Equivalent:
 
 ```bash
 npm run deploy
-# or, as documented in the README:
-pnpm deploy
 ```
 
 Wrangler uploads the Vite `dist/` output as Worker static assets, including `dist/_headers` copied from `public/_headers`. Do not skip the build.
