@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { createNoise2D } from "simplex-noise";
 import { Rand } from "./random.ts";
 import { getHabit, GrowthConditions, Habit } from "./nakaya.ts";
@@ -748,19 +747,4 @@ function paramsFor(temp: number, ss: number): Params {
   };
   PARAMS_CACHE[habit] = result;
   return result;
-}
-
-// Internal utility functions (maintained for compatibility and internal use)
-export function rotateVec(v: THREE.Vector3, angle: number): THREE.Vector3 {
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  return new THREE.Vector3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
-}
-
-export function rotateZ(
-  v: THREE.Vector3,
-  cos: number,
-  sin: number,
-): THREE.Vector3 {
-  return new THREE.Vector3(v.x * cos - v.y * sin, v.x * sin + v.y * cos, v.z);
 }
