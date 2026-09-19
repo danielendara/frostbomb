@@ -28,8 +28,10 @@ import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
   crystalStatesEqual,
   parseCrystalUrlState,
+  resolveModes,
   setLabConditionsParams,
   type CrystalUrlState,
+  type ModeSource,
 } from "./url-state";
 import {
   SHARE_PARAM_LAB,
@@ -813,8 +815,7 @@ document.getElementById("btn-save-3d")?.addEventListener("click", () => {
 
 const btnPink = document.getElementById("btn-pink");
 
-function togglePinkMode() {
-  const enabled = !scene.isPinkModeEnabled;
+function setPinkMode(enabled: boolean) {
   visualPress("btn-pink");
   if (btnPink) {
     btnPink.setAttribute("aria-pressed", enabled.toString());
@@ -828,12 +829,15 @@ function togglePinkMode() {
   announce(`Pink mode ${enabled ? "enabled" : "disabled"}`);
 }
 
+function togglePinkMode() {
+  setPinkMode(!scene.isPinkModeEnabled);
+}
+
 btnPink?.addEventListener("click", togglePinkMode);
 
 const btnPrism = document.getElementById("btn-prism");
 
-function togglePrismMode() {
-  const enabled = !scene.isPrismModeEnabled;
+function setPrismMode(enabled: boolean) {
   visualPress("btn-prism");
   if (btnPrism) {
     btnPrism.setAttribute("aria-pressed", enabled.toString());
@@ -845,6 +849,10 @@ function togglePrismMode() {
   document.body.classList.toggle("prism-mode", enabled);
   syncModeParam(SHARE_PARAM_PRISM, enabled);
   announce(`Prism mode ${enabled ? "enabled" : "disabled"}`);
+}
+
+function togglePrismMode() {
+  setPrismMode(!scene.isPrismModeEnabled);
 }
 
 btnPrism?.addEventListener("click", togglePrismMode);
@@ -892,29 +900,29 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
   return parseCrystalUrlState(window.location.search).lab;
 }
 
-// Applies ?pink=1 / ?prism=1 / ?rotate=1|0 / ?lab=1|0 from the URL at boot, using the
-// same toggle functions (and thus the same visual/announce/URL-sync path) as
-// clicking the buttons. Called right after the first grow(), matching the
-// timing of the existing ?seed= bootstrap (resolveSeed() runs inside that
-// same grow()).
+// Applies ?pink=1 / ?prism=1 / ?rotate=1|0 / ?lab=1|0 from the URL, through the
+// same functions (and thus the same visual/announce/URL-sync path) as clicking
+// the buttons. Boot calls it right after the first grow(), matching the timing
+// of the existing ?seed= bootstrap (resolveSeed() runs inside that same
+// grow()); Back/Forward calls it from restoreCrystalState.
 //
-// The URL wins whenever a param is present (including an explicit `=0`-ish
-// absence of `=1`, which still means "off" per the existing convention) —
-// only a genuinely absent param falls back to the last-remembered
+// Pink and Prism are *set* to the target resolveModes gives for the source (a
+// no-op when already equal), never toggled: at boot every mode starts off, but
+// during a restore the current state is whatever is on screen.
+//
+// At boot the URL wins whenever a param is present (including an explicit
+// `=0`-ish absence of `=1`, which still means "off" per the existing
+// convention) — only a genuinely absent param falls back to the last-remembered
 // localStorage prefs, so a plain revisit with no query string restores
-// last visit's look instead of always booting both modes off.
-function applyBootModesFromUrl() {
+// last visit's look instead of always booting both modes off. On restore the
+// popped entry is authoritative, so an absent Pink/Prism param means off.
+function applyModes(source: ModeSource) {
   const params = new URLSearchParams(window.location.search);
   const stored = loadModePrefs();
 
-  const pinkParam = readShareFlag(params, SHARE_PARAM_PINK);
-  if (pinkParam !== null ? pinkParam === "1" : stored.pink) {
-    togglePinkMode();
-  }
-  const prismParam = readShareFlag(params, SHARE_PARAM_PRISM);
-  if (prismParam !== null ? prismParam === "1" : stored.prism) {
-    togglePrismMode();
-  }
+  const target = resolveModes(source, params, stored);
+  if (target.pink !== scene.isPinkModeEnabled) setPinkMode(target.pink);
+  if (target.prism !== scene.isPrismModeEnabled) setPrismMode(target.prism);
 
   const rotateParam = readShareFlag(params, SHARE_PARAM_ROTATE);
   if (rotateParam !== null) {
@@ -981,7 +989,7 @@ function syncCrystalUrl(
 function restoreCrystalState(state: CrystalUrlState): void {
   restoringHistory = true;
   try {
-    applyBootModesFromUrl();
+    applyModes("restore");
 
     if (state.seed) {
       currentSeed = { seed: hashString(state.seed), label: state.seed };
@@ -1261,7 +1269,7 @@ if (bootLabConditions) {
 } else {
   boot = grow();
 }
-applyBootModesFromUrl();
+applyModes("boot");
 // Entry-state neutrality (#316): the first entry is deliberately left exactly
 // as the visitor arrived — no decoration (see the bare-?seed= contract test),
 // and nothing pushed — so the first Back from a fresh load still leaves the

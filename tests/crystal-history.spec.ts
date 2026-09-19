@@ -62,3 +62,132 @@ test("a look toggle coalesces into the current entry instead of pushing one", as
   await page.goBack();
   await expectSeed(page, "abcde");
 });
+
+/**
+ * #331 — Back/Forward restores the look recorded in the popped entry. Pink and
+ * Prism are encoded by absence when off, so a restore must *set* each mode from
+ * the entry, not flip it from whatever is on screen or resolve it from the
+ * stored preference.
+ */
+async function expectLook(
+  page: import("@playwright/test").Page,
+  look: { pink: boolean; prism: boolean },
+) {
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", String(look.pink));
+  await expect(page.locator("#btn-prism")).toHaveAttribute("aria-pressed", String(look.prism));
+  const body = page.locator("body");
+  if (look.pink) await expect(body).toHaveClass(/pink-mode/);
+  else await expect(body).not.toHaveClass(/pink-mode/);
+  if (look.prism) await expect(body).toHaveClass(/prism-mode/);
+  else await expect(body).not.toHaveClass(/prism-mode/);
+}
+
+test("Back keeps Pink on: grow with Pink on, then goBack", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await expectSeed(page, "abcde");
+
+  await page.locator("#btn-pink").click();
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#refresh").click();
+  await expect(page.locator("#seed-display")).not.toHaveText("abcde", { ignoreCase: true });
+
+  await page.goBack();
+  await expectSeed(page, "abcde");
+  await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("Back and Forward keep both Pink and Prism on with the right seeds", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await expectSeed(page, "abcde");
+  await page.locator("#btn-pink").click();
+  await page.locator("#btn-prism").click();
+  await expectLook(page, { pink: true, prism: true });
+
+  await page.locator("#refresh").click();
+  const second = await currentSeed(page);
+  expect(second).not.toBe("abcde");
+
+  await page.goBack();
+  await expectSeed(page, "abcde");
+  await expectLook(page, { pink: true, prism: true });
+
+  // The restore must not have rewritten the entry's look: Forward and Back
+  // again land in the same place.
+  await page.goForward();
+  await expectSeed(page, second);
+  await expectLook(page, { pink: true, prism: true });
+  await page.goBack();
+  await expectSeed(page, "abcde");
+  await expectLook(page, { pink: true, prism: true });
+});
+
+test("Back to an entry recorded with Pink off turns Pink off even when the stored pref is on", async ({
+  page,
+}) => {
+  await page.goto("/?seed=abcde");
+  await expectSeed(page, "abcde");
+  await expectLook(page, { pink: false, prism: false });
+
+  await page.locator("#refresh").click();
+  await expect(page.locator("#seed-display")).not.toHaveText("abcde", { ignoreCase: true });
+
+  // Something else (another tab) turned the remembered look on. The entry we
+  // are about to pop was recorded with Pink off, and that is what it restores.
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "frostbomb-mode-prefs",
+      JSON.stringify({ pink: true, prism: true }),
+    );
+  });
+
+  await page.goBack();
+  await expectSeed(page, "abcde");
+  await expectLook(page, { pink: false, prism: false });
+});
+
+test("Back to an entry recorded with Pink on turns it on when the current look is off", async ({
+  page,
+}) => {
+  await page.goto("/?seed=abcde&pink=1&prism=1");
+  await expectSeed(page, "abcde");
+  await expectLook(page, { pink: true, prism: true });
+
+  await page.locator("#refresh").click();
+  await page.locator("#btn-pink").click();
+  await page.locator("#btn-prism").click();
+  await expectLook(page, { pink: false, prism: false });
+
+  await page.goBack();
+  await expectSeed(page, "abcde");
+  await expectLook(page, { pink: true, prism: true });
+});
+
+test("a restore announces once, not once per mode", async ({ page }) => {
+  await page.goto("/?seed=abcde");
+  await expectSeed(page, "abcde");
+  await page.locator("#btn-pink").click();
+  await page.locator("#btn-prism").click();
+  await page.locator("#refresh").click();
+  // Turn the look off on the second entry so Back has to change both modes.
+  await page.locator("#btn-pink").click();
+  await page.locator("#btn-prism").click();
+  // The announcer debounces by 50 ms; let the click's own line land before listening.
+  await expect(page.locator("#a11y-announcer")).toContainText("Prism mode disabled");
+
+  await page.locator("#a11y-announcer").evaluate((el) => {
+    const heard: string[] = [];
+    (window as unknown as { __heard: string[] }).__heard = heard;
+    new MutationObserver(() => {
+      if (el.textContent) heard.push(el.textContent);
+    }).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+
+  await page.goBack();
+  await expectSeed(page, "abcde");
+  await expectLook(page, { pink: true, prism: true });
+
+  await expect(page.locator("#a11y-announcer")).toContainText("Loaded seed abcde");
+  const heard = await page.evaluate(() => (window as unknown as { __heard: string[] }).__heard);
+  expect(heard.filter((m) => /Loaded seed/.test(m))).toHaveLength(1);
+  expect(heard.filter((m) => /Pink mode|Prism mode/.test(m))).toEqual([]);
+});
