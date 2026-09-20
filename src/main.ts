@@ -23,6 +23,7 @@ import { LabPanel } from "./ui/lab-panel";
 import { initKeyboardShortcuts } from "./ui/keyboard";
 import { downloadHref, downloadObjectUrls } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
+import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
 import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
@@ -66,6 +67,19 @@ const scene = createScene(canvas, {
 
 document.getElementById("btn-reload-crystal")?.addEventListener("click", () => {
   window.location.reload();
+});
+
+// A tab that predates a deploy can't load its old hashed chunks (Lab, 3D
+// export, effects): reload once so it picks up the new build (#333). A fresh
+// visit's address bar is still bare (#316), so write seed + look first and
+// the reload regrows this exact crystal.
+installStaleBuildRecovery({
+  storage: sessionStorageOrNull(),
+  now: Date.now,
+  reload: () => {
+    syncCrystalUrl(currentSeedLabel, currentConditions, "replace");
+    window.location.reload();
+  },
 });
 
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
