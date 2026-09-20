@@ -191,3 +191,70 @@ test("a restore announces once, not once per mode", async ({ page }) => {
   expect(heard.filter((m) => /Loaded seed/.test(m))).toHaveLength(1);
   expect(heard.filter((m) => /Pink mode|Prism mode/.test(m))).toEqual([]);
 });
+
+/**
+ * #335 — holding R or Space is one regrow, not one per OS auto-repeat event.
+ *
+ * Playwright has no OS key repeat: `keyboard.down(key)` sends `repeat: true`
+ * only when that key is already down. So the hold is simulated the way a real
+ * one arrives: one press, then more `down` calls every ~30 ms for ~500 ms.
+ */
+async function recentSeeds(page: import("@playwright/test").Page) {
+  return page.locator("#recent-seeds-list button").allTextContents();
+}
+
+for (const [label, key] of [
+  ["R", "r"],
+  ["Space", "Space"],
+] as const) {
+  test(`holding ${label} for 500 ms grows one crystal, one history entry, one Recent Seed`, async ({
+    page,
+  }) => {
+    await page.goto("/?seed=abcde");
+    await expectSeed(page, "abcde");
+    await expect(page.locator("#recent-seeds-list button")).toHaveCount(1);
+
+    const historyBefore = await page.evaluate(() => window.history.length);
+    const recentBefore = await recentSeeds(page);
+    expect(recentBefore).toEqual(["abcde"]);
+
+    // Runs after the app's own window listener, so `defaultPrevented` reflects it.
+    await page.evaluate(() => {
+      const seen = { total: 0, repeats: 0, prevented: 0 };
+      (window as unknown as { __keydowns: typeof seen }).__keydowns = seen;
+      window.addEventListener("keydown", (e) => {
+        seen.total++;
+        if (e.repeat) seen.repeats++;
+        if (e.defaultPrevented) seen.prevented++;
+      });
+    });
+
+    await page.keyboard.down(key);
+    for (let i = 0; i < 15; i++) {
+      await page.waitForTimeout(30);
+      await page.keyboard.down(key);
+    }
+    await page.keyboard.up(key);
+
+    // Guard against a vacuous pass: the page really did receive auto-repeats.
+    const seen = await page.evaluate(
+      () =>
+        (window as unknown as { __keydowns: Record<"total" | "repeats" | "prevented", number> })
+          .__keydowns,
+    );
+    expect(seen.total).toBe(16);
+    expect(seen.repeats).toBe(15);
+    // A held Space must not scroll the page either: every event is prevented.
+    if (key === "Space") expect(seen.prevented).toBe(16);
+
+    const second = await currentSeed(page);
+    expect(second).not.toBe("abcde");
+    expect(await page.evaluate(() => window.history.length)).toBe(historyBefore + 1);
+    // Recent Seeds gained exactly the one new crystal; the earlier one survives.
+    expect(await recentSeeds(page)).toEqual([second, "abcde"]);
+
+    // ...so one Back step returns to the crystal that was on screen before the hold.
+    await page.goBack();
+    await expectSeed(page, "abcde");
+  });
+}
