@@ -25,6 +25,18 @@ export interface KeyboardHandlerContext {
   onCopySeed: () => void;
 }
 
+/**
+ * Keys that keep acting while held (continuous camera orbit). Every other
+ * shortcut is a discrete action: one press is one action, so the OS
+ * auto-repeat events a held key sends (`KeyboardEvent.repeat`) are ignored.
+ */
+export const REPEATABLE_KEYS: ReadonlySet<string> = new Set([
+  "arrowup",
+  "arrowdown",
+  "arrowleft",
+  "arrowright",
+]);
+
 export function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
@@ -70,6 +82,14 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
 
     // Space should scroll down the guide instead of refreshing if guide is open and active
     if (k === " " && isGuideOpen && !isDiagramFocused) return;
+
+    // A held key must not re-fire a discrete action (a held R would regrow ~30
+    // times a second, pushing a history entry each time). Space still has its
+    // default suppressed so the held key doesn't scroll the page either.
+    if (e.repeat && !REPEATABLE_KEYS.has(k)) {
+      if (k === " ") e.preventDefault();
+      return;
+    }
 
     const delta = e.shiftKey ? 0.3 : 0.1;
 
