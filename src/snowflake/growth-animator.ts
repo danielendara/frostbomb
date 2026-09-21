@@ -58,8 +58,12 @@ export class GrowthAnimator {
     this.syncEntryState();
   }
 
-  public cancelEntryTween(): void {
+  /** Stop the entry tween; optionally snap logical progress to complete. */
+  public cancelEntryTween(snapComplete = false): void {
     this.entryActive = false;
+    if (snapComplete) {
+      this.entryState.progress = 1;
+    }
     this.syncEntryState();
   }
 
