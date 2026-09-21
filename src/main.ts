@@ -21,7 +21,7 @@ import {
 import { SeedHistoryManager } from "./ui/history";
 import { LabPanel } from "./ui/lab-panel";
 import { initKeyboardShortcuts } from "./ui/keyboard";
-import { downloadHref, downloadObjectUrls } from "./ui/download";
+import { downloadHref, downloadObjectUrls, filesForExportIdentity } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
@@ -841,14 +841,24 @@ async function saveSnowflake3d() {
         branchCount: lastFlake.branchCount,
         core: lastFlake.core,
       };
+      // Same moment as the geometry copy. Regrow and Back stay available
+      // while the module and the encoder run; the names must not follow them.
+      const identity = {
+        habit: currentConditions.habit,
+        seed: currentSeedLabel,
+      };
 
-      const { exportSnowflakeModels } = await import("./snowflake/mesh-export");
-      const { stl, glb } = await exportSnowflakeModels(snapshot);
+      const files = await filesForExportIdentity(identity, snapshot, async () => {
+        const { exportSnowflakeModels } = await import("./snowflake/mesh-export");
+        return exportSnowflakeModels;
+      });
 
-      await downloadObjectUrls([
-        { filename: exportFileName("stl"), href: URL.createObjectURL(stl) },
-        { filename: exportFileName("glb"), href: URL.createObjectURL(glb) },
-      ]);
+      await downloadObjectUrls(
+        files.map((file) => ({
+          filename: file.filename,
+          href: URL.createObjectURL(file.blob),
+        })),
+      );
     },
     scene,
   );

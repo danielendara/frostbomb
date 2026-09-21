@@ -40,6 +40,38 @@ function downloadGap(ms = gapMs()): Promise<void> {
   });
 }
 
+/** Seed and habit captured with the geometry, before export awaits anything. */
+export interface ExportIdentity {
+  habit: string;
+  seed: string;
+}
+
+export function formatExportFileName(identity: ExportIdentity, extension: string): string {
+  const habit = identity.habit.replace(/_/g, "-");
+  return `frostbomb-${habit}-${identity.seed}.${extension}`;
+}
+
+/**
+ * Names are fixed from `identity` before the encoder module loads and before
+ * encoding. Callers can regrow while this is in flight; the files still
+ * describe `snapshot`.
+ */
+export async function filesForExportIdentity<T>(
+  identity: ExportIdentity,
+  snapshot: T,
+  loadEncoder: () => Promise<(data: T) => Promise<{ stl: Blob; glb: Blob }>>,
+): Promise<{ filename: string; blob: Blob }[]> {
+  const captured: ExportIdentity = { habit: identity.habit, seed: identity.seed };
+  const stlName = formatExportFileName(captured, "stl");
+  const glbName = formatExportFileName(captured, "glb");
+  const encode = await loadEncoder();
+  const models = await encode(snapshot);
+  return [
+    { filename: stlName, blob: models.stl },
+    { filename: glbName, blob: models.glb },
+  ];
+}
+
 export async function downloadObjectUrls(
   files: { filename: string; href: string }[],
 ): Promise<void> {
@@ -49,7 +81,7 @@ export async function downloadObjectUrls(
   }
 }
 
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV && typeof window !== "undefined") {
   (
     window as Window & {
       __FROSTBOMB_DOWNLOAD_OBJECT_URLS__?: typeof downloadObjectUrls;
