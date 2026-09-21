@@ -441,6 +441,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       sceneInterface.setAutoRotate(false);
       animator.cancelEntryTween();
       animator.entryState.progress = 1;
+      if (branchMesh && currentFlakeData) {
+        animator.updateMatrices(branchMesh, coreMesh, flakeHolder, currentFlakeData);
+      }
       animator.syncEntryState();
     } else if (!skipPostprocessingFromEnvironment(prefersReducedMotion)) {
       pipeline.load(false);
