@@ -6,7 +6,7 @@ import {
 } from "./snowflake/context-loss";
 import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
 import { buildSnowflakeSvg } from "./snowflake/svg-export";
-import { sampleConditions, habitLabel, GrowthConditions } from "./snowflake/nakaya";
+import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snowflake/nakaya";
 import { mulberry32, resolveSeed, randomSeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
 import { announce as announceRaw } from "./ui/announcer";
@@ -29,9 +29,12 @@ import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
   crystalStatesEqual,
   parseCrystalUrlState,
+  quantizeLabConditions,
   resolveModes,
-  setLabConditionsParams,
+  retainedLabConditions,
+  writeCrystalGeneration,
   type CrystalUrlState,
+  type GenerationProvenance,
   type ModeSource,
 } from "./url-state";
 import {
@@ -98,6 +101,8 @@ let isGuideOpen = false;
 let isUIHidden = false;
 let guideReturnTarget: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
+/** Sampled crystals replay the seed path. Only a real Lab commit is manual. */
+let generationProvenance: GenerationProvenance = "sampled";
 let lastHabit: string | null = null;
 let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
@@ -130,7 +135,7 @@ const labPanel = new LabPanel({
       seed: hashString(val),
       label: val,
     };
-    const { conditions } = grow(currentConditions, true, false);
+    const { conditions } = grow(retainedManualConditions(), true, false);
     syncCrystalUrl(val, conditions, "push");
 
     announce(`Seed changed to ${val}`);
@@ -138,7 +143,7 @@ const labPanel = new LabPanel({
   onRandomizeSeed: () => {
     // Roll explicitly — the address bar always carries a seed now, so
     // re-reading it would hand back the same crystal (#316).
-    const result = grow(currentConditions, false, false, undefined, randomSeed());
+    const result = grow(retainedManualConditions(), false, false, undefined, randomSeed());
     syncCrystalUrl(result.label, result.conditions, "push");
     announce(`Randomized seed to ${result.label}`);
   },
@@ -174,7 +179,10 @@ function grow(
   const rng = mulberry32(seed);
   const rand = new Rand(rng);
 
+  // A passed condition set is a manual fixed point. Otherwise resample so the
+  // atmospheric path stays a function of the seed (the URL can replay that).
   const conditions = manualConditions || sampleConditions(rand);
+  generationProvenance = manualConditions ? "manual" : "sampled";
   currentConditions = conditions;
   const result = buildSnowflake(conditions, rand);
   lastFlake = result;
@@ -279,7 +287,7 @@ function handleRefresh(e?: Event) {
   // Roll the new seed explicitly rather than deleting `?seed=` first: that
   // rewrite used to destroy the entry Back needs to return to (#316).
   const { conditions, label } = grow(
-    isLabMode ? currentConditions : undefined,
+    retainedManualConditions(),
     false,
     true,
     undefined,
@@ -643,8 +651,31 @@ function shareSearchParams(): URLSearchParams {
   const params = new URLSearchParams();
   params.set(SHARE_PARAM_SEED, currentSeedLabel);
   writeCurrentModeParams(params);
-  setLabConditionsParams(params, currentConditions);
+  writeCrystalGeneration(params, generationProvenance, currentConditions ?? null);
   return params;
+}
+
+/**
+ * Manual Lab may follow a seed change. A sampled path may not — it was drawn
+ * from the previous seed and the URL does not record it.
+ */
+function retainedManualConditions(): GrowthConditions | undefined {
+  const lab = retainedLabConditions(
+    generationProvenance,
+    currentConditions
+      ? {
+          temperatureC: currentConditions.temperatureC,
+          supersaturation: currentConditions.supersaturation,
+        }
+      : null,
+  );
+  if (!lab) return undefined;
+  return {
+    temperatureC: lab.temperatureC,
+    supersaturation: lab.supersaturation,
+    habit: getHabit(lab.temperatureC, lab.supersaturation),
+    path: [{ temp: lab.temperatureC, ss: lab.supersaturation }],
+  };
 }
 
 function buildShareUrl(): string {
@@ -910,6 +941,27 @@ function persistModePrefs(): void {
 // boot. Out-of-range or unparsable values are ignored (safe defaults —
 // falls through to the normal random sample), matching the seed/pink/prism
 // convention of "absent or invalid = today's behavior".
+function onScreenCrystalState(): CrystalUrlState {
+  const lab =
+    generationProvenance === "manual" && currentConditions
+      ? quantizeLabConditions({
+          temperatureC: currentConditions.temperatureC,
+          supersaturation: currentConditions.supersaturation,
+        })
+      : null;
+  return {
+    seed: currentSeedLabel,
+    provenance: lab ? "manual" : "sampled",
+    lab,
+    modes: {
+      pink: scene.isPinkModeEnabled,
+      prism: scene.isPrismModeEnabled,
+      lab: isLabMode,
+      rotate: scene.isAutoRotateEnabled,
+    },
+  };
+}
+
 function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation: number } | null {
   return parseCrystalUrlState(window.location.search).lab;
 }
@@ -983,7 +1035,7 @@ function syncCrystalUrl(
   const url = new URL(window.location.href);
   url.searchParams.set(SHARE_PARAM_SEED, seedLabel);
   writeCurrentModeParams(url.searchParams);
-  setLabConditionsParams(url.searchParams, conditions);
+  writeCrystalGeneration(url.searchParams, generationProvenance, conditions);
   const next = url.pathname + url.search;
   if (mode === "push") {
     window.history.pushState(null, "", next);
@@ -1011,7 +1063,7 @@ function restoreCrystalState(state: CrystalUrlState): void {
       currentSeed = resolveSeed();
     }
 
-    if (state.lab) {
+    if (state.provenance === "manual" && state.lab) {
       const { conditions } = commitNakayaConditions({
         temperatureC: state.lab.temperatureC,
         supersaturation: state.lab.supersaturation,
@@ -1032,21 +1084,7 @@ function restoreCrystalState(state: CrystalUrlState): void {
 
 window.addEventListener("popstate", () => {
   const popped = parseCrystalUrlState(window.location.search);
-  const onScreen: CrystalUrlState = {
-    seed: currentSeedLabel,
-    lab: currentConditions
-      ? {
-          temperatureC: currentConditions.temperatureC,
-          supersaturation: currentConditions.supersaturation,
-        }
-      : null,
-    modes: {
-      pink: scene.isPinkModeEnabled,
-      prism: scene.isPrismModeEnabled,
-      lab: isLabMode,
-      rotate: scene.isAutoRotateEnabled,
-    },
-  };
+  const onScreen = onScreenCrystalState();
   if (crystalStatesEqual(popped, onScreen)) return;
   restoreCrystalState(popped);
 });
