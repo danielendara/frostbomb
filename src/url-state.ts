@@ -24,6 +24,16 @@ export interface LabConditionsState {
   supersaturation: number;
 }
 
+/**
+ * How the crystal was grown.
+ *
+ * - `sampled`: seed RNG builds the atmospheric path, then geometry consumes
+ *   what remains. The URL omits `t`/`ss`.
+ * - `manual`: an explicit Lab point. One-point path, habit from that point,
+ *   fresh RNG. Old `t`/`ss` links stay on this path.
+ */
+export type GenerationProvenance = "sampled" | "manual";
+
 /** `null` = the param was absent, so the stored preference decides. */
 export interface ModeState {
   pink: boolean | null;
@@ -35,6 +45,11 @@ export interface ModeState {
 export interface CrystalUrlState {
   /** Lowercased, validated seed label, or null when absent/unusable. */
   seed: string | null;
+  /**
+   * `manual` only when `lab` is present. A displayed condition pair is not
+   * enough — sampled crystals keep this `sampled` so reopen replays the path.
+   */
+  provenance: GenerationProvenance;
   /** Lab temperature/supersaturation, or null when absent or out of range. */
   lab: LabConditionsState | null;
   modes: ModeState;
@@ -73,9 +88,11 @@ export function parseCrystalUrlState(search: string): CrystalUrlState {
   } catch {
     params = new URLSearchParams();
   }
+  const lab = parseLab(params.get("t"), params.get("ss"));
   return {
     seed: parseSeed(params.get(SHARE_PARAM_SEED)),
-    lab: parseLab(params.get("t"), params.get("ss")),
+    provenance: lab ? "manual" : "sampled",
+    lab,
     modes: {
       pink: parseMode(params, SHARE_PARAM_PINK),
       prism: parseMode(params, SHARE_PARAM_PRISM),
@@ -125,10 +142,52 @@ function resolveLookMode(
   return source === "boot" ? storedOn : false;
 }
 
+/** URL precision: 0.1 °C and whole-percent supersaturation. */
+export function quantizeLabConditions(conditions: LabConditionsState): LabConditionsState {
+  const ssPercent = Math.round(conditions.supersaturation * 100);
+  return {
+    temperatureC: Number(conditions.temperatureC.toFixed(1)),
+    supersaturation: ssPercent / 100,
+  };
+}
+
 /** The `t`/`ss` formula — one place, not five. */
 export function setLabConditionsParams(params: URLSearchParams, conditions: LabConditionsState) {
-  params.set("t", conditions.temperatureC.toFixed(1));
-  params.set("ss", Math.round(conditions.supersaturation * 100).toString());
+  const quantized = quantizeLabConditions(conditions);
+  params.set("t", quantized.temperatureC.toFixed(1));
+  params.set("ss", Math.round(quantized.supersaturation * 100).toString());
+}
+
+/**
+ * Serialize generation provenance. Sampled crystals drop `t`/`ss` so a copied
+ * link and a history entry replay `sampleConditions`. Manual Lab writes the
+ * fixed point. Passing a displayed pair with `sampled` does not turn it into
+ * a Lab link.
+ */
+export function writeCrystalGeneration(
+  params: URLSearchParams,
+  provenance: GenerationProvenance,
+  conditions: LabConditionsState | null,
+): void {
+  if (provenance === "manual" && conditions) {
+    setLabConditionsParams(params, conditions);
+    return;
+  }
+  params.delete("t");
+  params.delete("ss");
+}
+
+/**
+ * Seed changes may keep a manual fixed point (it round-trips through `t`/`ss`).
+ * A sampled atmospheric path does not — callers must resample instead of
+ * reusing it under the new seed.
+ */
+export function retainedLabConditions(
+  provenance: GenerationProvenance,
+  conditions: LabConditionsState | null,
+): LabConditionsState | null {
+  if (provenance !== "manual" || conditions === null) return null;
+  return quantizeLabConditions(conditions);
 }
 
 /**
@@ -139,6 +198,7 @@ export function setLabConditionsParams(params: URLSearchParams, conditions: LabC
 export function crystalStatesEqual(a: CrystalUrlState, b: CrystalUrlState): boolean {
   return (
     a.seed === b.seed &&
+    a.provenance === b.provenance &&
     labEqual(a.lab, b.lab) &&
     a.modes.pink === b.modes.pink &&
     a.modes.prism === b.modes.prism &&

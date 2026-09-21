@@ -1,4 +1,5 @@
 import { getHabit, habitLabel, type GrowthConditions } from "../snowflake/nakaya";
+import { quantizeLabConditions } from "../url-state";
 
 export function updateNakayaStatus(temp: number, ss: number, isPreview: boolean): void {
   const statusEl = document.getElementById("nakaya-status");
@@ -34,7 +35,15 @@ export interface NakayaCommitResult {
  * #nakaya-status is the live region; announce() only when that region is hidden.
  */
 export function commitNakayaConditions(input: NakayaCommitInput): NakayaCommitResult {
-  const { temperatureC: t, supersaturation: ss, isGuideOpen, lastHabit, announce } = input;
+  // The share URL only keeps 0.1 °C and whole-percent SS. Grow that point so
+  // Copy Link and Back replay the crystal on screen, not a finer one.
+  const quantized = quantizeLabConditions({
+    temperatureC: input.temperatureC,
+    supersaturation: input.supersaturation,
+  });
+  const { isGuideOpen, lastHabit, announce } = input;
+  const t = quantized.temperatureC;
+  const ss = quantized.supersaturation;
   const habit = getHabit(t, ss);
   const habitText = habitLabel[habit];
 
