@@ -937,6 +937,17 @@ kbd {
 
 .masthead { animation: rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
 
+/* `rise` fill-mode `both` keeps these invisible through their delay. */
+@media (prefers-reduced-motion: reduce) {
+  .field-notes,
+  .footer,
+  .masthead {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .field-guide__close {
   width: 100%;
   padding: 0.75rem;
