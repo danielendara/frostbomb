@@ -242,7 +242,7 @@ export class GrowthAnimator {
       coreMesh.scale.set(coreData.scale[0] * s, coreData.scale[1] * s, coreData.scale[2] * s);
     }
 
-    flakeHolder.position.y = (1 - eased) * -2;
+    flakeHolder.position.y = eased === 1 ? 0 : (1 - eased) * -2;
     this.needsMatrixUpdate = false;
   }
 }
