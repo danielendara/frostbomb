@@ -1,0 +1,166 @@
+/** @vitest-environment happy-dom */
+import { describe, expect, it, vi } from "vitest";
+
+const gate = vi.hoisted(() => ({ failPane: false }));
+
+vi.mock("../../src/snowflake/scene", () => ({
+  createScene: () => ({
+    start: vi.fn(),
+    dispose: vi.fn(),
+    isAutoRotateEnabled: false,
+    isPinkModeEnabled: false,
+    isPrismModeEnabled: false,
+    setAutoRotate: vi.fn(),
+    setPinkMode: vi.fn(),
+    setPrismMode: vi.fn(),
+    setPhotoMode: vi.fn(),
+    updateFlake: vi.fn(),
+    resetView: vi.fn(),
+    rotateView: vi.fn(),
+  }),
+}));
+
+vi.mock("tweakpane", () => ({
+  Pane: class {
+    constructor() {
+      if (gate.failPane) throw new Error("simulated chunk load failure");
+    }
+    addBinding() {
+      return { on: () => this };
+    }
+    addButton() {
+      return { on: () => this };
+    }
+    refresh() {}
+  },
+}));
+
+const FIXTURE = `
+  <canvas id="scene"></canvas>
+  <div id="a11y-announcer"></div>
+  <button id="lab-toggle" aria-pressed="false" aria-expanded="false">
+    Lab Mode: <span id="lab-status">OFF</span>
+  </button>
+  <div id="stats-display"></div>
+  <div id="recent-seeds-container"><div id="recent-seeds-list"></div></div>
+  <button id="btn-clear-history">Clear</button>
+  <div id="lab-controls" style="display: none;" tabindex="-1">
+    <div id="pane-mount"></div>
+    <button id="lab-close" type="button">Close Lab Mode</button>
+  </div>
+  <canvas id="nakaya-diagram" aria-pressed="false" aria-expanded="false"></canvas>
+`;
+
+function installMatchMedia() {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+async function boot() {
+  vi.resetModules();
+  installMatchMedia();
+  localStorage.clear();
+  window.history.replaceState(null, "", "/");
+  document.body.innerHTML = FIXTURE;
+  const announcer = await import("../../src/ui/announcer");
+  const announce = vi.spyOn(announcer, "announce");
+  await import("../../src/main.ts");
+  return { announce };
+}
+
+function labToggle() {
+  return document.getElementById("lab-toggle") as HTMLButtonElement;
+}
+
+function labControls() {
+  return document.getElementById("lab-controls") as HTMLElement;
+}
+
+function labStatus() {
+  return document.getElementById("lab-status") as HTMLElement;
+}
+
+describe("Lab Mode load failure (#349)", () => {
+  it("hides the controls, resets the toggle, and focuses it when ensurePane rejects", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    gate.failPane = true;
+    const { announce } = await boot();
+
+    labToggle().click();
+    await vi.waitFor(() => {
+      expect(announce).toHaveBeenCalledWith("Failed to load Lab Mode controls");
+    });
+
+    expect(labControls().style.display).toBe("none");
+    expect(labToggle().getAttribute("aria-pressed")).toBe("false");
+    expect(labToggle().getAttribute("aria-expanded")).toBe("false");
+    expect(labToggle().disabled).toBe(false);
+    expect(labStatus().textContent).toBe("ERROR");
+    expect(labStatus().classList.contains("btn--error")).toBe(true);
+    expect(document.activeElement).toBe(labToggle());
+    expect(document.getElementById("recent-seeds-container")?.style.display).not.toBe("none");
+    const diagram = document.getElementById("nakaya-diagram");
+    expect(diagram?.getAttribute("aria-pressed")).toBe("false");
+    expect(diagram?.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("loads the pane on the next open and clears the error class", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    gate.failPane = true;
+    const { announce } = await boot();
+
+    labToggle().click();
+    await vi.waitFor(() => {
+      expect(labStatus().textContent).toBe("ERROR");
+    });
+
+    gate.failPane = false;
+    announce.mockClear();
+    labToggle().click();
+    await vi.waitFor(() => {
+      expect(labStatus().textContent).toBe("ON");
+    });
+
+    expect(labControls().style.display).toBe("flex");
+    expect(labStatus().classList.contains("btn--error")).toBe(false);
+    expect(labToggle().getAttribute("aria-pressed")).toBe("true");
+    expect(labToggle().getAttribute("aria-expanded")).toBe("true");
+    expect(announce).not.toHaveBeenCalledWith("Failed to load Lab Mode controls");
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(labControls());
+    });
+  });
+
+  it("shows and focuses the controls on success, and close still hides them", async () => {
+    gate.failPane = false;
+    const { announce } = await boot();
+
+    labToggle().click();
+    await vi.waitFor(() => {
+      expect(labStatus().textContent).toBe("ON");
+    });
+    expect(labControls().style.display).toBe("flex");
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(labControls());
+    });
+    expect(labStatus().classList.contains("btn--error")).toBe(false);
+    expect(announce).toHaveBeenCalledWith("Lab Mode active");
+    expect(announce).not.toHaveBeenCalledWith("Failed to load Lab Mode controls");
+
+    document.getElementById("lab-close")!.click();
+    expect(labControls().style.display).toBe("none");
+    expect(labToggle().getAttribute("aria-pressed")).toBe("false");
+    expect(labToggle().getAttribute("aria-expanded")).toBe("false");
+    expect(labStatus().textContent).toBe("OFF");
+    expect(document.activeElement).toBe(labToggle());
+    expect(announce).toHaveBeenCalledWith("Lab Mode disabled");
+  });
+});
