@@ -1,5 +1,4 @@
 import { announce } from "./announcer";
-import { setTemporaryLabel } from "./feedback";
 import { SEED_PATTERN } from "../url-state";
 
 export type TweakpanePane = import("tweakpane").Pane;
@@ -58,9 +57,9 @@ export class LabPanel {
           this.callbacks.onSeedChange(val);
         } else {
           announce("Invalid seed. Seeds must be 3 to 12 alphanumeric characters.");
-          setTemporaryLabel("btn-seed", "3-12 chars", "✕", true);
 
-          // Direct inline visual error feedback for Tweakpane's Seed input
+          // Direct inline visual error feedback for Tweakpane's Seed input.
+          // #btn-seed is the header "Copy share link" control, not this field.
           const labelViews = document.querySelectorAll(".tp-lblv");
           let seedInputEl: HTMLInputElement | null = null;
           for (const lv of labelViews) {
