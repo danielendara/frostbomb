@@ -347,10 +347,20 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
         labStatus.classList.add("btn--error");
       }
       isLabMode = false;
+      // Shell is shown before the chunk loads. Re-enable before focus: a
+      // disabled button cannot take it, and finally runs too late to help.
+      if (labControls) labControls.style.display = "none";
+      if (nakayaCanvas) {
+        nakayaCanvas.setAttribute("aria-pressed", "false");
+        nakayaCanvas.setAttribute("aria-expanded", "false");
+      }
       if (labToggle) {
         labToggle.setAttribute("aria-pressed", "false");
         labToggle.setAttribute("aria-expanded", "false");
+        if (labToggle instanceof HTMLButtonElement) labToggle.disabled = false;
+        labToggle.focus();
       }
+      updateRecentSeedsUI();
       announce("Failed to load Lab Mode controls");
       persistModePrefs();
       syncCrystalUrl(currentSeedLabel, currentConditions, "replace");
@@ -361,6 +371,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     if (!isLabMode || toggleGeneration !== labToggleGeneration) return;
     if (labStatus) {
       labStatus.textContent = "ON";
+      labStatus.classList.remove("btn--error");
     }
     updateFromPane();
     if (shouldFocus) {
