@@ -1,5 +1,5 @@
 # CI: default = vitest + smoke Playwright (sequential-smoke); full chromium suite on
-# workflow_dispatch (full_e2e input), PR label full-e2e, or diffs touching snowflake/canvas/webgl/export/tests/config.
+# workflow_dispatch (full_e2e input), PR label full-e2e, or diffs touching snowflake/ui/canvas/webgl/export/tests/config.
 name: CI
 
 on:
@@ -82,6 +82,7 @@ jobs:
             esac
 
             if [[ "$f" == src/snowflake/* ]] \
+              || [[ "$f" == src/ui/* ]] \
               || [[ "$f" == playwright.config.ts ]] \
               || [[ "$f" == vite.config.ts ]] \
               || { [[ "$f" == src/* ]] && [[ "$f" =~ (canvas|webgl|export) ]]; } \
