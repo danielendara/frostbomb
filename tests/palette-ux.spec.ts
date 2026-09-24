@@ -223,7 +223,7 @@ test("Recent seed buttons have correct title attributes", async ({ page }) => {
   const seedVal = (await seedDisplay.textContent())?.trim() || "";
 
   // Get the first button in recent seeds
-  const firstSeedBtn = recentSeedsList.locator("button").first();
+  const firstSeedBtn = recentSeedsList.locator("button.seed-pill").first();
   await expect(firstSeedBtn).toBeVisible();
 
   // It should have title attribute matching the expected tooltip pattern
@@ -472,12 +472,12 @@ test("Palette: active history seed button has aria-current='true'", async ({ pag
   const activeSeed = (await seedDisplay.textContent())?.trim() || "";
 
   // Find the button in recent seeds list corresponding to the active seed
-  const activeSeedBtn = page.locator(`#recent-seeds-list button:has-text("${activeSeed}")`);
+  const activeSeedBtn = page.locator(`#recent-seeds-list button.seed-pill:has-text("${activeSeed}")`);
   await expect(activeSeedBtn).toBeVisible();
   await expect(activeSeedBtn).toHaveAttribute("aria-current", "true");
 
   // Other buttons (if any) should have aria-current="false"
-  const allSeedBtns = await page.locator("#recent-seeds-list button").all();
+  const allSeedBtns = await page.locator("#recent-seeds-list button.seed-pill").all();
   for (const btn of allSeedBtns) {
     const text = await btn.textContent();
     if (text?.trim() !== activeSeed) {
