@@ -1,5 +1,6 @@
 import { announce } from "./announcer";
 import { setTemporaryLabel, visualPress } from "./feedback";
+import { reportClientError } from "./client-error";
 
 const inflight = new Set<string>();
 
@@ -50,6 +51,7 @@ export async function runExportAction(
     return true;
   } catch (err) {
     console.error(messages.failure, err);
+    reportClientError("export", err);
     setTemporaryLabel(buttonId, "Failed", "✕", true);
     announce(messages.failure);
     return false;

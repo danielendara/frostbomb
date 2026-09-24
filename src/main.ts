@@ -24,6 +24,7 @@ import { initKeyboardShortcuts } from "./ui/keyboard";
 import { downloadHref, downloadObjectUrls, filesForExportIdentity } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
+import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
 import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
@@ -60,9 +61,15 @@ function announce(message: string): void {
   announceRaw(message);
 }
 
+// Before anything else can fail: uncaught errors and handled failure paths
+// below go to Workers Logs via /api/client-error (#356).
+installClientErrorReporting();
+
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const scene = createScene(canvas, {
   onContextLost: () => {
+    // No in-place restore: the user must reload the crystal.
+    reportClientError("webgl-context-lost", "WebGL context lost");
     announce(WEBGL_CONTEXT_LOST_ANNOUNCEMENT);
     showReloadCrystalAffordance();
   },
@@ -80,6 +87,7 @@ installStaleBuildRecovery({
   storage: sessionStorageOrNull(),
   now: Date.now,
   reload: () => {
+    reportClientError("chunk-reload", "Stale build: reloading after a chunk preload error");
     syncCrystalUrl(currentSeedLabel, currentConditions, "replace");
     window.location.reload();
   },
@@ -342,6 +350,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
       await labPanel.ensurePane();
     } catch (err) {
       console.error("Failed to load Lab Mode:", err);
+      reportClientError("chunk-load", err);
       if (labStatus) {
         labStatus.textContent = "ERROR";
         labStatus.classList.add("btn--error");

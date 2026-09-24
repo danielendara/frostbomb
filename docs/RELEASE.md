@@ -9,7 +9,7 @@ The package `deploy` script is `npm run build && wrangler deploy`. The README do
 - [ ] **Build:** `npm run build` — `tsc && vite build`
 - [ ] **Unit:** `npm run test:unit`
 - [ ] **E2E:** `npm test` — Playwright; `pretest` also runs unit tests
-- [ ] Confirm this release does not accidentally change the Worker deploy path (`wrangler.jsonc` name `frostbombsite`, SPA asset fallback, `package.json` `deploy` script)
+- [ ] Confirm this release does not accidentally change the Worker deploy path (`wrangler.jsonc` name `frostbombsite`, `main` = `src/worker/index.ts`, SPA asset fallback, `run_worker_first` limited to `/api/*`, `package.json` `deploy` script)
 
 ## Deploy
 
@@ -23,7 +23,7 @@ Equivalent:
 npm run deploy
 ```
 
-Wrangler uploads the Vite `dist/` output as Worker static assets, including `dist/_headers` copied from `public/_headers`. Do not skip the build.
+The Cloudflare Vite plugin builds the static site to `dist/client/` (including `dist/client/_headers` copied from `public/_headers`) and the Worker script to `dist/frostbombsite/`, then points `wrangler deploy` at the generated config (`.wrangler/deploy/config.json`). Do not skip the build.
 
 Local Worker preview (same build, no production publish):
 
@@ -39,6 +39,25 @@ After the Worker is live at https://frostbomb.com:
 1. **Headers / CSP** — `curl -sI https://frostbomb.com/` should include `Content-Security-Policy` from `public/_headers` (also `X-Content-Type-Options: nosniff`).
 2. **postprocessing is not modulepreloaded** — fetch the live HTML and confirm there is no `<link rel="modulepreload"` whose href contains `postprocessing`. `vite.config.ts` filters those deps in `build.modulePreload.resolveDependencies` so first paint stays on the lightweight pipeline.
 3. **Smoke** — open the site, confirm a crystal renders, and that Lab Mode / export still work.
+4. **Client-error endpoint** — `curl -s -o /dev/null -w '%{http_code}\n' -X POST https://frostbomb.com/api/client-error -H 'content-type: application/json' -d '{"kind":"error","message":"release check","build":"release-check","ua":"other"}'` should print `204`, and the line should show up in Workers Logs (below).
+
+## Client errors in Workers Logs
+
+Browser failures are reported to `POST /api/client-error` (#356), and the Worker writes each one as a single `console.error` JSON line with `"event":"client_error"`. The Worker only runs for `/api/*` (`assets.run_worker_first`); every other request is served straight from static assets.
+
+To view them: Cloudflare dashboard → Workers & Pages → `frostbombsite` → **Observability** → **Logs** (Workers Logs, enabled by `observability.enabled` in `wrangler.jsonc`). Filter on `event = client_error`, then group by `kind` or `build`. For a live tail, use `npx wrangler tail frostbombsite --format pretty`.
+
+Each report is a fixed allowlist, and the Worker rejects anything else with `400`/`413`:
+
+| Field | Meaning |
+| --- | --- |
+| `kind` | `error`, `unhandledrejection`, `webgl-context-lost`, `frost-worker`, `chunk-reload`, `chunk-load`, `postprocessing`, `export` |
+| `message` | Error message, ≤300 chars, URL query strings and fragments stripped |
+| `source`, `line`, `col` | Same-origin script path (no query) and position, or `external` |
+| `build` | Hashed main bundle name, e.g. `index-61FAqeWf`: tells you which deploy a report came from |
+| `ua` | Coarse browser family: `chrome`, `edge`, `firefox`, `safari`, `other` |
+
+Reports never include seeds, full URLs, IPs, or other identifiers. The client dedupes identical reports and sends at most 5 per page load. No storage bindings and no third-party error service are used.
 
 ## Rollback
 

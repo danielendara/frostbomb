@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { MARK_POSTPROCESSING_READY, markOnce } from "./perf-marks";
+import { reportClientError } from "../ui/client-error";
 
 export interface PostprocessingSkipHints {
   prefersReducedMotion: boolean;
@@ -252,6 +253,7 @@ export class PostprocessingPipeline implements RenderPipeline {
     // retrying, and log once for the whole failure episode. Marking ready keeps
     // perf marks and smoke tests from waiting on effects that will not come.
     this.gaveUp = true;
+    reportClientError("postprocessing", err);
     console.error(
       `Postprocessing effects unavailable after ${this.failedAttempts} failed load attempts:`,
       err,
