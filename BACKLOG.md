@@ -8,6 +8,8 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - Goal: catch live runtime errors and deploy regressions quickly.
 - Ideas: Cloudflare Web Analytics, Worker logs, browser error reporting, uptime check.
 - Done means: live errors and traffic health are visible without opening DevTools.
+- [x] Browser error reporting → Workers Logs via `POST /api/client-error` (#356; see `docs/RELEASE.md`).
+- [ ] Traffic health / uptime check.
 
 ### Measure first-load experience on real devices
 - Goal: understand whether the Three.js and postprocessing chunks are acceptable on mobile.

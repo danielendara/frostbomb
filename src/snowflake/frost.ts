@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { FROST_SIZE, generateFrostBuffers, type FrostBuffers } from "./frost-data";
+import { reportClientError } from "../ui/client-error";
 
 function configureMap(texture: THREE.DataTexture): THREE.DataTexture {
   texture.wrapS = THREE.RepeatWrapping;
@@ -83,6 +84,7 @@ export function loadFrostMaps(): Promise<{
 
     worker.onerror = (event) => {
       worker.terminate();
+      reportClientError("frost-worker", event.error ?? event.message ?? "Frost worker failed");
       reject(event.error ?? new Error("Frost worker failed"));
     };
   });
