@@ -16,7 +16,7 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
 
   // Growth should trigger adding to recent seeds
   await expect(recentSeedsContainer).toBeVisible();
-  const seedButtonsBefore = recentSeedsList.locator('button');
+  const seedButtonsBefore = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtonsBefore).toHaveCount(1);
   await expect(seedButtonsBefore.first()).toHaveText(firstSeed);
 
@@ -40,7 +40,7 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
   expect(secondSeed).toMatch(/^[a-z0-9]{5}$/i);
 
   // Now container should have both seeds in the correct order (most recent first)
-  const seedButtonsAfter = recentSeedsList.locator('button');
+  const seedButtonsAfter = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtonsAfter).toHaveCount(2);
   await expect(seedButtonsAfter.first()).toHaveText(secondSeed);
   await expect(seedButtonsAfter.nth(1)).toHaveText(firstSeed);
@@ -59,10 +59,10 @@ test('Recent Seeds tracks, persists, displays, and triggers regrowing of previou
   await page.reload();
   await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsContainer).toBeVisible();
-  await expect(recentSeedsList.locator('button')).toHaveCount(2);
+  await expect(recentSeedsList.locator('button.seed-pill')).toHaveCount(2);
 
   // The first button in list should be the active one
-  await expect(recentSeedsList.locator('button').first()).toHaveText(firstSeed);
+  await expect(recentSeedsList.locator('button.seed-pill').first()).toHaveText(firstSeed);
 });
 
 test('Recent Seeds is hidden when Lab Mode is active', async ({ page }) => {
@@ -123,7 +123,7 @@ test('Recent Seeds can be cleared, updates localStorage and shifts focus to Guid
   await expect(recentSeedsContainer).toBeVisible();
 
   // Initially there should be 1 seed
-  const seedButtonsBefore = recentSeedsList.locator('button');
+  const seedButtonsBefore = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtonsBefore).toHaveCount(1);
 
   // Set the undo timeout to 0 for this test so the history is immediately fully cleared
@@ -173,7 +173,7 @@ test('Recent Seeds clearing can be undone, restoring items and focusing clear bu
   await undoBtn.click();
 
   // Seed history should be restored, showing the button back
-  const seedButtons = recentSeedsList.locator('button');
+  const seedButtons = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtons).toHaveCount(1);
   await expect(seedButtons.first()).toHaveText(activeSeed);
   await expect(recentSeedsContainer).not.toHaveClass(/undo-armed/);
@@ -210,7 +210,7 @@ test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page
   const secondSeed = (await seedDisplay.textContent())?.trim() || '';
 
   // Ensure both buttons are present
-  const seedButtons = recentSeedsList.locator('button');
+  const seedButtons = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtons).toHaveCount(2);
 
   // Verify initial roving tabindex states
@@ -276,7 +276,7 @@ test('Second Clear during the undo window does not wipe the seed backup', async 
   await expect(undoBtn).toBeVisible();
   await undoBtn.click();
 
-  const seedButtons = recentSeedsList.locator('button');
+  const seedButtons = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtons).toHaveCount(1);
   await expect(seedButtons.first()).toHaveText(activeSeed);
   await expect(clearBtn).toBeVisible();
@@ -321,7 +321,7 @@ test('Lab Mode grow during the undo window does not wipe the seed backup', async
   }).toPass({ timeout: 5000 });
   const secondSeed = (await seedDisplay.textContent())?.trim() || '';
 
-  await expect(recentSeedsList.locator('button')).toHaveCount(2);
+  await expect(recentSeedsList.locator('button.seed-pill')).toHaveCount(2);
 
   await clearBtn.click();
   const undoBtn = page.locator('#btn-undo-history');
@@ -340,7 +340,7 @@ test('Lab Mode grow during the undo window does not wipe the seed backup', async
   await expect(undoBtn).toBeVisible();
   await undoBtn.click();
 
-  const seedButtons = recentSeedsList.locator('button');
+  const seedButtons = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtons).toHaveCount(2);
   await expect(seedButtons.first()).toHaveText(secondSeed);
   await expect(seedButtons.nth(1)).toHaveText(firstSeed);
@@ -409,7 +409,7 @@ test('Recent Seeds buttons announce state on click', async ({ page }) => {
     expect(currentSeed).not.toBe(firstSeed);
   }).toPass({ timeout: 5000 });
 
-  const seedButtons = recentSeedsList.locator('button');
+  const seedButtons = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtons).toHaveCount(2);
 
   // Click active seed button (first button in list)
@@ -419,4 +419,47 @@ test('Recent Seeds buttons announce state on click', async ({ page }) => {
   // Click inactive seed button (second button in list)
   await seedButtons.nth(1).click();
   await expect(announcer).toContainText(`Loaded seed ${firstSeed}:`);
+});
+
+test('Keep: a kept seed survives six regrows and a reload without changing the crystal or URL', async ({ page }) => {
+  const recentSeedsList = page.locator('#recent-seeds-list');
+  const seedDisplay = page.locator('#seed-display');
+  const refreshBtn = page.locator('#refresh');
+
+  await expect(seedDisplay).not.toHaveText('·····');
+  const keptSeed = (await seedDisplay.textContent())?.trim() || '';
+  const keepToggle = recentSeedsList.getByRole('button', { name: `Keep ${keptSeed}`, exact: true });
+  await expect(keepToggle).toHaveAttribute('aria-pressed', 'false');
+
+  const urlBefore = page.url();
+  const historyLengthBefore = await page.evaluate(() => window.history.length);
+  await keepToggle.click();
+  await expect(keepToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(keepToggle).toHaveText('★');
+  // Toggling Keep never regrows or touches the URL/history.
+  await expect(seedDisplay).toHaveText(keptSeed);
+  expect(page.url()).toBe(urlBefore);
+  expect(await page.evaluate(() => window.history.length)).toBe(historyLengthBefore);
+
+  let previous = keptSeed;
+  for (let i = 0; i < 6; i++) {
+    await refreshBtn.click();
+    await expect(async () => {
+      const current = (await seedDisplay.textContent())?.trim() || '';
+      expect(current).not.toBe(previous);
+    }).toPass({ timeout: 5000 });
+    previous = (await seedDisplay.textContent())?.trim() || '';
+  }
+
+  const pills = recentSeedsList.locator('button.seed-pill');
+  await expect(pills).toHaveCount(6); // 5 recent + 1 kept
+  await expect(recentSeedsList.locator('button.seed-pill', { hasText: keptSeed })).toHaveCount(1);
+  await expect(page.locator('#btn-clear-history')).toHaveText('Clear (5)');
+
+  await page.reload();
+  await expect(seedDisplay).not.toHaveText('·····');
+  await expect(recentSeedsList.locator('button.seed-pill', { hasText: keptSeed })).toHaveCount(1);
+  await expect(
+    recentSeedsList.getByRole('button', { name: `Keep ${keptSeed}`, exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });

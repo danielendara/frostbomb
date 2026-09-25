@@ -200,7 +200,7 @@ test("a restore announces once, not once per mode", async ({ page }) => {
  * one arrives: one press, then more `down` calls every ~30 ms for ~500 ms.
  */
 async function recentSeeds(page: import("@playwright/test").Page) {
-  return page.locator("#recent-seeds-list button").allTextContents();
+  return page.locator("#recent-seeds-list button.seed-pill").allTextContents();
 }
 
 for (const [label, key] of [
@@ -212,7 +212,7 @@ for (const [label, key] of [
   }) => {
     await page.goto("/?seed=abcde");
     await expectSeed(page, "abcde");
-    await expect(page.locator("#recent-seeds-list button")).toHaveCount(1);
+    await expect(page.locator("#recent-seeds-list button.seed-pill")).toHaveCount(1);
 
     const historyBefore = await page.evaluate(() => window.history.length);
     const recentBefore = await recentSeeds(page);
