@@ -23,6 +23,7 @@ export interface KeyboardHandlerContext {
   onToggleAutoRotate: () => void;
   onCopyLink: () => void;
   onCopySeed: () => void;
+  onDailyCrystal: () => void;
 }
 
 /**
@@ -173,6 +174,10 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
       case "k":
         ctx.onCopySeed();
         visualPress("btn-copy-seed");
+        break;
+      case "d":
+        ctx.onDailyCrystal();
+        visualPress("btn-daily");
         break;
     }
   };

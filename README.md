@@ -27,6 +27,7 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
 | Key | Action |
 |---|---|
 | `R` / `Space` | **Regrow** a new random snowflake |
+| `D` | Grow **today's crystal** (one seed for the local calendar date) |
 | `L` | Toggle **Lab Mode** (manual controls & seed input) |
 | `G` | Toggle **Field Guide** |
 | `?` | Open Field Guide to **Keyboard Shortcuts** |
