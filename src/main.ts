@@ -7,7 +7,7 @@ import {
 import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
 import { buildSnowflakeSvg } from "./snowflake/svg-export";
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snowflake/nakaya";
-import { mulberry32, resolveSeed, randomSeed, hashString, Rand } from "./snowflake/random";
+import { mulberry32, resolveSeed, randomSeed, dailySeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
 import { announce as announceRaw } from "./ui/announcer";
 import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
@@ -286,7 +286,7 @@ function handleRefresh(e?: Event) {
     void (dot as HTMLElement).offsetWidth;
     dot.classList.add("animate-spin-once");
   }
-  const refreshIcon = document.querySelector(".refresh__icon");
+  const refreshIcon = document.querySelector("#refresh .refresh__icon");
   if (refreshIcon) {
     refreshIcon.classList.remove("animate-spin-once");
     void (refreshIcon as HTMLElement).offsetWidth;
@@ -294,20 +294,41 @@ function handleRefresh(e?: Event) {
   }
   // Roll the new seed explicitly rather than deleting `?seed=` first: that
   // rewrite used to destroy the entry Back needs to return to (#316).
+  const { conditions, label } = growAndPush(randomSeed());
+  announce(`New snowflake grown: ${habitLabel[conditions.habit]} (Seed: ${label})`);
+}
+
+/**
+ * Deliberate crystal change: grow the given seed on the regrow path (Back
+ * history entry, Recent Seeds, `?seed=`), keeping a manual Lab point the same
+ * way Regrow does.
+ */
+function growAndPush(forcedSeed: { seed: number; label: string }) {
   const { conditions, label } = grow(
     retainedManualConditions(),
     false,
     true,
     undefined,
-    randomSeed(),
+    forcedSeed,
   );
-
   syncCrystalUrl(label, conditions, "push");
-  announce(`New snowflake grown: ${habitLabel[conditions.habit]} (Seed: ${label})`);
+  return { conditions, label };
+}
+
+function handleDailyCrystal(e?: Event) {
+  if (e instanceof MouseEvent && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return;
+  if (e) e.preventDefault();
+  visualPress("btn-daily");
+  const label = dailySeed(new Date());
+  const grown = growAndPush({ seed: hashString(label), label });
+  announce(
+    `Today's crystal grown: ${habitLabel[grown.conditions.habit]} (Seed: ${grown.label})`,
+  );
 }
 
 document.getElementById("refresh")?.addEventListener("click", handleRefresh);
 document.querySelector(".wordmark-link")?.addEventListener("click", handleRefresh);
+document.getElementById("btn-daily")?.addEventListener("click", handleDailyCrystal);
 
 const labToggle = document.getElementById("lab-toggle");
 const guideToggle = document.getElementById("guide-toggle");
@@ -1331,6 +1352,9 @@ initKeyboardShortcuts({
   },
   onCopySeed: () => {
     copySeedOnly();
+  },
+  onDailyCrystal: () => {
+    handleDailyCrystal();
   },
 });
 

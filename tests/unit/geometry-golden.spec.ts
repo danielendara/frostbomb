@@ -58,7 +58,7 @@ import {
   type GrowthConditions,
   type Habit,
 } from '../../src/snowflake/nakaya.ts';
-import { hashString, mulberry32, Rand } from '../../src/snowflake/random.ts';
+import { dailySeed, hashString, mulberry32, Rand } from '../../src/snowflake/random.ts';
 import { buildSnowflakeSvg } from '../../src/snowflake/svg-export.ts';
 
 function quantise(value: number): number {
@@ -115,7 +115,8 @@ function growLab(label: string, temperatureC: number, supersaturation: number): 
   return buildSnowflake(conditions, rand);
 }
 
-// Labels are 3, 5, 6 and 12 characters long and, between them, sample all seven habits.
+// Labels are 3, 5, 6, 9 and 12 characters long and, between them, sample all seven habits.
+// `d20260925` is the fixed Today's-crystal label for local 2026-09-25, not the clock date.
 const SEED_GOLDENS: ReadonlyArray<{
   label: string;
   habit: Habit;
@@ -131,6 +132,8 @@ const SEED_GOLDENS: ReadonlyArray<{
   { label: 'winter', habit: 'sector_plate', armCount: 9, branchCount: 55, fingerprint: 'a04c0981b6fc1e0c' },
   { label: '9z9z9', habit: 'column', armCount: 1, branchCount: 7, fingerprint: '9a975ec9438401ba' },
   { label: 'zx9k2', habit: 'fernlike_dendrite', armCount: 76, branchCount: 457, fingerprint: '5157b5124e65d9b2' },
+  // Fixed local date (2026-09-25), never "today", so this golden does not move at midnight.
+  { label: 'd20260925', habit: 'fernlike_dendrite', armCount: 32, branchCount: 193, fingerprint: '0407276d02332f0a' },
 ];
 
 // Manual Lab conditions (single-point path), all grown from seed "abcde".
@@ -211,6 +214,11 @@ describe('fingerprintFlake', () => {
 });
 
 describe('golden crystals from seed labels', () => {
+  it('pins today\'s crystal to the fixed label d20260925, not the clock date', () => {
+    expect(dailySeed(new Date(2026, 8, 25))).toBe('d20260925');
+    expect(SEED_GOLDENS.some((golden) => golden.label === 'd20260925')).toBe(true);
+  });
+
   it.each(SEED_GOLDENS)('seed "$label" still grows the same crystal', (golden) => {
     const { conditions, result } = growSeed(golden.label);
     expect(conditions.habit).toBe(golden.habit);

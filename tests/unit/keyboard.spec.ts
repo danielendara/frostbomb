@@ -39,6 +39,7 @@ function makeCtx(): Harness {
     onToggleAutoRotate: fn("onToggleAutoRotate"),
     onCopyLink: fn("onCopyLink"),
     onCopySeed: fn("onCopySeed"),
+    onDailyCrystal: fn("onDailyCrystal"),
   };
   return { ctx, handlers, state };
 }
@@ -77,6 +78,7 @@ const DISCRETE_SHORTCUTS: ReadonlyArray<readonly [key: string, handler: string]>
   ["a", "onToggleAutoRotate"],
   ["c", "onCopyLink"],
   ["k", "onCopySeed"],
+  ["d", "onDailyCrystal"],
 ];
 
 describe("initKeyboardShortcuts key auto-repeat", () => {
@@ -121,6 +123,18 @@ describe("initKeyboardShortcuts key auto-repeat", () => {
       );
       expect(totalCalls).toBe(1);
     });
+  });
+
+  it("D grows today's crystal once and does not fire while typing in an input", () => {
+    keydown("d", { repeat: false });
+    keydown("D", { repeat: true });
+    expect(h.handlers.onDailyCrystal).toHaveBeenCalledTimes(1);
+
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    keydown("d", { repeat: false }, input);
+    keydown("D", { repeat: false }, input);
+    expect(h.handlers.onDailyCrystal).toHaveBeenCalledTimes(1);
   });
 
   it("R with repeat:true does not call onRefresh; with repeat:false it does", () => {

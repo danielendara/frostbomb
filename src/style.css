@@ -823,6 +823,11 @@ kbd {
   transform: rotate(180deg);
 }
 
+/* Longer label than Regrow; keep it inside the existing rail width. */
+#btn-daily {
+  letter-spacing: 0.06em;
+}
+
 @keyframes button-pop { 50% { transform: scale(1.08); } }
 .btn-press { animation: button-pop 0.15s ease-out; }
 
@@ -1136,7 +1141,8 @@ kbd {
     right: var(--pad);
     bottom: auto;
     max-width: none;
-    max-height: min(34vh, calc(100dvh - 19rem));
+    /* Room for Today's crystal stacked under Regrow on the 360px rail. */
+    max-height: min(26vh, calc(100dvh - 30rem));
     overflow-x: hidden;
     overflow-y: auto;
   }

@@ -45,6 +45,18 @@ export function randomSeed(): { seed: number; label: string } {
   return { seed: hashString(label), label };
 }
 
+/**
+ * Label for the visitor's local calendar date (`d` + YYYYMMDD).
+ * Same local date always returns the same label. Uses local parts, not UTC,
+ * and does not read the clock itself — pass `new Date()` at the call site.
+ */
+export function dailySeed(date: Date): string {
+  const year = String(date.getFullYear()).padStart(4, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `d${year}${month}${day}`;
+}
+
 // Convenience helpers bound to an rng instance
 export class Rand {
   public readonly rng: () => number;
