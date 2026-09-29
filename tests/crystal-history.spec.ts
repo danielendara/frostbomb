@@ -64,6 +64,30 @@ test("a look toggle coalesces into the current entry instead of pushing one", as
 });
 
 /**
+ * #365 — re-growing the crystal already on screen must not push a duplicate
+ * entry: Today's crystal on D, pressed twice, is one Back step, not two.
+ */
+test("pressing D twice pushes one entry, and Back returns to the crystal before the first D", async ({
+  page,
+}) => {
+  await page.goto("/?seed=abcde");
+  await expectSeed(page, "abcde");
+  const before = await page.evaluate(() => window.history.length);
+
+  await page.keyboard.press("d");
+  const daily = await currentSeed(page);
+  expect(daily).not.toBe("abcde");
+  await page.keyboard.press("d");
+  await expectSeed(page, daily);
+
+  const after = await page.evaluate(() => window.history.length);
+  expect(after).toBe(before + 1);
+
+  await page.goBack();
+  await expectSeed(page, "abcde");
+});
+
+/**
  * #331 — Back/Forward restores the look recorded in the popped entry. Pink and
  * Prism are encoded by absence when off, so a restore must *set* each mode from
  * the entry, not flip it from whatever is on screen or resolve it from the

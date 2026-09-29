@@ -1088,7 +1088,9 @@ function syncCrystalUrl(
   writeCurrentModeParams(url.searchParams);
   writeCrystalGeneration(url.searchParams, generationProvenance, conditions);
   const next = url.pathname + url.search;
-  if (mode === "push") {
+  // Re-growing the crystal already on screen would push a duplicate entry that
+  // Back skips silently (popstate sees no change), so it replaces instead.
+  if (mode === "push" && next !== window.location.pathname + window.location.search) {
     window.history.pushState(null, "", next);
   } else {
     window.history.replaceState(null, "", next);
