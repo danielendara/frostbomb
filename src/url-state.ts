@@ -200,10 +200,10 @@ export function crystalStatesEqual(a: CrystalUrlState, b: CrystalUrlState): bool
     a.seed === b.seed &&
     a.provenance === b.provenance &&
     labEqual(a.lab, b.lab) &&
-    a.modes.pink === b.modes.pink &&
-    a.modes.prism === b.modes.prism &&
-    a.modes.lab === b.modes.lab &&
-    a.modes.rotate === b.modes.rotate
+    (a.modes.pink ?? false) === (b.modes.pink ?? false) &&
+    (a.modes.prism ?? false) === (b.modes.prism ?? false) &&
+    (a.modes.lab ?? false) === (b.modes.lab ?? false) &&
+    (a.modes.rotate ?? false) === (b.modes.rotate ?? false)
   );
 }
 
