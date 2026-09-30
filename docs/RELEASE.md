@@ -8,7 +8,8 @@ The package `deploy` script is `npm run build && wrangler deploy`. The README do
 
 - [ ] **Build:** `npm run build` — `tsc && vite build`
 - [ ] **Unit:** `npm run test:unit`
-- [ ] **E2E:** `npm test` — Playwright; `pretest` also runs unit tests (CI usually runs `npm run test:e2e:smoke` unless the full suite is triggered)
+- [ ] **E2E (smoke):** `npm run test:e2e:smoke` — default Playwright coverage (same as CI smoke). `npm test` also ends in smoke-only e2e because `FROSTBOMB_E2E` defaults to `smoke`; `pretest` runs unit tests first.
+- [ ] **E2E (full, before risky UI/canvas/test changes):** `npm run test:e2e:full`, or add the `full-e2e` label on the PR so CI runs the full chromium suite (see `.github/workflows/ci.yml`).
 - [ ] Confirm this release does not accidentally change the Worker deploy path (`wrangler.jsonc` name `frostbombsite`, `main` = `src/worker/index.ts`, SPA asset fallback, `run_worker_first` limited to `/api/*`, `package.json` `deploy` script)
 - [ ] **Database:** frostbomb has no D1/KV/R2 bindings today. If a future change adds persisted state or migrations, apply and verify those migrations on production **before** merging to `main`.
 

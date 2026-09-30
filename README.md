@@ -122,12 +122,28 @@ npm run preview # Serves the Worker locally with Wrangler
 ### Testing
 ```bash
 npm run test:unit          # Vitest unit tests
-npm run test:e2e:smoke     # Default CI: smoke Playwright project (sequential-smoke)
-npm run test:e2e:full      # Full Playwright chromium suite (on demand in CI)
-npm test                   # pretest runs unit tests, then all Playwright projects configured for local default
+npm run test:e2e:smoke     # Smoke Playwright project only (sequential-smoke; same as default CI e2e)
+npm run test:e2e:full      # Full chromium project plus smoke (FROSTBOMB_E2E=full)
+npm test                   # pretest runs unit tests, then Playwright with FROSTBOMB_E2E defaulting to smoke (smoke project only)
 ```
 
-CI (`.github/workflows/ci.yml`) runs `npm run build`, `npm run test:unit`, and smoke e2e on most PRs; docs-only PRs skip Playwright.
+`playwright.config.ts` treats unset `FROSTBOMB_E2E` as `smoke`, so `npm test` does **not** run the full chromium suite unless you set `FROSTBOMB_E2E=full` or use `npm run test:e2e:full`.
+
+### CI
+
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `push` to `main`, `pull_request`, and `workflow_dispatch` (optional `full_e2e` input, default `true`).
+
+Every run that does not skip Playwright executes `npm run build`, `npm run test:unit`, then either `npm run test:e2e:smoke` (default) or `npm run test:e2e:full`.
+
+| When | Playwright |
+| --- | --- |
+| PR changes only `*.md`, `docs/*`, or `LICENSE` | **Skipped** (`skip_playwright`) |
+| PR from `dependabot[bot]` that changes only `package-lock.json` / `pnpm-lock.yaml` / `yarn.lock` | **Skipped** |
+| Otherwise | **Runs** — smoke by default |
+| PR has label `full-e2e` | Full suite (`npm run test:e2e:full`) |
+| PR or push touches `src/snowflake/*`, `src/ui/*`, `playwright.config.ts`, `vite.config.ts`, `src/*` paths matching `canvas` / `webgl` / `export`, or `tests/*` except `*.smoke.spec.ts` | Full suite |
+| `workflow_dispatch` with `full_e2e: true` | Full suite |
+| `workflow_dispatch` with `full_e2e: false` | Smoke only |
 
 ### Deployment
 ```bash

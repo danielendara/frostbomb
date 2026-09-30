@@ -166,7 +166,7 @@ For meaningful future comparisons:
 7. Run the production build and browser tests after changing geometry logic.
 
 The repository's `benchmark.ts` script is a useful quick local stress check for
-`buildSnowflake`. Documented performance claims should still use fresh
+`buildSnowflake`. After `npm ci`, run `npx tsx benchmark.ts` (Node via `tsx` from `npx`; not a repo devDependency). Documented performance claims should still use fresh
 processes, both profiles described above, and median reporting—not a single
 in-process loop.
 
