@@ -291,41 +291,20 @@ export class SeedHistoryManager {
       chip.className = "seed-chip";
 
       const btn = document.createElement("button");
-      btn.className = kept ? "seed-btn seed-pill is-kept" : "seed-btn seed-pill";
-      btn.style.padding = "0.15rem 0.35rem";
-      btn.style.fontSize = "0.65rem";
-      btn.style.border = "1px solid var(--rule)";
-      btn.style.borderRadius = "4px";
       const isActive = seedVal === currentSeedLabel;
-      btn.style.background = isActive ? "rgba(158, 201, 255, 0.15)" : "transparent";
-      btn.style.color = isActive ? "var(--accent)" : "var(--ink-dim)";
-      btn.style.fontFamily = "var(--mono)";
-      btn.style.cursor = "pointer";
-      btn.style.textTransform = "lowercase";
+      btn.className = [
+        "seed-btn",
+        "seed-pill",
+        kept ? "is-kept" : "",
+        isActive ? "is-active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       const tooltipText = `Grow seed ${seedVal}${kept ? " (kept)" : ""}${isActive ? " (currently active)" : ""}`;
       btn.setAttribute("aria-label", tooltipText);
       btn.setAttribute("aria-current", isActive ? "true" : "false");
       btn.title = tooltipText;
       btn.textContent = seedVal;
-
-      if (!isActive) {
-        btn.addEventListener("mouseenter", () => {
-          btn.style.background = "rgba(230, 237, 245, 0.1)";
-          btn.style.color = "var(--ink)";
-        });
-        btn.addEventListener("mouseleave", () => {
-          btn.style.background = "transparent";
-          btn.style.color = "var(--ink-dim)";
-        });
-        btn.addEventListener("focus", () => {
-          btn.style.background = "rgba(230, 237, 245, 0.1)";
-          btn.style.color = "var(--ink)";
-        });
-        btn.addEventListener("blur", () => {
-          btn.style.background = "transparent";
-          btn.style.color = "var(--ink-dim)";
-        });
-      }
 
       btn.addEventListener("click", () => {
         visualPress(btn);
