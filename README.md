@@ -13,7 +13,7 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
 - **Atmospheric Path:** Simulates varying conditions as the snowflake "falls," leading to hybrid forms (e.g., plates transitioning to dendrites).
 - **Interactive Field Guide & Morphology Diagram:** Explore crystallographic habits with live hover previews, coordinate tracking, and click-to-jump definitions.
 - **Lab Mode:** Take manual control of temperature, humidity, and custom seeds to see how they influence growth in real-time.
-- **Recent Seeds History:** Automatically retains recently grown crystals in persistent local history with quick revisit pills and undoable history clearing.
+- **Recent Seeds History:** Automatically retains recently grown crystals in persistent local history with quick revisit pills, optional **Keep** (★) so favorites do not roll off, and undoable history clearing.
 - **Visual Modes:**
   - **Pink Mode:** A soft, glowing aesthetic.
   - **Prism Mode:** Dynamic HSL color cycling and chromatic dispersion.
@@ -81,7 +81,7 @@ Built with a focus on 60fps performance, sub-millisecond generation, and zero ga
 - **Offscreen Diagram Caching:** Pre-renders the Nakaya diagram background grid on an offscreen canvas for a ~36x redraw acceleration during interactive drag adjustments.
 - **Zero-Allocation Input Dispatch:** Replaces dynamic handler maps with static switch dispatches during high-frequency keyboard navigation.
 
-The snowflake generator benchmarks approximately **173-181x faster** than the initial implementation (taking <0.014 ms per complex crystal). See the [snowflake generation performance history](docs/GENERATION_PERFORMANCE_HISTORY.md) and [From hundreds of meshes to 181x faster generation](docs/PERFORMANCE_EVOLUTION.md) for full architectural breakdowns and benchmarks.
+Controlled comparisons on the documented benchmark profiles (initial commit `1eb7d38` vs latest full measurement at `71b97b0`) show about **173-181x faster** generation, with the fernlike stress case around **0.014 ms/build**. Geometry and benchmarks on `main` may differ until those profiles are re-run—see the [snowflake generation performance history](docs/GENERATION_PERFORMANCE_HISTORY.md) and [From hundreds of meshes to 181x faster generation](docs/PERFORMANCE_EVOLUTION.md).
 
 ---
 
@@ -100,6 +100,9 @@ The snowflake generator benchmarks approximately **173-181x faster** than the in
 ## 🚀 Development
 
 ### Setup
+
+Requires **Node.js ≥ 22.12.0** (`package.json` `engines`).
+
 ```bash
 npm ci
 ```
@@ -118,8 +121,13 @@ npm run preview # Serves the Worker locally with Wrangler
 
 ### Testing
 ```bash
-npm run test:e2e:smoke # Default CI: thin smoke e2e; npm run test:e2e:full for full suite
+npm run test:unit          # Vitest unit tests
+npm run test:e2e:smoke     # Default CI: smoke Playwright project (sequential-smoke)
+npm run test:e2e:full      # Full Playwright chromium suite (on demand in CI)
+npm test                   # pretest runs unit tests, then all Playwright projects configured for local default
 ```
+
+CI (`.github/workflows/ci.yml`) runs `npm run build`, `npm run test:unit`, and smoke e2e on most PRs; docs-only PRs skip Playwright.
 
 ### Deployment
 ```bash

@@ -1,6 +1,6 @@
 # Snowflake generation performance history
 
-Last updated: 2026-06-12
+Last updated: 2026-09-30
 
 This document records the measured improvement in snowflake generation from the
 initial implementation to the current implementation. It also defines the
@@ -8,14 +8,12 @@ comparison profiles and caveats needed to interpret future benchmark results.
 
 ## Executive summary
 
-On the same development machine and Node.js environment, the current generator
-is approximately **173-179x faster per snowflake** than the initial
-implementation:
+On the same development machine and Node.js environment, the latest **controlled** measurement (`71b97b0`) shows the generator is approximately **173-181x faster per snowflake** than the initial implementation:
 
-| Profile | Initial `1eb7d38` | Current `a9d0096` | Speedup |
+| Profile | Initial `1eb7d38` | Measured `71b97b0` | Speedup |
 |---|---:|---:|---:|
-| Typical weighted conditions | 1.080 ms/build | 0.00622 ms/build | 173x |
-| Complex fernlike stress case | 2.520 ms/build | 0.01405 ms/build | 179x |
+| Typical weighted conditions | 1.080 ms/build | 0.006222 ms/build | 173.5x |
+| Complex fernlike stress case | 2.520 ms/build | 0.013892 ms/build | 181.4x |
 
 The initial and current functions do not perform exactly the same work. The
 initial function creates individual Three.js geometries, materials, meshes, and
@@ -32,17 +30,7 @@ For the complete architectural story, historical local experiments, and a
 graph of the evidence, see
 [`PERFORMANCE_EVOLUTION.md`](./PERFORMANCE_EVOLUTION.md).
 
-The latest controlled measurement on `71b97b0` recorded:
-
-| Profile | Median | Throughput | Improvement from initial |
-|---|---:|---:|---:|
-| Typical weighted conditions | 0.006222 ms/build | 160,715 builds/sec | 173.5x |
-| Complex fernlike stress case | 0.013892 ms/build | 71,982 builds/sec | 181.4x |
-
-Current main `f44ac51` changes UI and reset-view behavior. Its geometry
-generator, random inputs, benchmark files, package manifest, and lockfile are
-identical to `71b97b0`, so these generation measurements remain representative
-of current main.
+The latest **controlled** full measurement on this repository is commit **`71b97b0`** (typical and fernlike stress profiles below). **`src/snowflake/geometry.ts`** and **`benchmark.ts`** have changed on `main` since then; re-run the procedure in [Future review procedure](#future-review-procedure) before updating headline speedup numbers.
 
 ## Compared revisions
 
@@ -56,12 +44,18 @@ of current main.
 This is the repository root commit and the oldest revision containing a
 runnable `buildSnowflake` implementation.
 
-### Current implementation
+### Baseline after PR #94 (documented comparison target)
 
 - Commit: `a9d0096d9b51be05b0a863395600ed11df059799`
 - Short SHA: `a9d0096`
 - Date: 2026-06-11
 - Description: merge of PR #94, hexagonal symmetry optimization
+
+### Latest controlled measurement
+
+- Commit: `71b97b0` (see tables below and `docs/performance/performance-timeline.csv`)
+- Date: 2026-06-12
+- Notes: Supersedes the PR #94 baseline for headline 173-181x comparisons. Later UI and geometry commits on `main` are not covered until re-measured.
 
 ## Benchmark profiles
 
@@ -77,9 +71,9 @@ columns, and capped columns.
 | Revision | Iterations/run | Median | Throughput | Average visible branches |
 |---|---:|---:|---:|---:|
 | Initial `1eb7d38` | 500 | 1.07951 ms/build | 926 builds/sec | 196.97 |
-| Current `a9d0096` | 50,000 | 0.006223 ms/build | 160,696 builds/sec | 140.47 |
+| Measured `71b97b0` | 50,000 | 0.006222 ms/build | 160,715 builds/sec | 140.47 |
 
-The current generator is **173.5x faster per build** and **123.7x faster per
+The measured generator at **`71b97b0`** is **173.5x faster per build** and **123.7x faster per
 visible branch** in this profile.
 
 ### Complex fernlike stress case
@@ -91,9 +85,9 @@ highly branched fernlike dendrite. The current implementation also receives a
 | Revision | Iterations/run | Median | Throughput | Average visible branches |
 |---|---:|---:|---:|---:|
 | Initial `1eb7d38` | 250 | 2.51991 ms/build | 397 builds/sec | 453.07 |
-| Current `a9d0096` | 100,000 | 0.014047 ms/build | 71,188 builds/sec | 364.99 |
+| Measured `71b97b0` | 100,000 | 0.013892 ms/build | 71,982 builds/sec | 364.99 |
 
-The current generator is **179.4x faster per build** and **144.5x faster per
+The measured generator at **`71b97b0`** is **181.4x faster per build** and **~146x faster per
 visible branch** in this profile.
 
 ## Recent main-branch comparison

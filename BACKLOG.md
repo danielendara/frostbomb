@@ -30,7 +30,7 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ## Completed
 
-- [x] **Add release checklist (#280):** `docs/RELEASE.md` covers Worker build, unit, e2e, `npm run build && wrangler deploy`, live CSP/`_headers`/postprocessing-not-modulepreloaded checks, and rollback.
+- [x] **Add release checklist (#280):** `docs/RELEASE.md` covers Worker build, unit, e2e, `npm run deploy`, live CSP/`_headers`/postprocessing-not-modulepreloaded checks, and rollback via `npx wrangler rollback <version-id>`.
 - [x] **3D model export (#234):** Merged instanced hex-cylinders to binary STL + GLB (50mm long axis). Overlapping segments, not a watertight boolean union.
 - [x] **Ice crystal shaders (#235):** Thin-film iridescence, procedural frost grain, and Photo Mode depth of field.
 - [x] **Vector SVG path export (#236):** 2D projection of hexagonal-cylinder instances to filled SVG polygons, 100mm long-axis export, `E` shortcut.
@@ -38,11 +38,11 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - [x] **Configure canonical domain behavior:** Added `<link rel="canonical" href="https://frostbomb.com/" />` and domain metadata.
 - [x] **Improve share previews:** Added Open Graph, Twitter Cards, responsive social preview metadata and OG image (`og-image.png`).
 - [x] **Add install/run documentation for Workers:** Documented development, testing, preview, and deployment commands in `README.md`.
-- [x] **Add canvas smoke checks & test suite:** Added comprehensive Playwright end-to-end tests covering rendering, keyboard shortcuts, accessibility, reduced motion, and linked navigation.
+- [x] **Add canvas smoke checks & test suite:** Playwright e2e (smoke + full), unit tests, and `tests/canvas-marks.smoke.spec.ts` for canvas + performance marks.
 - [x] **Improve copy/share feedback:** Added dedicated accessible clipboard handling, fallback copy mechanisms, visual highlight feedback, and live region announcements.
 - [x] **Add seed persistence affordances:** Implemented Recent Seeds list with `localStorage` persistence, clear history with undo, direct seed input in Lab Mode, and a dedicated Copy Seed button/shortcut (`K`).
 - [x] **Add dependency update cadence:** Configured automated weekly dependency updates with GitHub Dependabot (`.github/dependabot.yml`).
 - [x] **Photo Mode & UI Toggle:** Added full UI hide/show toggle (`H`) for clean screenshots and immersive viewing.
 - [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `L`, `G`, `?`, `H`, `P`, `M`, `S`, `E`, `T`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
-- [x] **High-Performance Geometry Engine (Bolt):** Optimized geometry generation to sub-millisecond execution (<0.014ms per flake, ~181x faster than initial) via sequential TypedArray write grouping, stride-8 segment packing, in-place quicksort, pre-calculated branch decay, and LUT easing.
+- [x] **High-Performance Geometry Engine (Bolt):** Controlled benchmarks at `71b97b0` show ~173-181x faster generation vs the initial commit; see `docs/GENERATION_PERFORMANCE_HISTORY.md` (re-run profiles after geometry changes).
 
