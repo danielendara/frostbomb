@@ -1,3 +1,4 @@
+/** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadModePrefs, saveModePrefs, MODE_PREFS_KEY } from "../../src/mode-prefs";
 
