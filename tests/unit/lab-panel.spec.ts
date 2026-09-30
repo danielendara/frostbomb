@@ -149,10 +149,9 @@ describe("Lab seed validation (#350)", () => {
     const panel = readFileSync("src/ui/lab-panel.ts", "utf8");
     const main = readFileSync("src/main.ts", "utf8");
     expect(panel).not.toContain("setTemporaryLabel");
-    expect(main).toContain('setTemporaryLabel("btn-copy", "Copied!", "✓", false, true)');
-    expect(main).toContain('setTemporaryLabel("btn-seed", "Copied!", "✓", false, true)');
-    expect(main).toContain('setTemporaryLabel("btn-copy", "Failed", "✕", true)');
-    expect(main).toContain('setTemporaryLabel("btn-seed", "Failed", "✕", true)');
+    expect(main).toContain('labelIds: ["btn-copy", "btn-seed"]');
+    expect(main).toContain('setTemporaryLabel(id, "Copied!", "✓", false, true)');
+    expect(main).toContain('setTemporaryLabel(id, "Failed", "✕", true)');
     expect(main).not.toContain('setTemporaryLabel("btn-seed", "3-12 chars"');
   });
 });

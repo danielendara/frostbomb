@@ -1,5 +1,3 @@
-// Performance Optimization: DOM caching and change detection.
-// Drastically reduces layout work and attribute churn during "Lab Mode" slider updates.
 const DOM_CACHE = new Map<string, HTMLElement>();
 const ROW_CACHE = new Map<string, HTMLElement>();
 const LAST_TEXT = new Map<string, string>();

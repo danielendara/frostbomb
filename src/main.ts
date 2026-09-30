@@ -21,7 +21,12 @@ import {
 import { SeedHistoryManager } from "./ui/history";
 import { LabPanel } from "./ui/lab-panel";
 import { initKeyboardShortcuts } from "./ui/keyboard";
-import { downloadHref, downloadObjectUrls, filesForExportIdentity } from "./ui/download";
+import {
+  downloadHref,
+  downloadObjectUrls,
+  filesForExportIdentity,
+  formatExportFileName,
+} from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
@@ -164,8 +169,8 @@ function updateRecentSeedsUI() {
   historyManager.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
 }
 
-// Wire clear history button delegation
 document.getElementById("btn-clear-history")?.addEventListener("click", () => {
+  visualPress("btn-clear-history");
   historyManager.clear(currentSeedLabel, isLabMode, isGuideOpen);
 });
 
@@ -723,25 +728,45 @@ function buildShareUrl(): string {
   return `${window.location.origin}${window.location.pathname}?${shareSearchParams().toString()}`;
 }
 
-async function copyLink() {
-  const url = buildShareUrl();
-  visualPress("btn-copy");
-  visualPress("btn-seed");
+async function copyTextToClipboard(
+  text: string,
+  feedback: {
+    pressIds: string[];
+    labelIds: string[];
+    successAnnounce: string;
+    failureAnnounce: string;
+  },
+): Promise<void> {
+  for (const id of feedback.pressIds) {
+    visualPress(id);
+  }
+
+  const markCopied = () => {
+    for (const id of feedback.labelIds) {
+      setTemporaryLabel(id, "Copied!", "✓", false, true);
+    }
+    announce(feedback.successAnnounce);
+  };
+
+  const markFailed = () => {
+    for (const id of feedback.labelIds) {
+      setTemporaryLabel(id, "Failed", "✕", true);
+    }
+    announce(feedback.failureAnnounce);
+  };
 
   try {
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(text);
     } else {
       throw new Error("Clipboard API unavailable");
     }
-    setTemporaryLabel("btn-copy", "Copied!", "✓", false, true);
-    setTemporaryLabel("btn-seed", "Copied!", "✓", false, true);
-    announce(`Link copied for seed ${currentSeedLabel}`);
+    markCopied();
   } catch (err) {
     console.warn("Clipboard API failed, trying legacy fallback:", err);
     try {
       const textArea = document.createElement("textarea");
-      textArea.value = url;
+      textArea.value = text;
       textArea.style.position = "fixed";
       textArea.style.left = "-9999px";
       textArea.style.top = "0";
@@ -753,54 +778,31 @@ async function copyLink() {
       if (!successful) {
         throw new Error("execCommand copy failed");
       }
-      setTemporaryLabel("btn-copy", "Copied!", "✓", false, true);
-      setTemporaryLabel("btn-seed", "Copied!", "✓", false, true);
-      announce(`Link copied for seed ${currentSeedLabel}`);
+      markCopied();
     } catch (fallbackErr) {
       console.error("Legacy fallback failed:", fallbackErr);
-      setTemporaryLabel("btn-copy", "Failed", "✕", true);
-      setTemporaryLabel("btn-seed", "Failed", "✕", true);
-      announce("Failed to copy link");
+      markFailed();
     }
   }
 }
 
+async function copyLink() {
+  await copyTextToClipboard(buildShareUrl(), {
+    pressIds: ["btn-copy", "btn-seed"],
+    labelIds: ["btn-copy", "btn-seed"],
+    successAnnounce: `Link copied for seed ${currentSeedLabel}`,
+    failureAnnounce: "Failed to copy link",
+  });
+}
+
 async function copySeedOnly() {
   const seed = currentSeedLabel;
-  visualPress("btn-copy-seed");
-
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(seed);
-    } else {
-      throw new Error("Clipboard API unavailable");
-    }
-    setTemporaryLabel("btn-copy-seed", "Copied!", "✓", false, true);
-    announce(`Seed ${seed} copied`);
-  } catch (err) {
-    console.warn("Clipboard API failed, trying legacy fallback:", err);
-    try {
-      const textArea = document.createElement("textarea");
-      textArea.value = seed;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      textArea.style.top = "0";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand("copy");
-      document.body.removeChild(textArea);
-      if (!successful) {
-        throw new Error("execCommand copy failed");
-      }
-      setTemporaryLabel("btn-copy-seed", "Copied!", "✓", false, true);
-      announce(`Seed ${seed} copied`);
-    } catch (fallbackErr) {
-      console.error("Legacy fallback failed:", fallbackErr);
-      setTemporaryLabel("btn-copy-seed", "Failed", "✕", true);
-      announce("Failed to copy seed");
-    }
-  }
+  await copyTextToClipboard(seed, {
+    pressIds: ["btn-copy-seed"],
+    labelIds: ["btn-copy-seed"],
+    successAnnounce: `Seed ${seed} copied`,
+    failureAnnounce: "Failed to copy seed",
+  });
 }
 
 document.getElementById("btn-copy")?.addEventListener("click", copyLink);
@@ -819,7 +821,10 @@ async function saveSnowflake() {
       await new Promise((resolve) => setTimeout(resolve, 100));
       triggerFlash(motionQuery.matches);
       scene.composer.render();
-      downloadHref(exportFileName("png"), canvas.toDataURL("image/png"));
+      downloadHref(
+        formatExportFileName({ habit: currentConditions.habit, seed: currentSeedLabel }, "png"),
+        canvas.toDataURL("image/png"),
+      );
     },
     scene,
   );
@@ -828,11 +833,6 @@ async function saveSnowflake() {
 document.getElementById("btn-save")?.addEventListener("click", () => {
   void saveSnowflake();
 });
-
-function exportFileName(extension: string): string {
-  const habit = currentConditions.habit.replace(/_/g, "-");
-  return `frostbomb-${habit}-${currentSeedLabel}.${extension}`;
-}
 
 async function saveSnowflakeSvg() {
   await runExportAction(
@@ -852,7 +852,10 @@ async function saveSnowflakeSvg() {
         seed: currentSeedLabel,
       });
       const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-      downloadHref(exportFileName("svg"), URL.createObjectURL(blob));
+      downloadHref(
+        formatExportFileName({ habit: currentConditions.habit, seed: currentSeedLabel }, "svg"),
+        URL.createObjectURL(blob),
+      );
     },
     scene,
   );
@@ -1017,22 +1020,7 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
   return parseCrystalUrlState(window.location.search).lab;
 }
 
-// Applies ?pink=1 / ?prism=1 / ?rotate=1|0 / ?lab=1|0 from the URL, through the
-// same functions (and thus the same visual/announce/URL-sync path) as clicking
-// the buttons. Boot calls it right after the first grow(), matching the timing
-// of the existing ?seed= bootstrap (resolveSeed() runs inside that same
-// grow()); Back/Forward calls it from restoreCrystalState.
-//
-// Pink and Prism are *set* to the target resolveModes gives for the source (a
-// no-op when already equal), never toggled: at boot every mode starts off, but
-// during a restore the current state is whatever is on screen.
-//
-// At boot the URL wins whenever a param is present (including an explicit
-// `=0`-ish absence of `=1`, which still means "off" per the existing
-// convention) — only a genuinely absent param falls back to the last-remembered
-// localStorage prefs, so a plain revisit with no query string restores
-// last visit's look instead of always booting both modes off. On restore the
-// popped entry is authoritative, so an absent Pink/Prism param means off.
+// Boot: absent mode params fall back to localStorage; restore: absent means off.
 function applyModes(source: ModeSource) {
   const params = new URLSearchParams(window.location.search);
   const stored = loadModePrefs();
@@ -1069,15 +1057,7 @@ function applyModes(source: ModeSource) {
   }
 }
 
-/**
- * Writes the full shareable state for the current crystal (#316).
- *
- * `push` for a deliberate crystal change — growing, picking a Recent Seeds
- * pill, entering or randomizing a Lab seed — so Back returns to the previous
- * crystal. `replace` for incidental tweaks (slider drags, look toggles), which
- * coalesce into the current entry instead of filling history with 40 steps of
- * one drag.
- */
+/** `push` for deliberate crystal changes; `replace` for incidental URL tweaks. */
 function syncCrystalUrl(
   seedLabel: string,
   conditions: GrowthConditions,
@@ -1378,10 +1358,5 @@ if (bootLabConditions) {
   boot = grow();
 }
 applyModes("boot");
-// Entry-state neutrality (#316): the first entry is deliberately left exactly
-// as the visitor arrived — no decoration (see the bare-?seed= contract test),
-// and nothing pushed — so the first Back from a fresh load still leaves the
-// site. Popping back to a bare `?seed=` regrows the same crystal anyway: the
-// conditions are sampled from the seed.
 void boot;
 scene.start();
