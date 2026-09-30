@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const gate = vi.hoisted(() => ({ failPane: false }));
 
@@ -64,16 +64,39 @@ function installMatchMedia() {
   })) as unknown as typeof window.matchMedia;
 }
 
+const realFetch = window.fetch;
+const realSendBeacon = Object.getOwnPropertyDescriptor(window.navigator, "sendBeacon");
+
+/**
+ * The Lab Mode failure path reports a `chunk-load` client error. Stub the
+ * transport before `main.ts` installs the reporter so nothing reaches the
+ * network (happy-dom would otherwise fetch http://localhost:3000).
+ */
+function stubClientErrorTransport() {
+  const sendBeacon = vi.fn((_url: string, _data?: BodyInit | null) => true);
+  Object.defineProperty(window.navigator, "sendBeacon", { value: sendBeacon, configurable: true, writable: true });
+  window.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 })) as unknown as typeof window.fetch;
+  return { sendBeacon };
+}
+
+afterEach(() => {
+  window.fetch = realFetch;
+  if (realSendBeacon) Object.defineProperty(window.navigator, "sendBeacon", realSendBeacon);
+  else delete (window.navigator as { sendBeacon?: unknown }).sendBeacon;
+  vi.restoreAllMocks();
+});
+
 async function boot() {
   vi.resetModules();
   installMatchMedia();
+  const transport = stubClientErrorTransport();
   localStorage.clear();
   window.history.replaceState(null, "", "/");
   document.body.innerHTML = FIXTURE;
   const announcer = await import("../../src/ui/announcer");
   const announce = vi.spyOn(announcer, "announce");
   await import("../../src/main.ts");
-  return { announce };
+  return { announce, ...transport };
 }
 
 function labToggle() {
@@ -92,12 +115,17 @@ describe("Lab Mode load failure (#349)", () => {
   it("hides the controls, resets the toggle, and focuses it when ensurePane rejects", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     gate.failPane = true;
-    const { announce } = await boot();
+    const { announce, sendBeacon } = await boot();
 
     labToggle().click();
     await vi.waitFor(() => {
       expect(announce).toHaveBeenCalledWith("Failed to load Lab Mode controls");
     });
+
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
+    expect(sendBeacon.mock.calls[0][0]).toBe("/api/client-error");
+    expect(await (sendBeacon.mock.calls[0][1] as Blob).text()).toContain('"kind":"chunk-load"');
+    expect(window.fetch).not.toHaveBeenCalled();
 
     expect(labControls().style.display).toBe("none");
     expect(labToggle().getAttribute("aria-pressed")).toBe("false");
