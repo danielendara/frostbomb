@@ -8,13 +8,14 @@ The package `deploy` script is `npm run build && wrangler deploy`. The README do
 
 - [ ] **Build:** `npm run build` — `tsc && vite build`
 - [ ] **Unit:** `npm run test:unit`
-- [ ] **E2E:** `npm test` — Playwright; `pretest` also runs unit tests
+- [ ] **E2E:** `npm test` — Playwright; `pretest` also runs unit tests (CI usually runs `npm run test:e2e:smoke` unless the full suite is triggered)
 - [ ] Confirm this release does not accidentally change the Worker deploy path (`wrangler.jsonc` name `frostbombsite`, `main` = `src/worker/index.ts`, SPA asset fallback, `run_worker_first` limited to `/api/*`, `package.json` `deploy` script)
+- [ ] **Database:** frostbomb has no D1/KV/R2 bindings today. If a future change adds persisted state or migrations, apply and verify those migrations on production **before** merging to `main`.
 
 ## Deploy
 
 ```bash
-npm run build && wrangler deploy
+npm run build && npx wrangler deploy
 ```
 
 Equivalent:
@@ -61,13 +62,20 @@ Reports never include seeds, full URLs, IPs, or other identifiers. The client de
 
 ## Rollback
 
-Cloudflare Workers keep prior deployments. In the dashboard (Workers & Pages → `frostbombsite` → Deployments), roll back to the last known-good version.
+Cloudflare Workers keep prior deployments. Prefer rolling back to a known-good **version ID** (never run `wrangler rollback` without an ID):
+
+```bash
+npx wrangler deployments list --name frostbombsite
+npx wrangler rollback <version-id> --name frostbombsite -m "reason"
+```
+
+In the dashboard: Workers & Pages → `frostbombsite` → Deployments → choose a prior deployment → Rollback.
 
 Alternatively redeploy a previous git SHA:
 
 ```bash
 git checkout <known-good-sha>
-npm run build && wrangler deploy
+npm run build && npx wrangler deploy
 ```
 
-That restores the previous asset bundle, including `_headers` CSP.
+That restores the previous asset bundle, including `_headers` CSP. See also `docs/RECOVERY.md`.

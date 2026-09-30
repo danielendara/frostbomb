@@ -84,13 +84,7 @@ Done means: we can answer whether mobile users are seeing a fast first render wi
 
 ### P1: Add a custom first-flake-ready mark
 
-Instrument the app with `performance.mark()` when the first snowflake is generated and when the first render finishes. This gives us a project-specific metric that Lighthouse cannot infer from canvas content.
-
-Suggested marks:
-
-- `frostbomb:first-flake-built`
-- `frostbomb:first-frame-rendered`
-- `frostbomb:postprocessing-ready`
+**Status:** Implemented in `src/snowflake/perf-marks.ts` with marks `frostbomb:first-flake-built`, `frostbomb:first-frame-rendered`, and `frostbomb:postprocessing-ready`. Smoke coverage in `tests/canvas-marks.smoke.spec.ts`.
 
 Done means: Playwright or browser DevTools can report app-specific startup timing.
 
@@ -113,10 +107,10 @@ Done means: either record the current font cost as acceptable or reduce initial 
 
 ### P2: Add canvas smoke/performance checks in CI
 
-Add a Playwright test that verifies the canvas is nonblank and records custom startup marks. This catches blank WebGL regressions and gives us a local trend line.
+**Status:** Implemented — `tests/canvas-marks.smoke.spec.ts` (smoke project) checks a nonblank canvas and that the custom performance marks fire.
 
 Done means: CI fails if the canvas does not render or if app-specific startup marks never fire.
 
 ## Current priority
 
-The best next performance improvement is instrumentation, not another optimization pass. We need a metric that fits the app: "time until the first snowflake is visibly rendered." Once that exists, the next optimization target will be obvious instead of guessed.
+Custom startup marks and canvas smoke checks are in place. The best next performance improvement is **field data**: Cloudflare Web Analytics or similar RUM plus trending the existing marks on real devices. Lab Lighthouse runs remain useful but are not the primary metric for this canvas-first app.

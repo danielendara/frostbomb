@@ -16,15 +16,12 @@ machine.
 
 The controlled initial-to-current comparison shows:
 
-| Profile | Initial `1eb7d38` | Current main `f44ac51` | Improvement |
+| Profile | Initial `1eb7d38` | Measured `71b97b0` | Improvement |
 |---|---:|---:|---:|
 | Typical weighted conditions | 1.07951 ms/build | 0.006222 ms/build | 173.5x faster |
 | Fernlike stress case | 2.51991 ms/build | 0.013892 ms/build | 181.4x faster |
 
-The controlled values were measured on `71b97b0`. Current main `f44ac51`
-changes UI and reset-view behavior, while its geometry generator, random
-inputs, benchmark files, package manifest, and lockfile are identical to the
-measured revision. The generation numbers therefore carry forward unchanged.
+The controlled values were measured on **`71b97b0`**. Commits after that (including UI, history, and further geometry work on `main`) are not part of this comparison until the benchmark profiles are re-run on those revisions.
 
 The detailed evidence behind this article lives in
 [`performance-timeline.csv`](performance/performance-timeline.csv). It records
@@ -204,17 +201,15 @@ These improvements cannot be reduced to one number because they affect
 different moments: startup, regeneration, active growth, idle frames, Lab Mode,
 mobile rendering, and hidden tabs.
 
-## What the current numbers mean
+## What the controlled numbers mean
 
-At current `main` (`f44ac51`), whose generator is identical to latest measured
-revision `71b97b0`:
+At measured revision **`71b97b0`** (latest full controlled run documented here):
 
 - typical weighted generation: **0.006222 ms/build**, about 160,715 builds/s;
 - fernlike stress generation: **0.013892 ms/build**, about 71,982 builds/s;
 - stress generation consumes about **0.083%** of a 16.67 ms frame budget.
 
-Generation is now too small to be the likely interactive bottleneck. Current
-performance work should focus on browser-level and GPU-visible outcomes:
+Generation was already small relative to frame budget at `71b97b0`. Later commits may change geometry cost; re-run the benchmark profiles after generator changes. Performance work should still focus on browser-level and GPU-visible outcomes:
 
 - time until the first snowflake is visibly rendered;
 - scene and procedural texture initialization;
