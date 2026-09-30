@@ -7,35 +7,28 @@ test.beforeEach(async ({ page }) => {
 test('Nakaya diagram supports Home, End, PageUp, PageDown keys', async ({ page }) => {
   const nakaya = page.locator('#nakaya-diagram');
 
-  // Open the Field Guide so the diagram is visible and can be focused
   await page.click('#guide-toggle');
   await expect(page.locator('#field-guide')).toBeVisible();
 
-  // Focus the diagram
   await nakaya.focus();
 
-  // Turn on Lab Mode (Arrow key or Enter)
   await page.keyboard.press('Enter');
   // Increase timeout for Lab Mode loading in CI as dynamic import of tweakpane can be slow
   await expect(page.locator('#lab-status')).toHaveText('ON', { timeout: 15000 });
 
-  // Press Home (sets temp to -40)
   await page.keyboard.press('Home');
   // Use a more flexible regex to handle potential rounding or precision issues in different environments
   await expect(nakaya).toHaveAttribute('aria-label', /-(39\.[789]|40\.0)°C/);
 
-  // Press End (sets temp to 0)
   await page.keyboard.press('End');
   // Matches "0.0°C" or potentially "-0.2°C" due to precision
   await expect(nakaya).toHaveAttribute('aria-label', /(-0\.[012]|0\.0)°C/);
 
-  // Press PageDown (decreases humidity by 25)
   const ariaBeforePageDown = await nakaya.getAttribute('aria-label');
   await page.keyboard.press('PageDown');
   const ariaAfterPageDown = await nakaya.getAttribute('aria-label');
   expect(ariaAfterPageDown).not.toBe(ariaBeforePageDown);
 
-  // Press PageUp (increases humidity by 25)
   await page.keyboard.press('PageUp');
   const ariaAfterPageUp = await nakaya.getAttribute('aria-label');
   expect(ariaAfterPageUp).not.toBe(ariaAfterPageDown);

@@ -1,4 +1,3 @@
-/** @vitest-environment happy-dom */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 describe("createScene frost map loading", () => {

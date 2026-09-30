@@ -1,4 +1,3 @@
-/** @vitest-environment happy-dom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const gate = vi.hoisted(() => ({ failPane: false }));

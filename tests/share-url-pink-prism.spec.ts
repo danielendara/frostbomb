@@ -1,23 +1,5 @@
 import { test, expect } from "@playwright/test";
-
-// Captures whatever copyLink() writes to the clipboard without depending on
-// real browser clipboard permissions (which are flaky in CI). Must be
-// installed before the app script runs, so it's an init script rather than
-// a post-load page.evaluate().
-async function stubClipboard(page: import("@playwright/test").Page) {
-  await page.addInitScript(() => {
-    (window as any).__copiedText = null;
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: (text: string) => {
-          (window as any).__copiedText = text;
-          return Promise.resolve();
-        },
-      },
-    });
-  });
-}
+import { stubClipboard } from "./e2e-helpers";
 
 test("bare ?seed= link is unchanged: both modes default off", async ({ page }) => {
   await page.goto("/?seed=abcde");

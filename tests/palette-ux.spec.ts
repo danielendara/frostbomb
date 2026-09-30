@@ -9,11 +9,9 @@ test("Close Guide button in Field Guide works", async ({ page }) => {
   const fieldGuide = page.locator("#field-guide");
   const guideClose = page.locator("#guide-close");
 
-  // Open guide
   await guideToggle.click();
   await expect(fieldGuide).toBeVisible();
 
-  // Close guide using the new button
   await guideClose.click();
   await expect(fieldGuide).not.toBeVisible();
   await expect(guideToggle).toHaveAttribute("aria-pressed", "false");
@@ -22,7 +20,6 @@ test("Close Guide button in Field Guide works", async ({ page }) => {
 test("Nakaya diagram aria-label updates on interaction", async ({ page }) => {
   const nakaya = page.locator("#nakaya-diagram");
 
-  // Open the Field Guide so the diagram is visible
   await page.click("#guide-toggle");
   await expect(page.locator("#field-guide")).toBeVisible();
 
@@ -30,17 +27,14 @@ test("Nakaya diagram aria-label updates on interaction", async ({ page }) => {
   await page.click("#lab-toggle");
   await expect(page.locator("#lab-status")).toHaveText("ON");
 
-  // Ensure the label follows the dynamic pattern
   await expect(nakaya).toHaveAttribute(
     "aria-label",
     /Nakaya morphology diagram: -?\d+(\.\d+)?°C, \d+% humidity/,
   );
   const initialAria = await nakaya.getAttribute("aria-label");
 
-  // Trigger interaction by clicking the diagram at a specific point
   await nakaya.click({ position: { x: 50, y: 50 }, force: true });
 
-  // Verify updated aria-label
   await expect(async () => {
     const currentAria = await nakaya.getAttribute("aria-label");
     expect(currentAria).not.toBe(initialAria);
@@ -55,18 +49,14 @@ test("Nakaya diagram aria-label updates on interaction", async ({ page }) => {
 test("Lab Mode allows custom seed input and updates the UI", async ({
   page,
 }) => {
-  // Toggle Lab Mode
   await page.click("#lab-toggle");
   await expect(page.locator("#lab-status")).toHaveText("ON");
 
-  // Wait for Lab Mode controls to be visible
   await expect(page.locator("#lab-controls")).toBeVisible();
 
-  // Find the seed input in Tweakpane
   const seedInput = page.locator('.tp-lblv:has-text("Seed") input');
   await expect(seedInput).toBeVisible();
 
-  // Initially has some seed
   const initialSeed = await seedInput.inputValue();
   expect(initialSeed.length).toBeGreaterThanOrEqual(3);
 
@@ -74,10 +64,8 @@ test("Lab Mode allows custom seed input and updates the UI", async ({
   await seedInput.fill("abcde");
   await page.keyboard.press("Enter");
 
-  // Verify the URL query param has changed to "abcde"
   await expect(page).toHaveURL(/seed=abcde/);
 
-  // Verify that the seed button label displays "abcde"
   const seedDisplay = page.locator("#seed-display");
   await expect(seedDisplay).toHaveText("abcde");
 
@@ -85,10 +73,8 @@ test("Lab Mode allows custom seed input and updates the UI", async ({
   await seedInput.fill("ab");
   await page.keyboard.press("Enter");
 
-  // Verify it reverts to the current valid seed "abcde"
   await expect(seedInput).toHaveValue("abcde");
 
-  // Verify visual and aural error feedback
   // Note: Due to slow CI execution, the temporary '3-12 chars' visual label might revert to 'abcde'
   // before Playwright asserts it. We allow either state, as long as it did not accept 'ab'.
   const seedBtn = page.locator("#btn-seed");
@@ -103,17 +89,13 @@ test("Lab Mode allows custom seed input and updates the UI", async ({
 test("Skip link is the first focusable element and shifts focus to #field-notes", async ({
   page,
 }) => {
-  // Focus the page body/initial area, then Tab
   await page.keyboard.press("Tab");
 
   const skipLink = page.locator(".skip-link");
-  // Check if skip-link is focused
   await expect(skipLink).toBeFocused();
 
-  // Press Enter to activate the link
   await page.keyboard.press("Enter");
 
-  // The field-notes element should receive focus
   const fieldNotes = page.locator("#field-notes");
   await expect(fieldNotes).toBeFocused();
 });
@@ -126,23 +108,19 @@ test("Nakaya diagram displays live-hover preview and reverts on leave", async ({
   const nakaya = page.locator("#nakaya-diagram");
   const status = page.locator("#nakaya-status");
 
-  // Open guide
   await guideToggle.click();
   await expect(fieldGuide).toBeVisible();
 
-  // Initially, status should show Active state
   await expect(status).toBeVisible();
   await expect(status).toContainText("Active:");
   await expect(status).toHaveAttribute("aria-live", "polite");
 
-  // Hover over Nakaya diagram
   await nakaya.hover({ position: { x: 150, y: 100 } });
 
   // Status should change to Preview mode
   await expect(status).toContainText("Preview:");
   await expect(status).toHaveAttribute("aria-live", "off");
 
-  // Move cursor away (move to 0,0 to guarantee pointerleave)
   await page.mouse.move(0, 0);
 
   // Status should revert to Active mode
@@ -203,11 +181,9 @@ test("Close Lab Mode button in Lab controls works", async ({ page }) => {
   const labControls = page.locator("#lab-controls");
   const labClose = page.locator("#lab-close");
 
-  // Activate Lab Mode
   await labToggle.click();
   await expect(labControls).toBeVisible();
 
-  // Close Lab Mode using the new button
   await labClose.click();
   await expect(labControls).not.toBeVisible();
   await expect(labToggle).toHaveAttribute("aria-pressed", "false");
@@ -218,15 +194,12 @@ test("Recent seed buttons have correct title attributes", async ({ page }) => {
   const recentSeedsList = page.locator("#recent-seeds-list");
   const seedDisplay = page.locator("#seed-display");
 
-  // Wait for seed to display
   await expect(seedDisplay).not.toHaveText("·····");
   const seedVal = (await seedDisplay.textContent())?.trim() || "";
 
-  // Get the first button in recent seeds
   const firstSeedBtn = recentSeedsList.locator("button.seed-pill").first();
   await expect(firstSeedBtn).toBeVisible();
 
-  // It should have title attribute matching the expected tooltip pattern
   const title = await firstSeedBtn.getAttribute("title");
   expect(title).toContain(`Grow seed ${seedVal}`);
 });
@@ -245,7 +218,6 @@ test("Copy Seed button copies seed only and provides visual and screen reader fe
   await expect(copySeedBtn).toBeVisible();
   await copySeedBtn.click();
 
-  // Validate the label shifts temporarily to 'Copied!' or 'Failed'
   await expect(async () => {
     const text = await label.textContent();
     expect(["Copied!", "Failed"]).toContain(text);
@@ -258,25 +230,20 @@ test("Copy Seed button copies seed only and provides visual and screen reader fe
 test("Lab Mode Randomize Seed button updates the seed and UI", async ({
   page,
 }) => {
-  // Toggle Lab Mode
   await page.click("#lab-toggle");
   await expect(page.locator("#lab-status")).toHaveText("ON");
 
-  // Wait for Lab Mode controls to be visible
   await expect(page.locator("#lab-controls")).toBeVisible();
 
-  // Find the seed input in Tweakpane
   const seedInput = page.locator('.tp-lblv:has-text("Seed") input');
   await expect(seedInput).toBeVisible();
 
   const initialSeed = await seedInput.inputValue();
 
-  // Click the "Randomize Seed" button in Tweakpane
   const randomizeBtn = page.locator('button:has-text("Randomize Seed")');
   await expect(randomizeBtn).toBeVisible();
   await randomizeBtn.click();
 
-  // Verify the seed input has a new value
   await expect(async () => {
     const currentSeed = await seedInput.inputValue();
     expect(currentSeed).not.toBe(initialSeed);
@@ -285,10 +252,8 @@ test("Lab Mode Randomize Seed button updates the seed and UI", async ({
   const newSeed = await seedInput.inputValue();
   expect(newSeed.length).toBeGreaterThanOrEqual(3);
 
-  // Verify that the URL query param has changed to the new seed
   await expect(page).toHaveURL(new RegExp(`seed=${newSeed}`));
 
-  // Verify that the seed button label displays the new seed
   const seedDisplay = page.locator("#seed-display");
   await expect(seedDisplay).toHaveText(newSeed);
 });
@@ -301,7 +266,6 @@ test("Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
   const masthead = page.locator(".masthead");
   const canvas = page.locator("#scene");
 
-  // Verify initial state: UI is visible and the first flake has rendered
   await expect(masthead).not.toHaveClass(/ui-hidden/);
   await expect(page.locator("#seed-display")).not.toHaveText("·····");
 
@@ -313,26 +277,21 @@ test("Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
     timeout: 15_000,
   });
 
-  // Drag on the canvas to rotate the camera
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
   const startX = box!.x + box!.width / 2;
   const startY = box!.y + box!.height / 2;
 
-  // Perform a drag gesture
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(startX + 100, startY + 50, { steps: 5 });
   await page.mouse.up();
 
   // Click event might be triggered depending on browser behavior, but our distance check should block exiting Photo Mode.
-  // Verify UI remains hidden after drag
   await expect(masthead).toHaveClass(/ui-hidden/);
 
-  // Click on the canvas without dragging (stationary tap/click)
   await canvas.click({ position: { x: box!.width / 2, y: box!.height / 2 } });
 
-  // Verify UI becomes visible again
   await expect(masthead).not.toHaveClass(/ui-hidden/);
   await expect(page.locator("#a11y-announcer")).toContainText(/Photo Mode exited.*UI restored/i, {
     timeout: 15_000,
@@ -396,7 +355,6 @@ test("Pink mode and Prism mode buttons dynamically update their titles and aria-
   const btnPink = page.locator("#btn-pink");
   const btnPrism = page.locator("#btn-prism");
 
-  // Verify Pink Mode updates
   await expect(btnPink).not.toHaveAttribute("aria-label");
   await btnPink.click();
   await expect(btnPink).toHaveAttribute("aria-label", "Pink Mode (P)");
@@ -412,7 +370,6 @@ test("Pink mode and Prism mode buttons dynamically update their titles and aria-
     "Toggle pink mode (P) - current: inactive",
   );
 
-  // Verify Prism Mode updates
   await expect(btnPrism).not.toHaveAttribute("aria-label");
   await btnPrism.click();
   await expect(btnPrism).toHaveAttribute("aria-label", "Prism Mode (M)");
@@ -436,22 +393,16 @@ test("Nakaya diagram displays crosshair alignment guides on keyboard focus and c
   const fieldGuide = page.locator("#field-guide");
   const nakaya = page.locator("#nakaya-diagram");
 
-  // Open the field guide
   await guideToggle.click();
   await expect(fieldGuide).toBeVisible();
 
-  // Focus the nakaya diagram
   await nakaya.focus();
   await expect(nakaya).toBeFocused();
 
-  // Hover over the nakaya diagram
   await nakaya.hover({ position: { x: 150, y: 100 } });
 
-  // Move pointer away (move to 0,0 to guarantee pointerleave)
   await page.mouse.move(0, 0);
 
-  // Since nakaya diagram is still focused, we expect focus behavior to hold.
-  // Blurring it should clear focus/preview state.
   await nakaya.blur();
   await expect(nakaya).not.toBeFocused();
 });
@@ -471,12 +422,10 @@ test("Palette: active history seed button has aria-current='true'", async ({ pag
   await expect(seedDisplay).not.toHaveText("·····");
   const activeSeed = (await seedDisplay.textContent())?.trim() || "";
 
-  // Find the button in recent seeds list corresponding to the active seed
   const activeSeedBtn = page.locator(`#recent-seeds-list button.seed-pill:has-text("${activeSeed}")`);
   await expect(activeSeedBtn).toBeVisible();
   await expect(activeSeedBtn).toHaveAttribute("aria-current", "true");
 
-  // Other buttons (if any) should have aria-current="false"
   const allSeedBtns = await page.locator("#recent-seeds-list button.seed-pill").all();
   for (const btn of allSeedBtns) {
     const text = await btn.textContent();
@@ -514,19 +463,16 @@ test("Palette: growth condition rows dynamically update aria-expanded on interac
   await expect(tempRow).toHaveAttribute("aria-expanded", "false");
   await expect(humidRow).toHaveAttribute("aria-expanded", "false");
 
-  // Click on Temperature row to open guide to temperature section
   await tempRow.click();
   await expect(fieldGuide).toBeVisible();
   await expect(tempRow).toHaveAttribute("aria-expanded", "true");
   await expect(humidRow).toHaveAttribute("aria-expanded", "false");
 
-  // Close guide and verify all rows revert to aria-expanded="false"
   await guideClose.click();
   await expect(fieldGuide).not.toBeVisible();
   await expect(tempRow).toHaveAttribute("aria-expanded", "false");
   await expect(humidRow).toHaveAttribute("aria-expanded", "false");
 
-  // Click on Supersaturation row to open guide to supersaturation section
   await humidRow.click();
   await expect(fieldGuide).toBeVisible();
   await expect(tempRow).toHaveAttribute("aria-expanded", "false");

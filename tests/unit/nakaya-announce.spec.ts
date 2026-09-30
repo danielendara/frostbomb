@@ -1,4 +1,3 @@
-/** @vitest-environment happy-dom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getHabit, habitLabel } from "../../src/snowflake/nakaya";
 import { commitNakayaConditions } from "../../src/ui/nakaya-status";

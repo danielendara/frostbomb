@@ -1,24 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { stubClipboard } from "./e2e-helpers";
 
 /**
  * #341 — a copied or history-restored crystal is the same geometry, not just
  * the same seed label. Sampled links omit t/ss; explicit Lab links keep them.
  */
-
-async function stubClipboard(page: Page) {
-  await page.addInitScript(() => {
-    (window as unknown as { __copiedText: string | null }).__copiedText = null;
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: (text: string) => {
-          (window as unknown as { __copiedText: string | null }).__copiedText = text;
-          return Promise.resolve();
-        },
-      },
-    });
-  });
-}
 
 function normalizedPolygons(svg: string): string[] {
   return [...svg.matchAll(/points="([^"]*)"/g)]

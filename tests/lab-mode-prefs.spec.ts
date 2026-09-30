@@ -1,21 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { stubClipboard } from "./e2e-helpers";
 
 const MODE_PREFS_KEY = "frostbomb-mode-prefs";
-
-async function stubClipboard(page: import("@playwright/test").Page) {
-  await page.addInitScript(() => {
-    (window as any).__copiedText = null;
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: (text: string) => {
-          (window as any).__copiedText = text;
-          return Promise.resolve();
-        },
-      },
-    });
-  });
-}
 
 test("toggling lab mode writes lab to localStorage (#312)", async ({ page }) => {
   await page.goto("/?seed=abcde");

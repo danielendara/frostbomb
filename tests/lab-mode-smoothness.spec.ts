@@ -10,12 +10,8 @@ test('Lab mode slider changes do not trigger growth animation', async ({ page })
   // Wait for Lab Mode controls to be visible
   await expect(page.locator('#lab-controls')).toBeVisible();
 
-  // Wait for Tweakpane to finish loading its internal components
-  await page.waitForTimeout(2000);
-
-  // Use more robust locators for Tweakpane inputs
-  // Tweakpane inputs are often found by their associated label text
   const tempInput = page.locator('.tp-lblv:has-text("Temp (°C)") input');
+  await expect(tempInput).toBeVisible();
   const humidityInput = page.locator('.tp-lblv:has-text("Humidity (%)") input');
 
   const scene = page.locator('#scene');
