@@ -20,6 +20,7 @@ export interface KeyboardHandlerContext {
   onSave: () => void;
   onSaveSvg: () => void;
   onSave3d: () => void;
+  onSaveWallpaper: () => void;
   onToggleAutoRotate: () => void;
   onCopyLink: () => void;
   onCopySeed: () => void;
@@ -150,6 +151,9 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
         break;
       case "t":
         ctx.onSave3d();
+        break;
+      case "w":
+        ctx.onSaveWallpaper();
         break;
       case "a":
         ctx.onToggleAutoRotate();

@@ -28,6 +28,7 @@ import {
   formatExportFileName,
 } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
+import { captureWallpaper, wallpaperFileName, wallpaperSize } from "./ui/wallpaper";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
@@ -834,6 +835,45 @@ document.getElementById("btn-save")?.addEventListener("click", () => {
   void saveSnowflake();
 });
 
+async function saveWallpaper() {
+  // Identity is fixed at click time; the capture below is one synchronous block.
+  const identity = { habit: currentConditions.habit, seed: currentSeedLabel };
+  await runExportAction(
+    "btn-save-wallpaper",
+    {
+      start: "Saving wallpaper…",
+      success: "Wallpaper saved",
+      failure: "Failed to save wallpaper",
+    },
+    async () => {
+      const size = wallpaperSize({
+        screenW: window.screen.width,
+        screenH: window.screen.height,
+        dpr: window.devicePixelRatio,
+        orientation: window.matchMedia("(orientation: portrait)").matches ? "portrait" : "landscape",
+        maxTexture: scene.renderer.capabilities.maxTextureSize,
+      });
+      // Resize, render, copy and restore all happen inside captureWallpaper
+      // before anything awaits; encoding the 2D copy comes after the restore.
+      const wallpaper = captureWallpaper(
+        scene,
+        size,
+        getComputedStyle(document.body).backgroundColor,
+      );
+      const blob = await new Promise<Blob | null>((resolve) => wallpaper.toBlob(resolve, "image/png"));
+      if (!blob) {
+        throw new Error("Could not encode wallpaper PNG");
+      }
+      downloadHref(wallpaperFileName(identity), URL.createObjectURL(blob));
+    },
+    scene,
+  );
+}
+
+document.getElementById("btn-save-wallpaper")?.addEventListener("click", () => {
+  void saveWallpaper();
+});
+
 async function saveSnowflakeSvg() {
   await runExportAction(
     "btn-save-svg",
@@ -1319,6 +1359,9 @@ initKeyboardShortcuts({
   },
   onSave: () => {
     saveSnowflake();
+  },
+  onSaveWallpaper: () => {
+    void saveWallpaper();
   },
   onSaveSvg: () => {
     saveSnowflakeSvg();
