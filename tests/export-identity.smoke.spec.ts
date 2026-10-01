@@ -25,6 +25,7 @@ async function armObjectUrlTestHooks(page: Page): Promise<void> {
 function waitForTypedDownload(page: Page, extension: ".stl" | ".glb"): Promise<Download> {
   return page.waitForEvent("download", {
     predicate: (download) => download.suggestedFilename().endsWith(extension),
+    timeout: 30_000,
   });
 }
 
