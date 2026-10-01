@@ -292,6 +292,7 @@ async function activateSkipLink(page: import("@playwright/test").Page) {
   await expect(page.locator(".skip-link")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("#field-notes")).toBeFocused();
+  await page.waitForFunction(() => location.hash === "#field-notes");
 }
 
 async function startLoadedSeedWatch(page: import("@playwright/test").Page) {
@@ -305,11 +306,16 @@ async function startLoadedSeedWatch(page: import("@playwright/test").Page) {
 }
 
 async function expectNoLoadedSeedAfterHashBack(page: import("@playwright/test").Page) {
+  const searchBeforeSkip = await page.evaluate(() => location.search);
   await startLoadedSeedWatch(page);
   await activateSkipLink(page);
+  expect(await page.evaluate(() => location.search)).toBe(searchBeforeSkip);
   await page.goBack();
+  await page.waitForFunction(() => location.hash === "");
+  await page.waitForTimeout(300);
   const heard = await page.evaluate(() => (window as unknown as { __heard: string[] }).__heard);
   expect(heard.filter((m) => /Loaded seed/.test(m))).toEqual([]);
+  expect(await page.evaluate(() => location.search)).toBe(searchBeforeSkip);
 }
 
 test.describe("#379 hash-only Back after Skip to controls", () => {

@@ -971,6 +971,13 @@ function writeCurrentModeParams(params: URLSearchParams) {
   }
 }
 
+/** Last query string we wrote or accepted — hash-only popstate keeps this unchanged. */
+let committedSearch = window.location.search;
+
+function syncCommittedSearch(): void {
+  committedSearch = window.location.search;
+}
+
 // Keeps the share URL an accurate snapshot of the current mode state,
 // mirroring how seed changes already keep the URL in sync (see
 // historyManager.onSelectSeed / labPanel.onSeedChange above). Always
@@ -1077,13 +1084,6 @@ function syncCrystalUrl(
     window.history.replaceState(null, "", next);
   }
   syncCommittedSearch();
-}
-
-/** Last query string we wrote or accepted — hash-only popstate keeps this unchanged. */
-let committedSearch = window.location.search;
-
-function syncCommittedSearch(): void {
-  committedSearch = window.location.search;
 }
 
 /**
