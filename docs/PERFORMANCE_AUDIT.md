@@ -96,12 +96,7 @@ Done means: initial HTML does not include a `modulepreload` for the postprocessi
 
 ### P2: Evaluate font strategy
 
-The typography looks good, but the fonts are a noticeable part of initial transfer. Options:
-
-- keep as-is if the visual identity matters most,
-- self-host and subset the fonts,
-- reduce font weights/styles,
-- use `font-display: swap` if not already present from Google Fonts CSS.
+**Status:** Done (self-hosted) — fonts live under `public/fonts/` (see `tests/unit/self-hosted-fonts.spec.ts` and `tests/self-hosted-fonts.spec.ts`). Remaining optional work: subset or drop unused weights to shrink initial transfer.
 
 Done means: either record the current font cost as acceptable or reduce initial font transfer.
 

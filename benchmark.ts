@@ -1,6 +1,5 @@
 import { Rand, mulberry32 } from './src/snowflake/random';
 import { buildSnowflake } from './src/snowflake/geometry';
-import { sampleConditions } from './src/snowflake/nakaya';
 
 function benchmark() {
   const rng = mulberry32(12345);
