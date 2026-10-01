@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Download, type Page } from "@playwright/test";
 import { readDownload } from "./e2e-helpers";
 
 /**
@@ -22,14 +22,22 @@ async function armObjectUrlTestHooks(page: Page): Promise<void> {
   }, DOWNLOAD_TEST_GAP_MS);
 }
 
+function waitForTypedDownload(page: Page, extension: ".stl" | ".glb"): Promise<Download> {
+  return page.waitForEvent("download", {
+    predicate: (download) => download.suggestedFilename().endsWith(extension),
+  });
+}
+
 async function save3d(page: Page): Promise<{ stl: string; glb: string }> {
   await armObjectUrlTestHooks(page);
   await waitSave3dIdle(page);
   const saveBtn = page.locator("#btn-save-3d");
-  const [firstDownload] = await Promise.all([page.waitForEvent("download"), saveBtn.click()]);
-  const secondDownload = await page.waitForEvent("download");
+  const stlDownload = waitForTypedDownload(page, ".stl");
+  const glbDownload = waitForTypedDownload(page, ".glb");
+  await saveBtn.click();
+  const [stlFile, glbFile] = await Promise.all([stlDownload, glbDownload]);
   await waitSave3dIdle(page);
-  const files = [await readDownload(firstDownload), await readDownload(secondDownload)];
+  const files = [await readDownload(stlFile), await readDownload(glbFile)];
   const stl = files.find((file) => file.name.endsWith(".stl"));
   const glb = files.find((file) => file.name.endsWith(".glb"));
   expect(stl && glb).toBeTruthy();
@@ -69,7 +77,8 @@ test("Save 3D filenames stay on the crystal captured before the exporter loads",
   await waitSave3dIdle(delayed);
 
   const delayedSave = delayed.locator("#btn-save-3d");
-  const firstDownload = delayed.waitForEvent("download");
+  const stlDownload = waitForTypedDownload(delayed, ".stl");
+  const glbDownload = waitForTypedDownload(delayed, ".glb");
 
   await delayedSave.click();
   await requested;
@@ -78,10 +87,9 @@ test("Save 3D filenames stay on the crystal captured before the exporter loads",
   const regrownSeed = (await delayed.locator("#seed-display").innerText()).toLowerCase();
   releaseExport();
 
-  const stlDownload = await firstDownload;
-  const glbDownload = await delayed.waitForEvent("download");
+  const [stlDownloadResult, glbDownloadResult] = await Promise.all([stlDownload, glbDownload]);
   await waitSave3dIdle(delayed);
-  const saved = [await readDownload(stlDownload), await readDownload(glbDownload)];
+  const saved = [await readDownload(stlDownloadResult), await readDownload(glbDownloadResult)];
   const names = saved.map((file) => file.name).sort();
   expect(names).toEqual([
     "frostbomb-fernlike-dendrite-abcde.glb",
