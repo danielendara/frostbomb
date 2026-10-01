@@ -104,6 +104,45 @@ describe("crystalStatesEqual", () => {
     expect(crystalStatesEqual(parsed, onScreen)).toBe(true);
   });
 
+  it("ignores rotate when it is absent from the popped URL", () => {
+    const parsed = parseCrystalUrlState("?seed=abcde");
+    const onScreen: CrystalUrlState = {
+      seed: "abcde",
+      provenance: "sampled",
+      lab: null,
+      modes: { pink: false, prism: false, lab: false, rotate: true },
+    };
+    expect(crystalStatesEqual(parsed, onScreen)).toBe(true);
+  });
+
+  it("compares rotate when it is present in the URL", () => {
+    const parsed = parseCrystalUrlState("?seed=abcde&rotate=1");
+    const onScreen: CrystalUrlState = {
+      seed: "abcde",
+      provenance: "sampled",
+      lab: null,
+      modes: { pink: false, prism: false, lab: false, rotate: false },
+    };
+    expect(crystalStatesEqual(parsed, onScreen)).toBe(false);
+    expect(
+      crystalStatesEqual(parsed, {
+        ...onScreen,
+        modes: { ...onScreen.modes, rotate: true },
+      }),
+    ).toBe(true);
+  });
+
+  it("ignores rotate under reduced motion when it is present in the URL", () => {
+    const parsed = parseCrystalUrlState("?seed=abcde&rotate=1");
+    const onScreen: CrystalUrlState = {
+      seed: "abcde",
+      provenance: "sampled",
+      lab: null,
+      modes: { pink: false, prism: false, lab: false, rotate: false },
+    };
+    expect(crystalStatesEqual(parsed, onScreen, { reducedMotion: true })).toBe(true);
+  });
+
   it("is false when an explicit on differs from an absent (off) mode", () => {
     const parsed = parseCrystalUrlState("?seed=abcde");
     const onScreen: CrystalUrlState = {

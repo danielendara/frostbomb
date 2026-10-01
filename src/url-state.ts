@@ -182,12 +182,24 @@ export function retainedLabConditions(
   return quantizeLabConditions(conditions);
 }
 
+export interface CrystalStatesEqualOptions {
+  /** Matches applyModes restore: rotate from the URL is ignored under reduced motion. */
+  reducedMotion?: boolean;
+}
+
 /**
  * Two states are equal when they describe the same crystal *and* the same
  * look — a popped entry that matches the current one must not regrow or
  * re-announce.
+ *
+ * Rotate is compared only when it is present in the popped URL (`a`). An absent
+ * param is not authoritative on restore (stored prefs may differ on screen).
  */
-export function crystalStatesEqual(a: CrystalUrlState, b: CrystalUrlState): boolean {
+export function crystalStatesEqual(
+  a: CrystalUrlState,
+  b: CrystalUrlState,
+  options?: CrystalStatesEqualOptions,
+): boolean {
   return (
     a.seed === b.seed &&
     a.provenance === b.provenance &&
@@ -195,8 +207,18 @@ export function crystalStatesEqual(a: CrystalUrlState, b: CrystalUrlState): bool
     (a.modes.pink ?? false) === (b.modes.pink ?? false) &&
     (a.modes.prism ?? false) === (b.modes.prism ?? false) &&
     (a.modes.lab ?? false) === (b.modes.lab ?? false) &&
-    (a.modes.rotate ?? false) === (b.modes.rotate ?? false)
+    rotateStatesEqual(a.modes, b.modes, options)
   );
+}
+
+function rotateStatesEqual(
+  popped: ModeState,
+  onScreen: ModeState,
+  options?: CrystalStatesEqualOptions,
+): boolean {
+  if (popped.rotate === null) return true;
+  if (options?.reducedMotion) return true;
+  return (popped.rotate ?? false) === (onScreen.rotate ?? false);
 }
 
 function labEqual(a: LabConditionsState | null, b: LabConditionsState | null): boolean {

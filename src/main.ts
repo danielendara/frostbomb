@@ -979,6 +979,7 @@ function syncModeParam(name: ShareFlagName, enabled: boolean) {
   const url = new URL(window.location.href);
   setShareFlag(url.searchParams, name, enabled);
   window.history.replaceState(null, "", url.pathname + url.search);
+  syncCommittedSearch();
   persistModePrefs();
 }
 
@@ -1075,6 +1076,14 @@ function syncCrystalUrl(
   } else {
     window.history.replaceState(null, "", next);
   }
+  syncCommittedSearch();
+}
+
+/** Last query string we wrote or accepted — hash-only popstate keeps this unchanged. */
+let committedSearch = window.location.search;
+
+function syncCommittedSearch(): void {
+  committedSearch = window.location.search;
 }
 
 /**
@@ -1116,10 +1125,15 @@ function restoreCrystalState(state: CrystalUrlState): void {
 }
 
 window.addEventListener("popstate", () => {
+  if (window.location.search === committedSearch) return;
   const popped = parseCrystalUrlState(window.location.search);
   const onScreen = onScreenCrystalState();
-  if (crystalStatesEqual(popped, onScreen)) return;
+  if (crystalStatesEqual(popped, onScreen, { reducedMotion: motionQuery.matches })) {
+    syncCommittedSearch();
+    return;
+  }
   restoreCrystalState(popped);
+  syncCommittedSearch();
 });
 
 const btnRotate = document.getElementById("btn-rotate") as HTMLButtonElement | null;
