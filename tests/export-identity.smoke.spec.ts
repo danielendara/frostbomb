@@ -1,23 +1,10 @@
-import { createHash } from "node:crypto";
 import { expect, test, type Download, type Page } from "@playwright/test";
+import { readDownload } from "./e2e-helpers";
 
 /**
  * #343 — Save 3D names the files from the crystal captured at click time.
  * Regrow stays available while the exporter module loads.
  */
-
-async function readDownload(download: Download): Promise<{ name: string; sha: string }> {
-  const stream = await download.createReadStream();
-  if (!stream) throw new Error(`Empty download: ${download.suggestedFilename()}`);
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  const body = Buffer.concat(chunks);
-  await download.delete();
-  return {
-    name: download.suggestedFilename(),
-    sha: createHash("sha256").update(body).digest("hex"),
-  };
-}
 
 async function save3d(page: Page): Promise<{ stl: string; glb: string }> {
   const files: { name: string; sha: string }[] = [];

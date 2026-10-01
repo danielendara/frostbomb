@@ -20,7 +20,8 @@ const chromiumProject = {
 
 export default defineConfig({
   testDir: './tests',
-  testIgnore: ['**/unit/**'],
+  testIgnore: ['**/unit/**', '**/e2e-helpers.ts'],
+  forbidOnly: !!process.env.CI,
   timeout: 60000,
   maxFailures: process.env.CI ? 5 : undefined,
   use: {

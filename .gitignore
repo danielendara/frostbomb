@@ -14,3 +14,6 @@ dist
 
 # playwright results
 test-results/
+playwright-report/
+blob-report/
+test-results/.last-run.json
