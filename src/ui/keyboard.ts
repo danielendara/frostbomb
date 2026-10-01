@@ -94,8 +94,6 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
 
     const delta = e.shiftKey ? 0.3 : 0.1;
 
-    // Performance Optimization: Static switch statement eliminates object allocation
-    // and garbage collection overhead during high-frequency user keyboard input.
     switch (k) {
       case "arrowup":
         e.preventDefault();
@@ -115,69 +113,55 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
         break;
       case "r":
         ctx.onRefresh();
-        visualPress("refresh");
         break;
       case " ":
         e.preventDefault();
         ctx.onRefresh();
-        visualPress("refresh");
         break;
       case "v":
         ctx.onResetView();
-        visualPress("btn-reset");
         break;
       case "g":
         ctx.onToggleGuide();
-        visualPress("guide-toggle");
         break;
       case "?":
         ctx.onNavigateShortcuts();
-        visualPress("guide-toggle");
+        if (ctx.isGuideOpen()) {
+          visualPress("guide-toggle");
+        }
         break;
       case "l":
         ctx.onToggleLab();
-        visualPress("lab-toggle");
         break;
       case "h":
         ctx.onToggleUI();
-        visualPress("btn-ui");
         break;
       case "p":
         ctx.onTogglePink();
-        visualPress("btn-pink");
         break;
       case "m":
         ctx.onTogglePrism();
-        visualPress("btn-prism");
         break;
       case "s":
         ctx.onSave();
-        visualPress("btn-save");
         break;
       case "e":
         ctx.onSaveSvg();
-        visualPress("btn-save-svg");
         break;
       case "t":
         ctx.onSave3d();
-        visualPress("btn-save-3d");
         break;
       case "a":
         ctx.onToggleAutoRotate();
-        visualPress("btn-rotate");
         break;
       case "c":
         ctx.onCopyLink();
-        visualPress("btn-copy");
-        visualPress("btn-seed");
         break;
       case "k":
         ctx.onCopySeed();
-        visualPress("btn-copy-seed");
         break;
       case "d":
         ctx.onDailyCrystal();
-        visualPress("btn-daily");
         break;
     }
   };

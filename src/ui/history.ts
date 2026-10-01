@@ -77,7 +77,6 @@ export class SeedHistoryManager {
   constructor(options: HistoryManagerOptions) {
     this.onSelectSeed = options.onSelectSeed;
     this.loadFromStorage();
-    this.initClearButton();
   }
 
   private loadFromStorage(): void {
@@ -216,13 +215,6 @@ export class SeedHistoryManager {
     setTimeout(() => {
       document.getElementById("btn-clear-history")?.focus();
     }, 50);
-  }
-
-  private initClearButton(): void {
-    document.getElementById("btn-clear-history")?.addEventListener("click", () => {
-      visualPress("btn-clear-history");
-      // UI state will be supplied via updateUI calls
-    });
   }
 
   private setClearButtonAvailable(available: boolean): void {

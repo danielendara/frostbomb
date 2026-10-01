@@ -1,11 +1,3 @@
-/**
- * One codec for the shareable crystal state (#316).
- *
- * Cold load, the share link, and `popstate` all parse and serialize through
- * here — that is what makes "the state a Back lands on is the state a share
- * link would produce" a testable claim rather than a hope.
- */
-
 import {
   SHARE_PARAM_LAB,
   SHARE_PARAM_PINK,
