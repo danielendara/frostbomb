@@ -92,6 +92,28 @@ describe("crystalStatesEqual", () => {
     expect(crystalStatesEqual(base, { ...base, provenance: "sampled" })).toBe(false);
     expect(crystalStatesEqual(base, { ...base, modes: { ...base.modes, prism: true } })).toBe(false);
   });
+
+  it("treats an absent mode param as off, matching the on-screen all-off state", () => {
+    const parsed = parseCrystalUrlState("?seed=abcde");
+    const onScreen: CrystalUrlState = {
+      seed: "abcde",
+      provenance: "sampled",
+      lab: null,
+      modes: { pink: false, prism: false, lab: false, rotate: false },
+    };
+    expect(crystalStatesEqual(parsed, onScreen)).toBe(true);
+  });
+
+  it("is false when an explicit on differs from an absent (off) mode", () => {
+    const parsed = parseCrystalUrlState("?seed=abcde");
+    const onScreen: CrystalUrlState = {
+      seed: "abcde",
+      provenance: "sampled",
+      lab: null,
+      modes: { pink: true, prism: false, lab: false, rotate: false },
+    };
+    expect(crystalStatesEqual(parsed, onScreen)).toBe(false);
+  });
 });
 
 describe("generation provenance (#341)", () => {
