@@ -4,7 +4,7 @@ import {
   CLIENT_ERROR_SOURCE_MAX,
   UA_FAMILIES,
   type ClientErrorReport,
-} from "../ui/client-error";
+} from "../client-error-contract";
 
 /** Largest accepted report body, in bytes (#356). */
 export const CLIENT_ERROR_BODY_MAX = 2048;

@@ -243,6 +243,31 @@ body.pink-mode {
   color: var(--accent);
 }
 
+#recent-seeds-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.recent-seeds-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.15rem;
+}
+
+#recent-seeds-label {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+  font-size: 0.55rem;
+  font-weight: bold;
+  margin: 0;
+}
+
 /* History chips reuse .seed-btn, whose negative margin is for the masthead
    inline seed control. Reset it so pills sit in an even row. */
 #recent-seeds-list {
@@ -262,6 +287,35 @@ body.pink-mode {
   display: inline-flex;
   align-items: center;
   gap: 0.1rem;
+}
+
+#recent-seeds-list .seed-pill {
+  padding: 0.15rem 0.35rem;
+  font-size: 0.65rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  cursor: pointer;
+  text-transform: lowercase;
+}
+
+#recent-seeds-list .seed-pill.is-active {
+  background: rgba(158, 201, 255, 0.15);
+  color: var(--accent);
+}
+
+#recent-seeds-list .seed-pill:not(.is-active):hover,
+#recent-seeds-list .seed-pill:not(.is-active):focus {
+  background: rgba(230, 237, 245, 0.1);
+  color: var(--ink);
+}
+
+#recent-seeds-list .seed-pill.is-active:hover,
+#recent-seeds-list .seed-pill.is-active:focus {
+  background: rgba(158, 201, 255, 0.15);
+  color: var(--accent);
 }
 
 #recent-seeds-list .seed-pill.is-kept {
