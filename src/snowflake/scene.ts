@@ -31,6 +31,8 @@ export interface Scene {
   updateFlake: (data: BuildResult, animate?: boolean) => void;
   resetView: () => void;
   rotateView: (dx: number, dy: number) => void;
+  /** Re-fit camera, pixel ratio, renderer and composer to the window (the `resize` handler). */
+  resize: () => void;
 }
 
 export interface SceneOptions {
@@ -287,6 +289,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     setPhotoMode: (enabled: boolean) => {
       pipeline.setPhotoMode(enabled);
     },
+    resize: updateCamera,
     resetView: () => {
       rotation.x = 0;
       rotation.y = 0;
