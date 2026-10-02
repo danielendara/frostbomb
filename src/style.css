@@ -762,6 +762,10 @@ kbd {
   margin: 0.2rem 0;
 }
 
+.action-btn[hidden] {
+  display: none;
+}
+
 .action-btn {
   appearance: none;
   background: transparent;

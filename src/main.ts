@@ -30,6 +30,7 @@ import {
 } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { captureWallpaper, wallpaperFileName, wallpaperSize } from "./ui/wallpaper";
+import { canShareFiles, drawOnOpaqueCanvas, shareSnowflake } from "./ui/share-image";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
@@ -775,7 +776,7 @@ async function copyTextToClipboard(
     successAnnounce: string;
     failureAnnounce: string;
   },
-): Promise<void> {
+): Promise<boolean> {
   for (const id of feedback.pressIds) {
     visualPress(id);
   }
@@ -801,6 +802,7 @@ async function copyTextToClipboard(
       throw new Error("Clipboard API unavailable");
     }
     markCopied();
+    return true;
   } catch (err) {
     console.warn("Clipboard API failed, trying legacy fallback:", err);
     try {
@@ -818,19 +820,21 @@ async function copyTextToClipboard(
         throw new Error("execCommand copy failed");
       }
       markCopied();
+      return true;
     } catch (fallbackErr) {
       console.error("Legacy fallback failed:", fallbackErr);
       markFailed();
+      return false;
     }
   }
 }
 
-async function copyLink() {
-  await copyTextToClipboard(buildShareUrl(), {
+async function copyLink(failureAnnounce = "Failed to copy link"): Promise<boolean> {
+  return copyTextToClipboard(buildShareUrl(), {
     pressIds: ["btn-copy", "btn-seed"],
     labelIds: ["btn-copy", "btn-seed"],
     successAnnounce: `Link copied for seed ${currentSeedLabel}`,
-    failureAnnounce: "Failed to copy link",
+    failureAnnounce,
   });
 }
 
@@ -844,8 +848,77 @@ async function copySeedOnly() {
   });
 }
 
-document.getElementById("btn-copy")?.addEventListener("click", copyLink);
-document.getElementById("btn-seed")?.addEventListener("click", copyLink);
+document.getElementById("btn-copy")?.addEventListener("click", () => {
+  void copyLink();
+});
+document.getElementById("btn-seed")?.addEventListener("click", () => {
+  void copyLink();
+});
+
+// Share sheet (#375): the button is rendered only where the browser can share
+// an image file; everywhere else Copy link stays the path.
+const shareBtn = document.getElementById("btn-share") as HTMLButtonElement | null;
+let shareInFlight = false;
+
+async function shareCurrentSnowflake() {
+  if (shareInFlight) return;
+  shareInFlight = true;
+  if (shareBtn) {
+    shareBtn.disabled = true;
+    shareBtn.setAttribute("aria-busy", "true");
+  }
+  // Identity and link are fixed before rotation pauses: the link carries the
+  // rotate flag, and it must match what Copy link would write.
+  const habit = currentConditions.habit;
+  const seed = currentSeedLabel;
+  const url = buildShareUrl();
+  const wasAutoRotating = scene.isAutoRotateEnabled;
+  if (wasAutoRotating) scene.setAutoRotate(false);
+
+  // Nothing below may await before navigator.share except toBlob, or the
+  // tap's user activation is lost.
+  try {
+    visualPress("btn-share");
+    scene.composer.render();
+    const opaque = drawOnOpaqueCanvas(canvas, getComputedStyle(document.body).backgroundColor);
+    const outcome = await shareSnowflake({
+      canvas: opaque,
+      fileName: formatExportFileName({ habit, seed }, "png"),
+      title: `Frostbomb snowflake ${seed}`,
+      text: `${habitLabel[habit]} · seed ${seed}`,
+      url,
+      nav: navigator,
+      onError: (err) => {
+        console.error("Failed to share snowflake", err);
+        reportClientError("export", err);
+      },
+    });
+    if (outcome === "shared") {
+      announce(`Shared snowflake ${seed}`);
+    } else if (outcome === "failed") {
+      // share() consumed the activation, so this copy can fail too.
+      await copyLink("Couldn't open the share sheet. Use Copy link.");
+    }
+  } catch (err) {
+    console.error("Failed to share snowflake", err);
+    reportClientError("export", err);
+    await copyLink("Couldn't open the share sheet. Use Copy link.");
+  } finally {
+    shareInFlight = false;
+    if (shareBtn) {
+      shareBtn.disabled = false;
+      shareBtn.removeAttribute("aria-busy");
+    }
+    if (wasAutoRotating) scene.setAutoRotate(true);
+  }
+}
+
+if (shareBtn && canShareFiles(navigator)) {
+  shareBtn.hidden = false;
+  shareBtn.addEventListener("click", () => {
+    void shareCurrentSnowflake();
+  });
+}
 document.getElementById("btn-copy-seed")?.addEventListener("click", copySeedOnly);
 
 async function saveSnowflake() {
@@ -1425,7 +1498,7 @@ initKeyboardShortcuts({
     toggleAutoRotate();
   },
   onCopyLink: () => {
-    copyLink();
+    void copyLink();
   },
   onCopySeed: () => {
     copySeedOnly();
