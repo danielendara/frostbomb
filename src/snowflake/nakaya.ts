@@ -115,6 +115,43 @@ export const habitLabel: Record<Habit, string> = {
   capped_column: 'Capped column',
 };
 
+/** Chip order in Lab Mode (#376): matches the Nakaya diagram's regions, left to right. */
+export const HABIT_CHIP_ORDER: readonly Habit[] = [
+  'plate',
+  'sector_plate',
+  'stellar_dendrite',
+  'fernlike_dendrite',
+  'needle',
+  'column',
+  'capped_column',
+];
+
+/** Short chip text; the full name (`habitLabel`) goes in the chip's aria-label/title. */
+export const HABIT_SHORT_LABEL: Record<Habit, string> = {
+  plate: 'Plate',
+  sector_plate: 'Sector',
+  stellar_dendrite: 'Stellar',
+  fernlike_dendrite: 'Fern',
+  needle: 'Needle',
+  column: 'Column',
+  capped_column: 'Capped',
+};
+
+/**
+ * One representative point inside each habit's region, for the Lab Mode chips.
+ * `ss` is 0–1 to match `getHabit` (the Lab panel shows 0–100). Every point sits
+ * on the sliders' steps (0.5 °C / 1 %) and is pinned to its habit by a unit test.
+ */
+export const HABIT_PRESETS: Record<Habit, { temp: number; ss: number }> = {
+  plate: { temp: -2, ss: 0.3 },
+  sector_plate: { temp: -10.5, ss: 0.5 },
+  stellar_dendrite: { temp: -15, ss: 0.65 },
+  fernlike_dendrite: { temp: -15, ss: 0.9 },
+  needle: { temp: -6, ss: 0.7 },
+  column: { temp: -6, ss: 0.15 },
+  capped_column: { temp: -7, ss: 0.35 },
+};
+
 // Performance Optimization: Cache the last evaluated getHabit input/output to avoid redundant branch evaluations.
 let cachedTemp = NaN;
 let cachedSS = NaN;

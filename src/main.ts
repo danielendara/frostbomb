@@ -7,6 +7,7 @@ import {
 import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
 import { buildSnowflakeSvg } from "./snowflake/svg-export";
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snowflake/nakaya";
+import { initHabitChips, syncHabitChips } from "./ui/habit-presets";
 import { mulberry32, resolveSeed, randomSeed, dailySeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
 import { announce as announceRaw } from "./ui/announcer";
@@ -141,6 +142,15 @@ const historyManager = new SeedHistoryManager({
   },
 });
 
+/**
+ * Tweakpane's `refresh()` snaps the value to its step grid and re-emits
+ * `change`, which would run a nested `updateFromPane()` that *replaces* the
+ * history entry before a habit chip's deliberate push lands, overwriting the
+ * previous entry so Back skips it. The chip tap applies its own preset, so it
+ * ignores those refresh-driven events.
+ */
+let suppressPaneChange = false;
+
 // Lab Panel
 const labPanel = new LabPanel({
   getCurrentSeedLabel: () => currentSeedLabel,
@@ -162,6 +172,7 @@ const labPanel = new LabPanel({
     announce(`Randomized seed to ${result.label}`);
   },
   onConditionsChange: () => {
+    if (suppressPaneChange) return;
     updateFromPane();
   },
 });
@@ -248,6 +259,9 @@ function grow(
   setText("stat-temp", tempText);
   setText("stat-humid", humidText);
   setText("stat-habit", habitText);
+  // The one place #stat-habit is written, so the Lab habit chips follow every
+  // path (sliders, diagram, keyboard, new seeds, Back/forward restores).
+  syncHabitChips(document, conditions.habit);
 
   const habitChanged = lastHabit && lastHabit !== habitText;
   if ((animate && isNewSeed) || habitChanged) {
@@ -667,7 +681,12 @@ nakayaCanvas?.addEventListener("keydown", (e: Event) => {
   }
 });
 
-function updateFromPane() {
+/**
+ * `history` is "replace" for incidental tweaks (slider drags coalesce into the
+ * current entry); a habit chip is a deliberate jump and passes "push" so one
+ * Back step undoes it.
+ */
+function updateFromPane(history: "push" | "replace" = "replace") {
   const { habitText, conditions } = commitNakayaConditions({
     temperatureC: labPanel.params.temperature,
     supersaturation: labPanel.params.supersaturation / 100,
@@ -689,9 +708,28 @@ function updateFromPane() {
 
   grow(conditions, true, false);
 
-  // Incidental tweak: coalesce into the current entry rather than pushing one
-  // history step per slider frame.
-  syncCrystalUrl(currentSeedLabel, conditions, "replace");
+  // Default: an incidental tweak coalesces into the current entry rather than
+  // pushing one history step per slider frame.
+  syncCrystalUrl(currentSeedLabel, conditions, history);
+}
+
+// Habit chips (#376). They live in #lab-controls, which is hidden until Lab
+// Mode is on, so a tap always lands with Lab already on.
+const habitChips = document.getElementById("habit-chips");
+if (habitChips) {
+  initHabitChips(habitChips, (_habit, preset) => {
+    // The shell shows before the Tweakpane chunk loads; the load's own
+    // updateFromPane() would overwrite a tap made in that window.
+    if (!labPanel.isLoaded()) return;
+    labPanel.params.temperature = preset.temp;
+    labPanel.params.supersaturation = preset.ss * 100;
+    suppressPaneChange = true;
+    try {
+      updateFromPane("push");
+    } finally {
+      suppressPaneChange = false;
+    }
+  });
 }
 
 function shareSearchParams(): URLSearchParams {

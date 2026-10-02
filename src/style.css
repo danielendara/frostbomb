@@ -428,6 +428,45 @@ body.pink-mode {
   gap: 0.75rem;
 }
 
+/* Lab Mode habit chips (#376): wrap cleanly down to 360px. */
+.habit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.habit-chip {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.45rem 0.65rem;
+  min-height: 2rem;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.habit-chip:hover,
+.habit-chip:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.habit-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.habit-chip[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .lab-toggle {
   background: transparent;
   border: none;
