@@ -282,3 +282,79 @@ for (const [label, key] of [
     await expectSeed(page, "abcde");
   });
 }
+
+/**
+ * #379 — hash-only history (Skip to controls) must not re-restore the crystal
+ * when the query string is unchanged.
+ */
+async function activateSkipLink(page: import("@playwright/test").Page) {
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".skip-link")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#field-notes")).toBeFocused();
+  await page.waitForFunction(() => location.hash === "#field-notes");
+}
+
+async function startLoadedSeedWatch(page: import("@playwright/test").Page) {
+  await page.locator("#a11y-announcer").evaluate((el) => {
+    const heard: string[] = [];
+    (window as unknown as { __heard: string[] }).__heard = heard;
+    new MutationObserver(() => {
+      if (el.textContent) heard.push(el.textContent);
+    }).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+}
+
+async function expectNoLoadedSeedAfterHashBack(page: import("@playwright/test").Page) {
+  const searchBeforeSkip = await page.evaluate(() => location.search);
+  await startLoadedSeedWatch(page);
+  await activateSkipLink(page);
+  expect(await page.evaluate(() => location.search)).toBe(searchBeforeSkip);
+  await page.goBack();
+  await page.waitForFunction(() => location.hash === "");
+  await page.waitForTimeout(300);
+  const heard = await page.evaluate(() => (window as unknown as { __heard: string[] }).__heard);
+  expect(heard.filter((m) => /Loaded seed/.test(m))).toEqual([]);
+  expect(await page.evaluate(() => location.search)).toBe(searchBeforeSkip);
+}
+
+test.describe("#379 hash-only Back after Skip to controls", () => {
+  test("bare ?seed=abcde does not re-announce Loaded seed", async ({ page }) => {
+    await page.goto("/?seed=abcde");
+    await expectSeed(page, "abcde");
+    await expectNoLoadedSeedAfterHashBack(page);
+    await expectSeed(page, "abcde");
+  });
+
+  test("?seed=abcde&rotate=1 does not re-announce Loaded seed", async ({ page }) => {
+    await page.goto("/?seed=abcde&rotate=1");
+    await expectSeed(page, "abcde");
+    await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+    await expectNoLoadedSeedAfterHashBack(page);
+    await expectSeed(page, "abcde");
+    await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("?seed=abcde&rotate=1 with reduced motion does not re-announce Loaded seed", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/?seed=abcde&rotate=1");
+    await expectSeed(page, "abcde");
+    await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+    await expectNoLoadedSeedAfterHashBack(page);
+    await expectSeed(page, "abcde");
+  });
+
+  test("remembered Pink stays on and does not re-announce Loaded seed", async ({ page }) => {
+    await page.goto("/?seed=abcde");
+    await page.locator("#btn-pink").click();
+    await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+    await page.goto("/?seed=abcde");
+    await expectSeed(page, "abcde");
+    await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+    await expectNoLoadedSeedAfterHashBack(page);
+    await expectSeed(page, "abcde");
+    await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
+  });
+});
