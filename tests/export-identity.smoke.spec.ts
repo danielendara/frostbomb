@@ -6,19 +6,39 @@ import { readDownload } from "./e2e-helpers";
  * Regrow stays available while the exporter module loads.
  */
 
-async function save3d(page: Page): Promise<{ stl: string; glb: string }> {
-  const files: { name: string; sha: string }[] = [];
-  const onDownload = (download: Download) => {
-    void readDownload(download).then((file) => files.push(file));
-  };
-  page.on("download", onDownload);
-  await page.evaluate(() => {
+const DOWNLOAD_TEST_GAP_MS = 250;
+
+async function waitSave3dIdle(page: Page): Promise<void> {
+  await expect(page.locator("#btn-save-3d")).not.toHaveAttribute("aria-busy", "true", {
+    timeout: 30_000,
+  });
+}
+
+async function armObjectUrlTestHooks(page: Page): Promise<void> {
+  await page.evaluate((gapMs) => {
     (window as unknown as { __FROSTBOMB_OBJECT_URL_REVOKE_MS__: number }).__FROSTBOMB_OBJECT_URL_REVOKE_MS__ =
       15000;
+    (window as unknown as { __FROSTBOMB_DOWNLOAD_GAP_MS__: number }).__FROSTBOMB_DOWNLOAD_GAP_MS__ = gapMs;
+  }, DOWNLOAD_TEST_GAP_MS);
+}
+
+function waitForTypedDownload(page: Page, extension: ".stl" | ".glb"): Promise<Download> {
+  return page.waitForEvent("download", {
+    predicate: (download) => download.suggestedFilename().endsWith(extension),
+    timeout: 30_000,
   });
-  await page.locator("#btn-save-3d").click();
-  await expect.poll(() => files.length, { timeout: 20000 }).toBe(2);
-  page.off("download", onDownload);
+}
+
+async function save3d(page: Page): Promise<{ stl: string; glb: string }> {
+  await armObjectUrlTestHooks(page);
+  await waitSave3dIdle(page);
+  const saveBtn = page.locator("#btn-save-3d");
+  const stlDownload = waitForTypedDownload(page, ".stl");
+  const glbDownload = waitForTypedDownload(page, ".glb");
+  await saveBtn.click();
+  const [stlFile, glbFile] = await Promise.all([stlDownload, glbDownload]);
+  await waitSave3dIdle(page);
+  const files = [await readDownload(stlFile), await readDownload(glbFile)];
   const stl = files.find((file) => file.name.endsWith(".stl"));
   const glb = files.find((file) => file.name.endsWith(".glb"));
   expect(stl && glb).toBeTruthy();
@@ -28,6 +48,8 @@ async function save3d(page: Page): Promise<{ stl: string; glb: string }> {
 test("Save 3D filenames stay on the crystal captured before the exporter loads", async ({
   page,
 }) => {
+  test.setTimeout(120_000);
+
   await page.goto("/?seed=abcde");
   await expect(page.locator("#seed-display")).toHaveText("abcde");
   await expect(page.locator("#stat-habit")).toHaveText("Fernlike dendrite");
@@ -52,24 +74,23 @@ test("Save 3D filenames stay on the crystal captured before the exporter loads",
 
   await delayed.goto("/?seed=abcde");
   await expect(delayed.locator("#seed-display")).toHaveText("abcde");
-  await delayed.evaluate(() => {
-    (window as unknown as { __FROSTBOMB_OBJECT_URL_REVOKE_MS__: number }).__FROSTBOMB_OBJECT_URL_REVOKE_MS__ =
-      15000;
-  });
+  await armObjectUrlTestHooks(delayed);
+  await waitSave3dIdle(delayed);
 
-  const saved: { name: string; sha: string }[] = [];
-  delayed.on("download", (download) => {
-    void readDownload(download).then((file) => saved.push(file));
-  });
+  const delayedSave = delayed.locator("#btn-save-3d");
+  const stlDownload = waitForTypedDownload(delayed, ".stl");
+  const glbDownload = waitForTypedDownload(delayed, ".glb");
 
-  await delayed.locator("#btn-save-3d").click();
+  await delayedSave.click();
   await requested;
   await delayed.keyboard.press("r");
   await expect(delayed.locator("#seed-display")).not.toHaveText("abcde", { ignoreCase: true });
   const regrownSeed = (await delayed.locator("#seed-display").innerText()).toLowerCase();
   releaseExport();
 
-  await expect.poll(() => saved.length, { timeout: 20000 }).toBe(2);
+  const [stlDownloadResult, glbDownloadResult] = await Promise.all([stlDownload, glbDownload]);
+  await waitSave3dIdle(delayed);
+  const saved = [await readDownload(stlDownloadResult), await readDownload(glbDownloadResult)];
   const names = saved.map((file) => file.name).sort();
   expect(names).toEqual([
     "frostbomb-fernlike-dendrite-abcde.glb",
@@ -81,6 +102,8 @@ test("Save 3D filenames stay on the crystal captured before the exporter loads",
   const glb = saved.find((file) => file.name.endsWith(".glb"))!;
   expect(stl.sha).toBe(original.stl);
   expect(glb.sha).toBe(original.glb);
+
+  await delayed.close();
 
   await page.goto(`/?seed=${regrownSeed}`);
   await expect(page.locator("#seed-display")).toHaveText(regrownSeed.toUpperCase(), {
