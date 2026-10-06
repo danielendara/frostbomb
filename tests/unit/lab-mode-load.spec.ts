@@ -111,6 +111,24 @@ function labStatus() {
   return document.getElementById("lab-status") as HTMLElement;
 }
 
+const MODE_PREFS_KEY = "frostbomb-mode-prefs";
+
+describe("Lab Mode pref persistence (#385)", () => {
+  it("writes lab=true to localStorage before ensurePane resolves", async () => {
+    gate.failPane = false;
+    await boot();
+
+    labToggle().click();
+    const stored = JSON.parse(localStorage.getItem(MODE_PREFS_KEY) || "{}");
+    expect(stored.lab).toBe(true);
+    expect(labToggle().getAttribute("aria-pressed")).toBe("true");
+
+    await vi.waitFor(() => {
+      expect(labStatus().textContent).toBe("ON");
+    });
+  });
+});
+
 describe("Lab Mode load failure (#349)", () => {
   it("hides the controls, resets the toggle, and focuses it when ensurePane rejects", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});

@@ -27,6 +27,7 @@ test("a cold load with no lab query restores the last-remembered lab pref (#312)
   await page.click("#lab-toggle");
   await expect(page.locator("#lab-controls")).toBeVisible();
   await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#lab-status")).toHaveText("ON");
 
   await page.goto("/?seed=fghij");
   await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
