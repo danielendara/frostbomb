@@ -104,6 +104,7 @@ body.pink-mode {
   height: 100vh;
   display: block;
   z-index: 1;
+  touch-action: pinch-zoom;
 }
 
 /* --- masthead --- */

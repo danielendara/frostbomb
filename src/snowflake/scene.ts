@@ -161,28 +161,49 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
   canvas.style.cursor = "grab";
 
+  let dragPointerId = -1;
+  let lastDragX = 0;
+  let lastDragY = 0;
+
   function handlePointerMove(e: PointerEvent) {
     mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 0.3;
     mouse.targetY = (e.clientY / window.innerHeight - 0.5) * 0.3;
-    if (isDragging) {
-      targetRotation.y += (e.movementX || 0) * 0.01;
-      targetRotation.x += (e.movementY || 0) * 0.01;
+    if (isDragging && e.pointerId === dragPointerId) {
+      targetRotation.y += (e.clientX - lastDragX) * 0.01;
+      targetRotation.x += (e.clientY - lastDragY) * 0.01;
+      lastDragX = e.clientX;
+      lastDragY = e.clientY;
     }
   }
 
-  function handlePointerDown() {
+  function handlePointerDown(e: PointerEvent) {
+    if (isDragging && e.pointerId !== dragPointerId) return;
     isDragging = true;
+    dragPointerId = e.pointerId;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
     canvas.style.cursor = "grabbing";
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e: PointerEvent) {
+    if (e.pointerId !== dragPointerId) return;
     isDragging = false;
+    dragPointerId = -1;
     canvas.style.cursor = "grab";
   }
 
   window.addEventListener("pointermove", handlePointerMove);
   canvas.addEventListener("pointerdown", handlePointerDown);
   window.addEventListener("pointerup", handlePointerUp);
+  window.addEventListener("pointercancel", handlePointerUp);
+
+  if (import.meta.env.DEV) {
+    (window as any).__FROSTBOMB_DRAG__ = () => ({
+      isDragging,
+      x: targetRotation.x,
+      y: targetRotation.y,
+    });
+  }
 
   function updateCamera() {
     const w = window.innerWidth;
@@ -239,6 +260,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       window.removeEventListener("pointermove", handlePointerMove);
       canvas.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
       window.removeEventListener("resize", updateCamera);
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
