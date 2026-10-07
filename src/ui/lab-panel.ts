@@ -90,7 +90,7 @@ export class LabPanel {
           }
 
           this.params.seed = currentSeedLabel;
-          p.refresh();
+          this.refresh();
         }
       });
 
