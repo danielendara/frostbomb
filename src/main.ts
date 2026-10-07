@@ -379,6 +379,8 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     labStatus.textContent = isLabMode ? "ON" : "OFF";
   }
 
+  persistModePrefs();
+
   updateRecentSeedsUI();
 
   if (isLabMode) {
