@@ -34,7 +34,7 @@ import { canShareFiles, drawOnOpaqueCanvas, shareSnowflake } from "./ui/share-im
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
-import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
+import { loadModePrefs, resolveRotatePref, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
   crystalStatesEqual,
   parseCrystalUrlState,
@@ -1109,6 +1109,10 @@ function togglePrismMode() {
 
 btnPrism?.addEventListener("click", togglePrismMode);
 
+// The user's rotate choice, not the live scene flag (which export/share
+// pauses and reduced motion force off). Set by applyModes and toggleAutoRotate.
+let rotatePref: boolean | undefined;
+
 function writeCurrentModeParams(params: URLSearchParams) {
   setShareFlag(params, SHARE_PARAM_PINK, scene.isPinkModeEnabled);
   setShareFlag(params, SHARE_PARAM_PRISM, scene.isPrismModeEnabled);
@@ -1117,9 +1121,9 @@ function writeCurrentModeParams(params: URLSearchParams) {
   } else if (loadModePrefs().lab === false) {
     setShareFlag(params, SHARE_PARAM_LAB, false);
   }
-  if (scene.isAutoRotateEnabled) {
+  if (rotatePref === true && !motionQuery.matches) {
     setShareFlag(params, SHARE_PARAM_ROTATE, true);
-  } else if (loadModePrefs().rotate === false) {
+  } else if (rotatePref === false) {
     setShareFlag(params, SHARE_PARAM_ROTATE, false);
   }
 }
@@ -1148,7 +1152,7 @@ function persistModePrefs(): void {
     pink: scene.isPinkModeEnabled,
     prism: scene.isPrismModeEnabled,
     lab: isLabMode,
-    rotate: scene.isAutoRotateEnabled,
+    rotate: rotatePref,
   });
 }
 
@@ -1185,12 +1189,18 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
 function applyModes(source: ModeSource) {
   const params = new URLSearchParams(window.location.search);
   const stored = loadModePrefs();
+  // Before setPinkMode/setPrismMode: they persist prefs and must see the intent.
+  const rotateParam = readShareFlag(params, SHARE_PARAM_ROTATE);
+  rotatePref = resolveRotatePref(
+    rotateParam === null ? null : rotateParam === "1",
+    stored.rotate,
+    motionQuery.matches,
+  );
 
   const target = resolveModes(source, params, stored);
   if (target.pink !== scene.isPinkModeEnabled) setPinkMode(target.pink);
   if (target.prism !== scene.isPrismModeEnabled) setPrismMode(target.prism);
 
-  const rotateParam = readShareFlag(params, SHARE_PARAM_ROTATE);
   if (rotateParam !== null) {
     if (!motionQuery.matches) {
       const wantRotate = rotateParam === "1";
@@ -1319,7 +1329,8 @@ motionQuery.addEventListener("change", updateRotateButtonUI);
 
 function toggleAutoRotate() {
   if (motionQuery.matches) return;
-  const enabled = !scene.isAutoRotateEnabled;
+  const enabled = !(rotatePref ?? scene.isAutoRotateEnabled);
+  rotatePref = enabled;
   visualPress("btn-rotate");
   scene.setAutoRotate(enabled);
   updateRotateButtonUI();
