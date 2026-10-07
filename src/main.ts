@@ -129,6 +129,7 @@ let labToggleGeneration = 0;
 // History Manager
 const historyManager = new SeedHistoryManager({
   onSelectSeed: (seedVal) => {
+    urlWrites.flush();
     if (seedVal === currentSeedLabel) {
       announce(`Seed ${seedVal} is already active`);
       return;
@@ -164,6 +165,7 @@ const urlWrites = createUrlWriteCoalescer(
 const labPanel = new LabPanel({
   getCurrentSeedLabel: () => currentSeedLabel,
   onSeedChange: (val) => {
+    urlWrites.flush();
     currentSeed = {
       seed: hashString(val),
       label: val,
@@ -174,6 +176,7 @@ const labPanel = new LabPanel({
     announce(`Seed changed to ${val}`);
   },
   onRandomizeSeed: () => {
+    urlWrites.flush();
     // Roll explicitly — the address bar always carries a seed now, so
     // re-reading it would hand back the same crystal (#316).
     const result = grow(retainedManualConditions(), false, false, undefined, randomSeed());
@@ -334,6 +337,8 @@ function handleRefresh(e?: Event) {
  * way Regrow does.
  */
 function growAndPush(forcedSeed: { seed: number; label: string }) {
+  // Land a pending drag write on the current entry before this push, so Back returns to the final drag point.
+  urlWrites.flush();
   const { conditions, label } = grow(
     retainedManualConditions(),
     false,

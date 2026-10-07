@@ -28,6 +28,12 @@ export class LabPanel {
   };
 
   private pane: TweakpanePane | null = null;
+  /**
+   * > 0 while syncing the pane from app state. Tweakpane's `refresh()` re-emits
+   * `change` with `last === true`; that is not a slider release, so it is passed
+   * on as `last: false` (a Nakaya drag must not flush its throttled URL write).
+   */
+  private refreshDepth = 0;
   private panePromise: Promise<TweakpanePane> | null = null;
   private callbacks: LabPanelCallbacks;
 
@@ -103,7 +109,7 @@ export class LabPanel {
         this.callbacks.onConditionsChange(
           this.params.temperature,
           this.params.supersaturation,
-          ev.last,
+          ev.last && this.refreshDepth === 0,
         );
       });
 
@@ -121,7 +127,7 @@ export class LabPanel {
         this.callbacks.onConditionsChange(
           this.params.temperature,
           this.params.supersaturation,
-          ev.last,
+          ev.last && this.refreshDepth === 0,
         );
       });
 
@@ -148,11 +154,16 @@ export class LabPanel {
     this.params.temperature = tempC;
     this.params.temperatureF = (tempC * 9) / 5 + 32;
     this.params.supersaturation = ssPercent;
-    this.pane?.refresh();
+    this.refresh();
   }
 
   public refresh(): void {
-    this.pane?.refresh();
+    this.refreshDepth++;
+    try {
+      this.pane?.refresh();
+    } finally {
+      this.refreshDepth--;
+    }
   }
 
   public isLoaded(): boolean {
