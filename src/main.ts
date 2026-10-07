@@ -1361,16 +1361,32 @@ function focusSceneForPhotoMode(): void {
 
 function restorePhotoModeUIFocus(): void {
   const focusBtn = () => {
-    if (btnUI instanceof HTMLElement) {
-      btnUI.focus({ preventScroll: true });
-    }
+    if (!(btnUI instanceof HTMLElement)) return;
+    const active = document.activeElement;
+    // Never steal focus back once the user has moved it elsewhere.
+    if (active && active !== document.body && active !== btnUI) return;
+    btnUI.focus({ preventScroll: true });
   };
+
+  focusBtn();
 
   // Visibility is animated, so retry after layout and once it has completed.
   // The latter also covers browsers that do not dispatch transitionend here.
   requestAnimationFrame(() => requestAnimationFrame(focusBtn));
   setTimeout(focusBtn, 350);
   setTimeout(focusBtn, 700);
+
+  // Slow frames can stall the timeline, so keep retrying for a short while.
+  const deadline = performance.now() + 1500;
+  const retry = () => {
+    const active = document.activeElement;
+    if (active === btnUI) return;
+    if (active && active !== document.body) return;
+    if (performance.now() > deadline) return;
+    focusBtn();
+    requestAnimationFrame(retry);
+  };
+  requestAnimationFrame(retry);
 }
 
 document.addEventListener("focusin", (e) => {
