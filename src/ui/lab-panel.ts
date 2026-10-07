@@ -14,7 +14,7 @@ export interface LabPanelParams {
 export interface LabPanelCallbacks {
   onSeedChange: (seed: string) => void;
   onRandomizeSeed: () => void;
-  onConditionsChange: (temp: number, ss: number) => void;
+  onConditionsChange: (temp: number, ss: number, last?: boolean) => void;
   getCurrentSeedLabel: () => string;
 }
 
@@ -99,8 +99,12 @@ export class LabPanel {
         max: 0,
         step: 0.5,
         label: "Temp (°C)",
-      }).on("change", () => {
-        this.callbacks.onConditionsChange(this.params.temperature, this.params.supersaturation);
+      }).on("change", (ev) => {
+        this.callbacks.onConditionsChange(
+          this.params.temperature,
+          this.params.supersaturation,
+          ev.last,
+        );
       });
 
       p.addBinding(this.params, "temperatureF", {
@@ -113,8 +117,12 @@ export class LabPanel {
         max: 100,
         step: 1,
         label: "Humidity (%)",
-      }).on("change", () => {
-        this.callbacks.onConditionsChange(this.params.temperature, this.params.supersaturation);
+      }).on("change", (ev) => {
+        this.callbacks.onConditionsChange(
+          this.params.temperature,
+          this.params.supersaturation,
+          ev.last,
+        );
       });
 
       p.addBinding(this.params, "habit", { readonly: true, label: "Habit" });

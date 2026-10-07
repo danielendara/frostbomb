@@ -33,6 +33,7 @@ import { captureWallpaper, wallpaperFileName, wallpaperSize } from "./ui/wallpap
 import { canShareFiles, drawOnOpaqueCanvas, shareSnowflake } from "./ui/share-image";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
+import { createUrlWriteCoalescer } from "./url-write-coalescer";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
 import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
@@ -153,6 +154,13 @@ const historyManager = new SeedHistoryManager({
 let suppressPaneChange = false;
 
 // Lab Panel
+// Incidental replace writes from Nakaya drags / slider changes (>= 150 ms apart).
+// Rebuilds from current state when it runs; every other URL write is immediate.
+const urlWrites = createUrlWriteCoalescer(
+  () => syncCrystalUrl(currentSeedLabel, currentConditions, "replace"),
+  150,
+);
+
 const labPanel = new LabPanel({
   getCurrentSeedLabel: () => currentSeedLabel,
   onSeedChange: (val) => {
@@ -172,9 +180,10 @@ const labPanel = new LabPanel({
     syncCrystalUrl(result.label, result.conditions, "push");
     announce(`Randomized seed to ${result.label}`);
   },
-  onConditionsChange: () => {
+  onConditionsChange: (_temp, _ss, last) => {
     if (suppressPaneChange) return;
     updateFromPane();
+    if (last) urlWrites.flush();
   },
 });
 
@@ -690,6 +699,7 @@ nakayaCanvas?.addEventListener("keydown", (e: Event) => {
  * Back step undoes it.
  */
 function updateFromPane(history: "push" | "replace" = "replace") {
+  if (history === "push") urlWrites.flush();
   const { habitText, conditions } = commitNakayaConditions({
     temperatureC: labPanel.params.temperature,
     supersaturation: labPanel.params.supersaturation / 100,
@@ -712,8 +722,12 @@ function updateFromPane(history: "push" | "replace" = "replace") {
   grow(conditions, true, false);
 
   // Default: an incidental tweak coalesces into the current entry rather than
-  // pushing one history step per slider frame.
-  syncCrystalUrl(currentSeedLabel, conditions, history);
+  // pushing one history step per slider frame, and the write is time-throttled.
+  if (history === "replace") {
+    urlWrites.request();
+  } else {
+    syncCrystalUrl(currentSeedLabel, conditions, history);
+  }
 }
 
 // Habit chips (#376). They live in #lab-controls, which is hidden until Lab
@@ -1136,6 +1150,7 @@ function syncCommittedSearch(): void {
 // historyManager.onSelectSeed / labPanel.onSeedChange above). Always
 // replaceState — crystal Back history is #316.
 function syncModeParam(name: ShareFlagName, enabled: boolean) {
+  urlWrites.flush();
   const url = new URL(window.location.href);
   setShareFlag(url.searchParams, name, enabled);
   window.history.replaceState(null, "", url.pathname + url.search);
@@ -1224,20 +1239,33 @@ function syncCrystalUrl(
   conditions: GrowthConditions,
   mode: "push" | "replace",
 ): void {
+  // cancel, not flush: this write rebuilds from current state, so a pending incidental replace is subsumed.
+  urlWrites.cancel();
   const url = new URL(window.location.href);
   url.searchParams.set(SHARE_PARAM_SEED, seedLabel);
   writeCurrentModeParams(url.searchParams);
   writeCrystalGeneration(url.searchParams, generationProvenance, conditions);
   const next = url.pathname + url.search;
-  // Re-growing the crystal already on screen would push a duplicate entry that
-  // Back skips silently (popstate sees no change), so it replaces instead.
-  if (mode === "push" && next !== window.location.pathname + window.location.search) {
-    window.history.pushState(null, "", next);
-  } else {
-    window.history.replaceState(null, "", next);
+  const current = window.location.pathname + window.location.search;
+  try {
+    // Re-growing the crystal already on screen would push a duplicate entry that
+    // Back skips silently (popstate sees no change), so it replaces instead.
+    if (mode === "push" && next !== current) {
+      window.history.pushState(null, "", next);
+    } else if (next !== current) {
+      window.history.replaceState(null, "", next);
+    }
+  } catch (err) {
+    console.warn("History write failed", err);
+    return;
   }
   syncCommittedSearch();
 }
+
+// Land the final drag/slider state when the pointer ends or the page goes away.
+nakayaCanvas?.addEventListener("pointerup", () => urlWrites.flush());
+nakayaCanvas?.addEventListener("pointercancel", () => urlWrites.flush());
+window.addEventListener("pagehide", () => urlWrites.flush());
 
 /**
  * Restores a popped history entry in place: same parse path as a cold load,
@@ -1278,6 +1306,7 @@ function restoreCrystalState(state: CrystalUrlState): void {
 }
 
 window.addEventListener("popstate", () => {
+  urlWrites.cancel();
   if (window.location.search === committedSearch) return;
   const popped = parseCrystalUrlState(window.location.search);
   const onScreen = onScreenCrystalState();
