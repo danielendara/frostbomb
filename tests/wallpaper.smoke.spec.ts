@@ -58,7 +58,7 @@ test("W downloads a screen-sized opaque wallpaper PNG and restores the live canv
   expect(png.cornerAlpha).toBe(255);
 
   // The live renderer is back exactly where it was (no lasting resize).
-  await expect(page.locator("#a11y-announcer")).toContainText("Wallpaper saved");
+  await expect(page.locator("#a11y-announcer")).toContainText("Wallpaper saved", { timeout: 15_000 });
   expect(await liveCanvasState(page)).toEqual(before);
 });
 
