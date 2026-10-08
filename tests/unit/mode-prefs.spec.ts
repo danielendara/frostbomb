@@ -1,6 +1,28 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadModePrefs, saveModePrefs, MODE_PREFS_KEY } from "../../src/mode-prefs";
+import {
+  loadModePrefs,
+  resolveRotatePref,
+  saveModePrefs,
+  MODE_PREFS_KEY,
+} from "../../src/mode-prefs";
+
+describe("resolveRotatePref (#389)", () => {
+  it("prefers the ?rotate= value, then stored, then true when motion is allowed", () => {
+    expect(resolveRotatePref(false, true, false)).toBe(false);
+    expect(resolveRotatePref(true, false, false)).toBe(true);
+    expect(resolveRotatePref(null, false, false)).toBe(false);
+    expect(resolveRotatePref(null, true, false)).toBe(true);
+    expect(resolveRotatePref(null, undefined, false)).toBe(true);
+  });
+
+  it("uses only the stored value (maybe undefined) under reduced motion", () => {
+    expect(resolveRotatePref(true, undefined, true)).toBeUndefined();
+    expect(resolveRotatePref(null, undefined, true)).toBeUndefined();
+    expect(resolveRotatePref(true, false, true)).toBe(false);
+    expect(resolveRotatePref(null, true, true)).toBe(true);
+  });
+});
 
 describe("mode prefs read/write (#312)", () => {
   beforeEach(() => {
