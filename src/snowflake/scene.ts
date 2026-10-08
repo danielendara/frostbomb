@@ -10,6 +10,7 @@ import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
 import { createFrostPlaceholders, loadFrostMaps } from "./frost";
 import { preventSilentContextLoss } from "./context-loss";
+import { advanceAutoRotate, INITIAL_AUTO_ROTATE } from "./auto-rotate";
 
 export type { RenderPipeline };
 
@@ -161,28 +162,49 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
   canvas.style.cursor = "grab";
 
+  let dragPointerId = -1;
+  let lastDragX = 0;
+  let lastDragY = 0;
+
   function handlePointerMove(e: PointerEvent) {
     mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 0.3;
     mouse.targetY = (e.clientY / window.innerHeight - 0.5) * 0.3;
-    if (isDragging) {
-      targetRotation.y += (e.movementX || 0) * 0.01;
-      targetRotation.x += (e.movementY || 0) * 0.01;
+    if (isDragging && e.pointerId === dragPointerId) {
+      targetRotation.y += (e.clientX - lastDragX) * 0.01;
+      targetRotation.x += (e.clientY - lastDragY) * 0.01;
+      lastDragX = e.clientX;
+      lastDragY = e.clientY;
     }
   }
 
-  function handlePointerDown() {
+  function handlePointerDown(e: PointerEvent) {
+    if (isDragging && e.pointerId !== dragPointerId) return;
     isDragging = true;
+    dragPointerId = e.pointerId;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
     canvas.style.cursor = "grabbing";
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e: PointerEvent) {
+    if (e.pointerId !== dragPointerId) return;
     isDragging = false;
+    dragPointerId = -1;
     canvas.style.cursor = "grab";
   }
 
   window.addEventListener("pointermove", handlePointerMove);
   canvas.addEventListener("pointerdown", handlePointerDown);
   window.addEventListener("pointerup", handlePointerUp);
+  window.addEventListener("pointercancel", handlePointerUp);
+
+  if (import.meta.env.DEV) {
+    (window as any).__FROSTBOMB_DRAG__ = () => ({
+      isDragging,
+      x: targetRotation.x,
+      y: targetRotation.y,
+    });
+  }
 
   function updateCamera() {
     const w = window.innerWidth;
@@ -207,6 +229,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
   let frameId = 0;
   let time = 0;
+  let autoRotateState = INITIAL_AUTO_ROTATE;
   let isRunning = false;
   let contextLost = false;
   let averageDelta = 1 / 60;
@@ -239,6 +262,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       window.removeEventListener("pointermove", handlePointerMove);
       canvas.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
       window.removeEventListener("resize", updateCamera);
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -291,6 +315,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     },
     resize: updateCamera,
     resetView: () => {
+      autoRotateState = INITIAL_AUTO_ROTATE;
       rotation.x = 0;
       rotation.y = 0;
       targetRotation.x = 0;
@@ -470,6 +495,15 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     }
   }
 
+  if (import.meta.env.DEV) {
+    (window as unknown as { __FROSTBOMB_AUTOROTATE__?: () => unknown }).__FROSTBOMB_AUTOROTATE__ =
+      () => ({
+        x: flakeHolder.rotation.x,
+        y: flakeHolder.rotation.y,
+        z: flakeHolder.rotation.z,
+      });
+  }
+
   function animate(timestamp?: number) {
     if (!isRunning) return;
     frameId = requestAnimationFrame(animate);
@@ -500,13 +534,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     rotation.x += (targetRotation.x - rotation.x) * 0.1;
     rotation.y += (targetRotation.y - rotation.y) * 0.1;
 
-    const autoZ = isAutoRotate ? time * 0.08 + Math.sin(time * 0.3) * 0.04 : 0;
-    const autoY = isAutoRotate ? Math.sin(time * 0.2) * 0.05 : 0;
-    const autoX = isAutoRotate ? Math.cos(time * 0.25) * 0.03 : 0;
+    autoRotateState = advanceAutoRotate(autoRotateState, delta * particles.timeStep, isAutoRotate);
 
-    flakeHolder.rotation.z = autoZ;
-    flakeHolder.rotation.y = rotation.y + mouse.x * 0.4 + autoY;
-    flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoX;
+    flakeHolder.rotation.z = autoRotateState.z;
+    flakeHolder.rotation.y = rotation.y + mouse.x * 0.4 + autoRotateState.y;
+    flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoRotateState.x;
 
     if (wasEntryActive || animator.entryActive || animator.needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {

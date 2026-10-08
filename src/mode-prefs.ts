@@ -24,6 +24,19 @@ export function saveModePrefs(prefs: ModePrefs): void {
   }
 }
 
+/** The user's rotate intent at setup (boot and restore), kept apart from the
+ * live scene flag, which export/share pauses and reduced motion force off.
+ * Reduced motion off: `?rotate=` value, else stored, else `true` (scene default).
+ * Reduced motion on: stored only (may be `undefined`). */
+export function resolveRotatePref(
+  rotateParam: boolean | null,
+  stored: boolean | undefined,
+  reducedMotion: boolean,
+): boolean | undefined {
+  if (reducedMotion) return stored;
+  return rotateParam ?? stored ?? true;
+}
+
 /** A blocked/missing/corrupt value all fall back to pink/prism/lab off and rotate unset
  * (today's default), same as before rotate prefs existed. */
 export function loadModePrefs(): ModePrefs {

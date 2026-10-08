@@ -14,8 +14,14 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
+  // Logical size (drawing units) comes from the initial attributes; the backing
+  // store is scaled by devicePixelRatio so the diagram stays sharp on HiDPI.
   const width = canvas.width;
   const height = canvas.height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   function toX(temp: number) {
     // 0 to -40 maps to width to 0 (0 on right, -40 on left)
@@ -29,9 +35,10 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
 
   // Cache static background (morphology regions, grid, labels) to offscreen canvas
   const cacheCanvas = document.createElement('canvas');
-  cacheCanvas.width = width;
-  cacheCanvas.height = height;
+  cacheCanvas.width = canvas.width;
+  cacheCanvas.height = canvas.height;
   const cacheCtx = cacheCanvas.getContext('2d');
+  cacheCtx?.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   function drawBackground() {
     if (!cacheCtx) return;
@@ -77,10 +84,14 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
   drawBackground();
 
   let isDisposed = false;
+  let lastPath: { temp: number; ss: number }[] = [];
+  let lastPreview: { temp: number; ss: number } | undefined;
   // Re-draw background when fonts are ready to ensure JetBrains Mono is used
   if (document.fonts) {
     document.fonts.ready.then(() => {
-      if (!isDisposed) drawBackground();
+      if (isDisposed) return;
+      drawBackground();
+      render();
     });
   }
 
@@ -144,16 +155,22 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     ctx!.restore();
   }
 
+  function render() {
+    ctx!.clearRect(0, 0, width, height);
+    // Fast blit of pre-rendered background at logical size
+    ctx!.drawImage(cacheCanvas, 0, 0, width, height);
+    drawPath(lastPath);
+    if (lastPreview) {
+      drawPreviewPoint(lastPreview);
+    }
+  }
+
   return {
     update: (path: { temp: number; ss: number }[], previewPoint?: { temp: number; ss: number }) => {
       if (isDisposed) return;
-      ctx.clearRect(0, 0, width, height);
-      // Fast blit of pre-rendered background
-      ctx.drawImage(cacheCanvas, 0, 0);
-      drawPath(path);
-      if (previewPoint) {
-        drawPreviewPoint(previewPoint);
-      }
+      lastPath = path;
+      lastPreview = previewPoint;
+      render();
     },
     dispose: () => {
       isDisposed = true;

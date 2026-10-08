@@ -35,7 +35,7 @@ import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-buil
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { createUrlWriteCoalescer } from "./url-write-coalescer";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
-import { loadModePrefs, saveModePrefs as writeModePrefs } from "./mode-prefs";
+import { loadModePrefs, resolveRotatePref, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
   crystalStatesEqual,
   parseCrystalUrlState,
@@ -1128,6 +1128,10 @@ function togglePrismMode() {
 
 btnPrism?.addEventListener("click", togglePrismMode);
 
+// The user's rotate choice, not the live scene flag (which export/share
+// pauses and reduced motion force off). Set by applyModes and toggleAutoRotate.
+let rotatePref: boolean | undefined;
+
 function writeCurrentModeParams(params: URLSearchParams) {
   setShareFlag(params, SHARE_PARAM_PINK, scene.isPinkModeEnabled);
   setShareFlag(params, SHARE_PARAM_PRISM, scene.isPrismModeEnabled);
@@ -1136,9 +1140,9 @@ function writeCurrentModeParams(params: URLSearchParams) {
   } else if (loadModePrefs().lab === false) {
     setShareFlag(params, SHARE_PARAM_LAB, false);
   }
-  if (scene.isAutoRotateEnabled) {
+  if (rotatePref === true && !motionQuery.matches) {
     setShareFlag(params, SHARE_PARAM_ROTATE, true);
-  } else if (loadModePrefs().rotate === false) {
+  } else if (rotatePref === false) {
     setShareFlag(params, SHARE_PARAM_ROTATE, false);
   }
 }
@@ -1168,7 +1172,7 @@ function persistModePrefs(): void {
     pink: scene.isPinkModeEnabled,
     prism: scene.isPrismModeEnabled,
     lab: isLabMode,
-    rotate: scene.isAutoRotateEnabled,
+    rotate: rotatePref,
   });
 }
 
@@ -1205,12 +1209,18 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
 function applyModes(source: ModeSource) {
   const params = new URLSearchParams(window.location.search);
   const stored = loadModePrefs();
+  // Before setPinkMode/setPrismMode: they persist prefs and must see the intent.
+  const rotateParam = readShareFlag(params, SHARE_PARAM_ROTATE);
+  rotatePref = resolveRotatePref(
+    rotateParam === null ? null : rotateParam === "1",
+    stored.rotate,
+    motionQuery.matches,
+  );
 
   const target = resolveModes(source, params, stored);
   if (target.pink !== scene.isPinkModeEnabled) setPinkMode(target.pink);
   if (target.prism !== scene.isPrismModeEnabled) setPrismMode(target.prism);
 
-  const rotateParam = readShareFlag(params, SHARE_PARAM_ROTATE);
   if (rotateParam !== null) {
     if (!motionQuery.matches) {
       const wantRotate = rotateParam === "1";
@@ -1353,7 +1363,8 @@ motionQuery.addEventListener("change", updateRotateButtonUI);
 
 function toggleAutoRotate() {
   if (motionQuery.matches) return;
-  const enabled = !scene.isAutoRotateEnabled;
+  const enabled = !(rotatePref ?? scene.isAutoRotateEnabled);
+  rotatePref = enabled;
   visualPress("btn-rotate");
   scene.setAutoRotate(enabled);
   updateRotateButtonUI();
@@ -1393,18 +1404,44 @@ function focusSceneForPhotoMode(): void {
   canvas.focus({ preventScroll: true });
 }
 
-function restorePhotoModeUIFocus(): void {
-  const focusBtn = () => {
-    if (btnUI instanceof HTMLElement) {
-      btnUI.focus({ preventScroll: true });
-    }
+/** Bumped on every Photo Mode toggle so a stale focus restore stops. */
+let photoModeFocusGeneration = 0;
+
+/**
+ * Focus #btn-ui after Photo Mode exits. `exitFocus` is what had focus at
+ * exit: it, the scene canvas, body and #btn-ui count as "not moved by the
+ * user" (some browsers keep the canvas focused after its tabindex goes).
+ * Anything else means the user moved focus, so every attempt stands down,
+ * as they all do if Photo Mode re-enters.
+ */
+function restorePhotoModeUIFocus(exitFocus: Element | null): void {
+  const generation = ++photoModeFocusGeneration;
+  /** true = keep trying, false = done or must stop. */
+  const focusBtn = (): boolean => {
+    if (!(btnUI instanceof HTMLElement)) return false;
+    if (generation !== photoModeFocusGeneration || isUIHidden) return false;
+    const active = document.activeElement;
+    if (active === btnUI) return false;
+    const untouched = !active || active === document.body || active === exitFocus || active === canvas;
+    if (!untouched) return false;
+    btnUI.focus({ preventScroll: true });
+    return document.activeElement !== btnUI;
   };
 
-  // Visibility is animated, so retry after layout and once it has completed.
-  // The latter also covers browsers that do not dispatch transitionend here.
+  // Visibility switches instantly on show (style.css), so this usually lands
+  // at once; the retries cover slow frames and stale focus state.
+  if (!focusBtn()) return;
   requestAnimationFrame(() => requestAnimationFrame(focusBtn));
   setTimeout(focusBtn, 350);
   setTimeout(focusBtn, 700);
+
+  // Slow frames can stall the timeline, so keep retrying for a short while.
+  const deadline = performance.now() + 1500;
+  const retry = () => {
+    if (performance.now() > deadline) return;
+    if (focusBtn()) requestAnimationFrame(retry);
+  };
+  requestAnimationFrame(retry);
 }
 
 document.addEventListener("focusin", (e) => {
@@ -1430,6 +1467,7 @@ function toggleUI(forceShow?: boolean) {
   scene.setPhotoMode(isUIHidden);
 
   if (isUIHidden) {
+    photoModeFocusGeneration++;
     announce(
       motionQuery.matches
         ? "Photo Mode. Press H or Esc to show UI."
@@ -1439,9 +1477,10 @@ function toggleUI(forceShow?: boolean) {
       focusSceneForPhotoMode();
     }
   } else {
+    const exitFocus = document.activeElement;
     canvas.removeAttribute("tabindex");
     announce("Photo Mode exited. UI restored.");
-    restorePhotoModeUIFocus();
+    restorePhotoModeUIFocus(exitFocus);
   }
 }
 

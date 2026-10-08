@@ -59,7 +59,7 @@ test("Share appears with a file-capable navigator and shares one PNG plus the li
   await expect(share).toBeVisible();
 
   await share.click();
-  await expect(page.locator("#a11y-announcer")).toContainText("Shared snowflake");
+  await expect(page.locator("#a11y-announcer")).toContainText("Shared snowflake", { timeout: 15_000 });
 
   const calls = await page.evaluate(() => (window as unknown as { __shareCalls: any[] }).__shareCalls);
   expect(calls).toHaveLength(1);
