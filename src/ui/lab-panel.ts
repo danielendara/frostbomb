@@ -14,7 +14,7 @@ export interface LabPanelParams {
 export interface LabPanelCallbacks {
   onSeedChange: (seed: string) => void;
   onRandomizeSeed: () => void;
-  onConditionsChange: (temp: number, ss: number) => void;
+  onConditionsChange: (temp: number, ss: number, last?: boolean) => void;
   getCurrentSeedLabel: () => string;
 }
 
@@ -28,6 +28,12 @@ export class LabPanel {
   };
 
   private pane: TweakpanePane | null = null;
+  /**
+   * > 0 while syncing the pane from app state. Tweakpane's `refresh()` re-emits
+   * `change` with `last === true`; that is not a slider release, so it is passed
+   * on as `last: false` (a Nakaya drag must not flush its throttled URL write).
+   */
+  private refreshDepth = 0;
   private panePromise: Promise<TweakpanePane> | null = null;
   private callbacks: LabPanelCallbacks;
 
@@ -84,7 +90,7 @@ export class LabPanel {
           }
 
           this.params.seed = currentSeedLabel;
-          p.refresh();
+          this.refresh();
         }
       });
 
@@ -99,8 +105,12 @@ export class LabPanel {
         max: 0,
         step: 0.5,
         label: "Temp (°C)",
-      }).on("change", () => {
-        this.callbacks.onConditionsChange(this.params.temperature, this.params.supersaturation);
+      }).on("change", (ev) => {
+        this.callbacks.onConditionsChange(
+          this.params.temperature,
+          this.params.supersaturation,
+          ev.last && this.refreshDepth === 0,
+        );
       });
 
       p.addBinding(this.params, "temperatureF", {
@@ -113,8 +123,12 @@ export class LabPanel {
         max: 100,
         step: 1,
         label: "Humidity (%)",
-      }).on("change", () => {
-        this.callbacks.onConditionsChange(this.params.temperature, this.params.supersaturation);
+      }).on("change", (ev) => {
+        this.callbacks.onConditionsChange(
+          this.params.temperature,
+          this.params.supersaturation,
+          ev.last && this.refreshDepth === 0,
+        );
       });
 
       p.addBinding(this.params, "habit", { readonly: true, label: "Habit" });
@@ -140,11 +154,16 @@ export class LabPanel {
     this.params.temperature = tempC;
     this.params.temperatureF = (tempC * 9) / 5 + 32;
     this.params.supersaturation = ssPercent;
-    this.pane?.refresh();
+    this.refresh();
   }
 
   public refresh(): void {
-    this.pane?.refresh();
+    this.refreshDepth++;
+    try {
+      this.pane?.refresh();
+    } finally {
+      this.refreshDepth--;
+    }
   }
 
   public isLoaded(): boolean {
