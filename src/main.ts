@@ -1370,18 +1370,44 @@ function focusSceneForPhotoMode(): void {
   canvas.focus({ preventScroll: true });
 }
 
-function restorePhotoModeUIFocus(): void {
-  const focusBtn = () => {
-    if (btnUI instanceof HTMLElement) {
-      btnUI.focus({ preventScroll: true });
-    }
+/** Bumped on every Photo Mode toggle so a stale focus restore stops. */
+let photoModeFocusGeneration = 0;
+
+/**
+ * Focus #btn-ui after Photo Mode exits. `exitFocus` is what had focus at
+ * exit: it, the scene canvas, body and #btn-ui count as "not moved by the
+ * user" (some browsers keep the canvas focused after its tabindex goes).
+ * Anything else means the user moved focus, so every attempt stands down,
+ * as they all do if Photo Mode re-enters.
+ */
+function restorePhotoModeUIFocus(exitFocus: Element | null): void {
+  const generation = ++photoModeFocusGeneration;
+  /** true = keep trying, false = done or must stop. */
+  const focusBtn = (): boolean => {
+    if (!(btnUI instanceof HTMLElement)) return false;
+    if (generation !== photoModeFocusGeneration || isUIHidden) return false;
+    const active = document.activeElement;
+    if (active === btnUI) return false;
+    const untouched = !active || active === document.body || active === exitFocus || active === canvas;
+    if (!untouched) return false;
+    btnUI.focus({ preventScroll: true });
+    return document.activeElement !== btnUI;
   };
 
-  // Visibility is animated, so retry after layout and once it has completed.
-  // The latter also covers browsers that do not dispatch transitionend here.
+  // Visibility switches instantly on show (style.css), so this usually lands
+  // at once; the retries cover slow frames and stale focus state.
+  if (!focusBtn()) return;
   requestAnimationFrame(() => requestAnimationFrame(focusBtn));
   setTimeout(focusBtn, 350);
   setTimeout(focusBtn, 700);
+
+  // Slow frames can stall the timeline, so keep retrying for a short while.
+  const deadline = performance.now() + 1500;
+  const retry = () => {
+    if (performance.now() > deadline) return;
+    if (focusBtn()) requestAnimationFrame(retry);
+  };
+  requestAnimationFrame(retry);
 }
 
 document.addEventListener("focusin", (e) => {
@@ -1407,6 +1433,7 @@ function toggleUI(forceShow?: boolean) {
   scene.setPhotoMode(isUIHidden);
 
   if (isUIHidden) {
+    photoModeFocusGeneration++;
     announce(
       motionQuery.matches
         ? "Photo Mode. Press H or Esc to show UI."
@@ -1416,9 +1443,10 @@ function toggleUI(forceShow?: boolean) {
       focusSceneForPhotoMode();
     }
   } else {
+    const exitFocus = document.activeElement;
     canvas.removeAttribute("tabindex");
     announce("Photo Mode exited. UI restored.");
-    restorePhotoModeUIFocus();
+    restorePhotoModeUIFocus(exitFocus);
   }
 }
 

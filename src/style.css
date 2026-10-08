@@ -104,6 +104,7 @@ body.pink-mode {
   height: 100vh;
   display: block;
   z-index: 1;
+  touch-action: pinch-zoom;
 }
 
 /* --- masthead --- */
@@ -117,7 +118,7 @@ body.pink-mode {
   z-index: 10;
   pointer-events: none;
   mix-blend-mode: difference;
-  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  transition: opacity 0.3s ease-in-out, visibility 0s;
 }
 
 .wordmark {
@@ -403,7 +404,7 @@ body.pink-mode {
   font-family: var(--mono);
   font-size: 0.72rem;
   animation: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
-  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  transition: opacity 0.3s ease-in-out, visibility 0s;
 }
 
 .field-notes__header {
@@ -506,6 +507,7 @@ body.pink-mode {
   flex-direction: column;
   gap: 0.75rem;
   margin-top: 0.5rem;
+  transition: opacity 0.3s ease-in-out, visibility 0s;
 }
 
 .lab-control {
@@ -734,7 +736,7 @@ kbd {
   align-items: flex-end;
   gap: 1rem;
   animation: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
-  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  transition: opacity 0.3s ease-in-out, visibility 0s;
 }
 
 .actions {
@@ -944,6 +946,7 @@ kbd {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+  transition: opacity 0.3s ease-in-out, visibility 0s linear 0.3s;
 }
 
 .sr-only {
