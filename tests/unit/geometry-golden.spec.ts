@@ -1,5 +1,5 @@
 /**
- * Golden crystal fingerprints: "same seed => same crystal" (#334).
+ * Golden crystal fingerprints: "same seed => same crystal".
  *
  * `?seed=abcde` share links, Recent Seeds and Back/Forward all rely on
  * hashString -> mulberry32 -> sampleConditions -> buildSnowflake growing the

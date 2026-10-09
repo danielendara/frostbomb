@@ -16,7 +16,7 @@ function deferred<T = void>(): { promise: Promise<T>; resolve: (value: T) => voi
 const ORIGINAL: Marker = { id: "crystal-a" };
 const IDENTITY = { habit: "fernlike_dendrite", seed: "abcde" };
 
-describe("3D export identity (#343)", () => {
+describe("3D export identity", () => {
   it("formats both downloads from the captured habit and seed", () => {
     expect(formatExportFileName(IDENTITY, "stl")).toBe("frostbomb-fernlike-dendrite-abcde.stl");
     expect(formatExportFileName(IDENTITY, "glb")).toBe("frostbomb-fernlike-dendrite-abcde.glb");

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("reduced-motion chrome entrances (#351)", () => {
+describe("reduced-motion chrome entrances", () => {
   const css = readFileSync("src/style.css", "utf8");
   const reduceBlocks = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/g)].map(
     (match) => match[1],

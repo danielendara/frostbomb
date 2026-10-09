@@ -113,7 +113,7 @@ function labStatus() {
 
 const MODE_PREFS_KEY = "frostbomb-mode-prefs";
 
-describe("Lab Mode pref persistence (#385)", () => {
+describe("Lab Mode pref persistence", () => {
   it("writes lab=true to localStorage before ensurePane resolves", async () => {
     gate.failPane = false;
     await boot();
@@ -129,7 +129,7 @@ describe("Lab Mode pref persistence (#385)", () => {
   });
 });
 
-describe("Lab Mode load failure (#349)", () => {
+describe("Lab Mode load failure", () => {
   it("hides the controls, resets the toggle, and focuses it when ensurePane rejects", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     gate.failPane = true;

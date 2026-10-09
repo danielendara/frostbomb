@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * #316 — Back goes back a crystal.
+ * Back goes back a crystal.
  *
  * Deliberate crystal changes push a history entry; a slider drag does not.
  */
@@ -64,8 +64,8 @@ test("a look toggle coalesces into the current entry instead of pushing one", as
 });
 
 /**
- * #365 — re-growing the crystal already on screen must not push a duplicate
- * entry: Today's crystal on D, pressed twice, is one Back step, not two.
+ * Re-growing the crystal already on screen must not push a duplicate entry:
+ * Today's crystal on D, pressed twice, is one Back step, not two.
  */
 test("pressing D twice pushes one entry, and Back returns to the crystal before the first D", async ({
   page,
@@ -88,10 +88,9 @@ test("pressing D twice pushes one entry, and Back returns to the crystal before 
 });
 
 /**
- * #331 — Back/Forward restores the look recorded in the popped entry. Pink and
- * Prism are encoded by absence when off, so a restore must *set* each mode from
- * the entry, not flip it from whatever is on screen or resolve it from the
- * stored preference.
+ * Back/Forward restores the look recorded in the popped entry. Pink and Prism are
+ * encoded by absence when off, so a restore must *set* each mode from the entry,
+ * not flip it from whatever is on screen or resolve it from the stored preference.
  */
 async function expectLook(
   page: import("@playwright/test").Page,
@@ -217,7 +216,7 @@ test("a restore announces once, not once per mode", async ({ page }) => {
 });
 
 /**
- * #335 — holding R or Space is one regrow, not one per OS auto-repeat event.
+ * Holding R or Space is one regrow, not one per OS auto-repeat event.
  *
  * Playwright has no OS key repeat: `keyboard.down(key)` sends `repeat: true`
  * only when that key is already down. So the hold is simulated the way a real
@@ -284,8 +283,8 @@ for (const [label, key] of [
 }
 
 /**
- * #379 — hash-only history (Skip to controls) must not re-restore the crystal
- * when the query string is unchanged.
+ * Hash-only history (Skip to controls) must not re-restore the crystal when the
+ * query string is unchanged.
  */
 async function activateSkipLink(page: import("@playwright/test").Page) {
   await page.keyboard.press("Tab");
@@ -318,7 +317,7 @@ async function expectNoLoadedSeedAfterHashBack(page: import("@playwright/test").
   expect(await page.evaluate(() => location.search)).toBe(searchBeforeSkip);
 }
 
-test.describe("#379 hash-only Back after Skip to controls", () => {
+test.describe("hash-only Back after Skip to controls", () => {
   test("bare ?seed=abcde does not re-announce Loaded seed", async ({ page }) => {
     await page.goto("/?seed=abcde");
     await expectSeed(page, "abcde");

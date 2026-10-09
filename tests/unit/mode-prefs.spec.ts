@@ -7,7 +7,7 @@ import {
   MODE_PREFS_KEY,
 } from "../../src/mode-prefs";
 
-describe("resolveRotatePref (#389)", () => {
+describe("resolveRotatePref", () => {
   it("prefers the ?rotate= value, then stored, then true when motion is allowed", () => {
     expect(resolveRotatePref(false, true, false)).toBe(false);
     expect(resolveRotatePref(true, false, false)).toBe(true);
@@ -24,7 +24,7 @@ describe("resolveRotatePref (#389)", () => {
   });
 });
 
-describe("mode prefs read/write (#312)", () => {
+describe("mode prefs read/write", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.spyOn(console, "warn").mockImplementation(() => {});

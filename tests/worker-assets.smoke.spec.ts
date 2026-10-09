@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-// #356: adding a Worker `main` with `run_worker_first: ["/api/*"]` must leave
-// static assets and the SPA fallback exactly as they were.
+// Adding a Worker `main` with `run_worker_first: ["/api/*"]` must leave static
+// assets and the SPA fallback exactly as they were.
 test.describe("worker entry keeps assets unchanged", () => {
   test("serves the app shell and SPA fallback, and handles /api/client-error", async ({ request }) => {
     const root = await request.get("/");

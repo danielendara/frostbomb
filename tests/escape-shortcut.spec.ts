@@ -35,8 +35,6 @@ test('Escape key closes Lab Mode even when a control is focused', async ({ page 
   await labToggle.click();
   await expect(labControls).toBeVisible();
 
-  // Focus a slider (Tweakpane uses inputs for sliders)
-  // Using a more generic selector that Tweakpane usually has
   const slider = page.locator('#pane-mount input');
   await slider.first().waitFor();
   await slider.first().focus();

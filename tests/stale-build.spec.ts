@@ -19,7 +19,7 @@ function countLoads(page: Page): () => number {
   return () => loads;
 }
 
-test("a vite:preloadError reloads once, keeps the crystal and look, and a second one does not (#333)", async ({
+test("a vite:preloadError reloads once, keeps the crystal and look, and a second one does not", async ({
   page,
 }) => {
   const loads = countLoads(page);
@@ -51,7 +51,7 @@ test("a vite:preloadError reloads once, keeps the crystal and look, and a second
   await expect(page.locator("#seed-display")).toHaveText("abcde");
 });
 
-test("a reload from a bare URL comes back with the same crystal (#333)", async ({ page }) => {
+test("a reload from a bare URL comes back with the same crystal", async ({ page }) => {
   const loads = countLoads(page);
   await page.goto("/");
   await expect(page.locator("#seed-display")).toHaveText(/^[a-z0-9]{3,12}$/i);
@@ -67,7 +67,7 @@ test("a reload from a bare URL comes back with the same crystal (#333)", async (
   expect(new URL(page.url()).searchParams.get("seed")).toBe(seed);
 });
 
-test("with sessionStorage blocked a vite:preloadError never reloads (#333)", async ({ page }) => {
+test("with sessionStorage blocked a vite:preloadError never reloads", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, "sessionStorage", {
       configurable: true,

@@ -1,10 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { stubClipboard } from "./e2e-helpers";
+import { readDownload, stubClipboard } from "./e2e-helpers";
 
-/**
- * #341 — a copied or history-restored crystal is the same geometry, not just
- * the same seed label. Sampled links omit t/ss; explicit Lab links keep them.
- */
+/** A copied or history-restored crystal is the same geometry, not just the same
+ * seed label. Sampled links omit t/ss; explicit Lab links keep them. */
 
 function normalizedPolygons(svg: string): string[] {
   return [...svg.matchAll(/points="([^"]*)"/g)]
@@ -17,13 +15,8 @@ async function downloadPolygons(page: Page): Promise<string[]> {
     page.waitForEvent("download"),
     page.locator("#btn-save-svg").click(),
   ]);
-  const stream = await download.createReadStream();
-  if (!stream) throw new Error("SVG download stream was empty");
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  await download.delete();
-  const svg = Buffer.concat(chunks).toString("utf8");
-  const polygons = normalizedPolygons(svg);
+  const { body } = await readDownload(download);
+  const polygons = normalizedPolygons(body.toString("utf8"));
   expect(polygons.length).toBeGreaterThan(0);
   return polygons;
 }

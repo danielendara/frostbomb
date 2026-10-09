@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-/** #388 — dragging the Nakaya diagram must not call history.replaceState per move. */
+/** Dragging the Nakaya diagram must not call history.replaceState per move. */
 
 test("a Nakaya drag throttles replaceState and lands the final crystal in the URL", async ({ page }) => {
   await page.addInitScript(() => {

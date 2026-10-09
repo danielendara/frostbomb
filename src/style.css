@@ -283,7 +283,7 @@ body.pink-mode {
   flex: 0 0 auto;
 }
 
-/* A history pill plus its Keep toggle (#358). */
+/* A history pill plus its Keep toggle. */
 #recent-seeds-list .seed-chip {
   display: inline-flex;
   align-items: center;
@@ -429,7 +429,7 @@ body.pink-mode {
   gap: 0.75rem;
 }
 
-/* Lab Mode habit chips (#376): wrap cleanly down to 360px. */
+/* Lab Mode habit chips: wrap cleanly down to 360px. */
 .habit-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1291,7 +1291,7 @@ kbd {
   }
 
   /* Primary actions (Grow / Photo Mode / Save) keep >=44px tap targets;
-     secondary controls stay at the denser 40px sizing above (issue #295). */
+     secondary controls stay at the denser 40px sizing above. */
   #refresh,
   #btn-ui,
   #btn-save {

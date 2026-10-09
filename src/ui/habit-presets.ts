@@ -1,7 +1,7 @@
 import { HABIT_PRESETS, type Habit } from "../snowflake/nakaya";
 
 /**
- * Lab Mode habit chips (#376): one tap jumps to a representative point inside
+ * Lab Mode habit chips: one tap jumps to a representative point inside
  * a habit's region. Markup lives in index.html (`.habit-chip[data-habit]`).
  */
 

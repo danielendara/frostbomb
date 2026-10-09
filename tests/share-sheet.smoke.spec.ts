@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * #375 — Share button: image + link through the Web Share sheet. Default
- * Desktop Chrome has no navigator.share, so the button stays hidden; a stubbed
- * navigator proves the supported path. (Vitest runs with environment "node",
- * so DOM visibility has to live here.)
+ * Share button: image + link through the Web Share sheet. Default Desktop Chrome
+ * has no navigator.share, so the button stays hidden; a stubbed navigator proves
+ * the supported path. (Vitest runs with environment "node", so DOM visibility has
+ * to live here.)
  */
 
 test("Share is hidden where the browser cannot share files", async ({ page }) => {

@@ -8,7 +8,7 @@
   },
   "assets": {
     "not_found_handling": "single-page-application",
-    // Only the client-error endpoint runs the Worker; assets never do (#356).
+    // Only the client-error endpoint runs the Worker; assets never do.
     "run_worker_first": ["/api/*"]
   },
   "compatibility_flags": [

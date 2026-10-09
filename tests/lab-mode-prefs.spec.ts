@@ -1,9 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { stubClipboard } from "./e2e-helpers";
+import { MODE_PREFS_KEY } from "../src/mode-prefs";
 
-const MODE_PREFS_KEY = "frostbomb-mode-prefs";
-
-test("toggling lab mode writes lab to localStorage (#312)", async ({ page }) => {
+test("toggling lab mode writes lab to localStorage", async ({ page }) => {
   await page.goto("/?seed=abcde");
 
   await page.click("#lab-toggle");
@@ -20,7 +19,7 @@ test("toggling lab mode writes lab to localStorage (#312)", async ({ page }) => 
   await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "false");
 });
 
-test("a cold load with no lab query restores the last-remembered lab pref (#312)", async ({
+test("a cold load with no lab query restores the last-remembered lab pref", async ({
   page,
 }) => {
   await page.goto("/?seed=abcde");
@@ -35,7 +34,7 @@ test("a cold load with no lab query restores the last-remembered lab pref (#312)
   await expect(page.locator("#lab-status")).toHaveText("ON");
 });
 
-test("lab off is remembered across visits (#312)", async ({ page }) => {
+test("lab off is remembered across visits", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.click("#lab-toggle");
   await expect(page.locator("#lab-controls")).toBeVisible();
@@ -47,7 +46,7 @@ test("lab off is remembered across visits (#312)", async ({ page }) => {
   await expect(page.locator("#lab-controls")).not.toBeVisible();
 });
 
-test("corrupt mode prefs fall back to lab off (#312)", async ({ page }) => {
+test("corrupt mode prefs fall back to lab off", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.evaluate((key) => localStorage.setItem(key, "not-json"), MODE_PREFS_KEY);
   await page.goto("/?seed=fghij");
@@ -55,7 +54,7 @@ test("corrupt mode prefs fall back to lab off (#312)", async ({ page }) => {
   await expect(page.locator("#lab-controls")).not.toBeVisible();
 });
 
-test("an explicit ?lab= query overrides remembered lab pref (#314)", async ({ page }) => {
+test("an explicit ?lab= query overrides remembered lab pref", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.click("#lab-toggle");
   await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
@@ -65,7 +64,7 @@ test("an explicit ?lab= query overrides remembered lab pref (#314)", async ({ pa
   await expect(page.locator("#lab-controls")).not.toBeVisible();
 });
 
-test("toggling lab writes explicit lab=1 / lab=0 on the share URL (#317)", async ({ page }) => {
+test("toggling lab writes explicit lab=1 / lab=0 on the share URL", async ({ page }) => {
   await stubClipboard(page);
   await page.goto("/?seed=abcde");
 

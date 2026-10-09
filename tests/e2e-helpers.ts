@@ -20,7 +20,9 @@ export async function stubClipboard(page: Page) {
   });
 }
 
-export async function readDownload(download: Download): Promise<{ name: string; sha: string }> {
+export async function readDownload(
+  download: Download,
+): Promise<{ name: string; sha: string; body: Buffer }> {
   const stream = await download.createReadStream();
   if (!stream) throw new Error(`Empty download: ${download.suggestedFilename()}`);
   const chunks: Buffer[] = [];
@@ -30,5 +32,37 @@ export async function readDownload(download: Download): Promise<{ name: string; 
   return {
     name: download.suggestedFilename(),
     sha: createHash("sha256").update(body).digest("hex"),
+    body,
   };
+}
+
+export interface HeldMeshExport {
+  releaseExport: () => void;
+  requested: Promise<void>;
+}
+
+/** Holds dynamic `mesh-export.ts` import until `releaseExport()` so tests can
+ * regrow or toggle modes while the exporter is still loading. */
+export async function withHeldMeshExport(
+  page: Page,
+  fn: (ctx: HeldMeshExport) => Promise<void>,
+): Promise<void> {
+  let releaseExport!: () => void;
+  const exportGate = new Promise<void>((resolve) => {
+    releaseExport = resolve;
+  });
+  let markRequested!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    markRequested = resolve;
+  });
+  await page.route(/mesh-export\.ts/, async (route) => {
+    markRequested();
+    await exportGate;
+    await route.continue();
+  });
+  try {
+    await fn({ releaseExport, requested });
+  } finally {
+    await page.unroute(/mesh-export\.ts/);
+  }
 }

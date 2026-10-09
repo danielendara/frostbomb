@@ -76,7 +76,7 @@ test("360×640 keeps masthead, field notes, and actions from overlapping", async
   expect(inViewport(savePng)).toBe(true);
 
   // Primary actions (Grow / Photo Mode / Save) keep >=44px tap targets even
-  // as secondary controls (e.g. Reset) densify more aggressively (#295).
+  // as secondary controls (e.g. Reset) densify more aggressively.
   for (const primary of [refresh, photoMode, savePng]) {
     expect(primary.height).toBeGreaterThanOrEqual(44);
   }

@@ -65,7 +65,7 @@ test("toggling pink/prism after boot keeps the URL an accurate snapshot", async 
   expect(new URL(page.url()).searchParams.get("seed")).toBe("abcde");
 });
 
-test("a cold load with no pink/prism query restores the last-remembered prefs (#303)", async ({ page }) => {
+test("a cold load with no pink/prism query restores the last-remembered prefs", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.click("#btn-pink");
   await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
@@ -93,7 +93,7 @@ test("an explicit query still overrides remembered prefs", async ({ page }) => {
   await expect(page.locator("body")).not.toHaveClass(/pink-mode/);
 });
 
-test("?rotate=1 enables auto-rotate; ?rotate=0 disables it (#307)", async ({ page }) => {
+test("?rotate=1 enables auto-rotate; ?rotate=0 disables it", async ({ page }) => {
   await page.goto("/?seed=abcde&rotate=1");
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
 
@@ -101,7 +101,7 @@ test("?rotate=1 enables auto-rotate; ?rotate=0 disables it (#307)", async ({ pag
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
 });
 
-test("copying the link includes rotate=1 when on and rotate=0 when explicitly off (#307)", async ({
+test("copying the link includes rotate=1 when on and rotate=0 when explicitly off", async ({
   page,
 }) => {
   await stubClipboard(page);
@@ -127,7 +127,7 @@ test("copying the link includes rotate=1 when on and rotate=0 when explicitly of
   expect(new URL(copied).searchParams.get("rotate")).toBe("0");
 });
 
-test("a cold load with no rotate query restores the last-remembered pref (#307)", async ({ page }) => {
+test("a cold load with no rotate query restores the last-remembered pref", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.click("#btn-rotate");
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
@@ -136,7 +136,7 @@ test("a cold load with no rotate query restores the last-remembered pref (#307)"
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
 });
 
-test("an explicit rotate query overrides remembered pref (#307)", async ({ page }) => {
+test("an explicit rotate query overrides remembered pref", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.click("#btn-rotate");
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
@@ -145,14 +145,14 @@ test("an explicit rotate query overrides remembered pref (#307)", async ({ page 
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
 });
 
-test("prefers-reduced-motion keeps auto-rotate off even with ?rotate=1 (#307)", async ({ page }) => {
+test("prefers-reduced-motion keeps auto-rotate off even with ?rotate=1", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?seed=abcde&rotate=1");
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#btn-rotate")).toBeDisabled();
 });
 
-test("?lab=1 enables lab mode; ?lab=0 disables it (#314)", async ({ page }) => {
+test("?lab=1 enables lab mode; ?lab=0 disables it", async ({ page }) => {
   await page.goto("/?seed=abcde&lab=1");
   await expect(page.locator("#lab-toggle")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#lab-controls")).toBeVisible();
@@ -162,7 +162,7 @@ test("?lab=1 enables lab mode; ?lab=0 disables it (#314)", async ({ page }) => {
   await expect(page.locator("#lab-controls")).not.toBeVisible();
 });
 
-test("copying the link includes lab=1 when on and lab=0 when explicitly off (#314)", async ({
+test("copying the link includes lab=1 when on and lab=0 when explicitly off", async ({
   page,
 }) => {
   await stubClipboard(page);
@@ -189,7 +189,7 @@ test("copying the link includes lab=1 when on and lab=0 when explicitly off (#31
   expect(new URL(copied).searchParams.get("lab")).toBe("0");
 });
 
-test("a cold load with no lab query restores the last-remembered lab pref (#314)", async ({
+test("a cold load with no lab query restores the last-remembered lab pref", async ({
   page,
 }) => {
   await page.goto("/?seed=abcde");
@@ -202,7 +202,7 @@ test("a cold load with no lab query restores the last-remembered lab pref (#314)
   await expect(page.locator("#lab-controls")).toBeVisible();
 });
 
-test("toggling rotate writes explicit rotate=1 / rotate=0 (#317)", async ({ page }) => {
+test("toggling rotate writes explicit rotate=1 / rotate=0", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await page.click("#btn-rotate");
   await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
@@ -213,7 +213,7 @@ test("toggling rotate writes explicit rotate=1 / rotate=0 (#317)", async ({ page
   await expect.poll(() => new URL(page.url()).searchParams.get("rotate")).toBe("1");
 });
 
-test("grow-another keeps pink/prism and rewrites seed (#317)", async ({ page }) => {
+test("grow-another keeps pink/prism and rewrites seed", async ({ page }) => {
   await page.goto("/?seed=abcde&pink=1");
   await expect(page.locator("#btn-pink")).toHaveAttribute("aria-pressed", "true");
 

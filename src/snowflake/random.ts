@@ -26,7 +26,7 @@ export function hashString(s: string): number {
 
 // Read ?seed=... from URL, otherwise generate a fresh 5-char seed.
 // Validation lives in the shared URL codec so cold load, share links, and
-// history restores all agree on what a usable seed is (#316).
+// history restores all agree on what a usable seed is.
 export function resolveSeed(): { seed: number; label: string } {
   const fromUrl = parseCrystalUrlState(window.location.search).seed;
   if (fromUrl) {
@@ -37,7 +37,7 @@ export function resolveSeed(): { seed: number; label: string } {
 
 // A fresh label (base36, 5 chars, easy to share), independent of the URL.
 // Growing a new crystal uses this rather than rewriting `?seed=` first: the
-// previous entry has to survive for Back to return to it (#316).
+// previous entry has to survive for Back to return to it.
 export function randomSeed(): { seed: number; label: string } {
   const label = Math.floor(Math.random() * 36 ** 5)
     .toString(36)

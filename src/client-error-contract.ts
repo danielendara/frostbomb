@@ -1,5 +1,5 @@
 /**
- * Shared client-error payload contract (#356). Browser and Worker both use
+ * Shared client-error payload contract. Browser and Worker both use
  * these constants, types, and pure helpers; transport and DOM wiring live in
  * `src/ui/client-error.ts`, validation of inbound POST bodies in
  * `src/worker/client-error.ts`.

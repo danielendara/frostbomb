@@ -158,7 +158,7 @@ describe('SeedHistoryManager clear/undo', () => {
 const seedsN = (prefix: string, n: number): string[] =>
   Array.from({ length: n }, (_, i) => `${prefix}${String(i).padStart(2, '0')}`);
 
-describe('Recent Seeds cap math (#358)', () => {
+describe('Recent Seeds cap math', () => {
   it('only unkept seeds count toward the recent cap', () => {
     let entries = parseStoredEntries([{ seed: 'kept1', kept: true }]);
     for (const seed of seedsN('new', 8)) entries = withSeedAdded(entries, seed);
@@ -183,7 +183,7 @@ describe('Recent Seeds cap math (#358)', () => {
   });
 });
 
-describe('Recent Seeds persistence migration (#358)', () => {
+describe('Recent Seeds persistence migration', () => {
   it('loads a legacy plain string array unchanged (all unkept)', () => {
     expect(parseStoredEntries(['alpha', 'bravo'])).toEqual([
       { seed: 'alpha', kept: false },
@@ -217,7 +217,7 @@ describe('Recent Seeds persistence migration (#358)', () => {
   });
 });
 
-describe('SeedHistoryManager Keep toggle (#358)', () => {
+describe('SeedHistoryManager Keep toggle', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {

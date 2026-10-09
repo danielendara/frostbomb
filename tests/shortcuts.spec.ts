@@ -7,7 +7,6 @@ test.beforeEach(async ({ page }) => {
 test("R key regrows the snowflake", async ({ page }) => {
   const initialSeed = await page.textContent("#seed-display");
   await page.keyboard.press("r");
-  // Wait a bit for the seed to change
   await expect(async () => {
     const newSeed = await page.textContent("#seed-display");
     expect(newSeed).not.toBe(initialSeed);
