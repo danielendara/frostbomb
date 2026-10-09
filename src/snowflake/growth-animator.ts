@@ -14,7 +14,7 @@ for (let i = 0; i < EASING_LUT_SIZE; i++) {
   EASING_LUT[i] = t === 0 ? 0 : t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }
 
-export function easeOutExpoFast(t: number): number {
+function easeOutExpoFast(t: number): number {
   if (t <= 0) return 0;
   if (t >= 1) return 1;
   return EASING_LUT[(t * (EASING_LUT_SIZE - 1)) | 0];

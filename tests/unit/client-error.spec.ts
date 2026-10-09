@@ -1,17 +1,19 @@
 /** @vitest-environment happy-dom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  CLIENT_ERROR_ENDPOINT,
   CLIENT_ERROR_MAX_REPORTS,
   buildClientErrorReport,
-  buildIdFromModuleUrl,
-  createClientErrorReporter,
-  installClientErrorReporting,
   locationFromStack,
-  reportClientError,
   sanitizeSource,
   stripUrlParams,
   uaFamily,
+} from "../../src/client-error-contract";
+import {
+  CLIENT_ERROR_ENDPOINT,
+  buildIdFromModuleUrl,
+  createClientErrorReporter,
+  installClientErrorReporting,
+  reportClientError,
 } from "../../src/ui/client-error";
 
 const origin = "https://frostbomb.com";

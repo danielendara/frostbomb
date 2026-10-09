@@ -50,8 +50,8 @@ export interface CrystalUrlState {
 export const SEED_PATTERN = /^[a-z0-9]{3,12}$/i;
 
 /** Lab temperatures live on the Nakaya diagram: −40 °C to 0 °C, 0–100 % SS. */
-export const MIN_TEMPERATURE_C = -40;
-export const MAX_TEMPERATURE_C = 0;
+const MIN_TEMPERATURE_C = -40;
+const MAX_TEMPERATURE_C = 0;
 
 function parseSeed(raw: string | null): string | null {
   return raw && SEED_PATTERN.test(raw) ? raw.toLowerCase() : null;

@@ -1,4 +1,4 @@
-import { getHabit, Habit } from './nakaya.ts';
+import { getHabit, Habit } from './nakaya';
 
 const HABIT_COLORS: Record<Habit, string> = {
   plate: 'rgba(158, 201, 255, 0.15)',

@@ -42,7 +42,7 @@ export function serializeEntries(entries: readonly SeedEntry[]): StoredEntry[] {
 }
 
 /** Keep the newest RECENT_CAP unkept and KEPT_CAP kept seeds, preserving order. */
-export function applyCaps(entries: readonly SeedEntry[]): SeedEntry[] {
+function applyCaps(entries: readonly SeedEntry[]): SeedEntry[] {
   let unkept = 0;
   let kept = 0;
   return entries.filter((e) => (e.kept ? ++kept <= KEPT_CAP : ++unkept <= RECENT_CAP));

@@ -2,9 +2,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  HABIT_CHIP_ORDER,
   HABIT_PRESETS,
-  HABIT_SHORT_LABEL,
   getHabit,
   habitLabel,
   type Habit,
@@ -13,11 +11,26 @@ import { initHabitChips, syncHabitChips } from "../../src/ui/habit-presets";
 
 const ALL_HABITS = Object.keys(habitLabel) as Habit[];
 
+const INDEX_HTML = readFileSync("index.html", "utf8");
+const HABIT_CHIPS_GROUP = INDEX_HTML.match(/<div class="habit-chips"[^>]*>([\s\S]*?)<\/div>/);
+const HABIT_CHIP_RE =
+  /<button type="button" class="habit-chip" data-habit="(\w+)" aria-pressed="false" aria-label="([^"]+)" title="([^"]+)">([^<]+)<\/button>/g;
+
+function habitChipsFromIndexHtml(): { habit: Habit; ariaLabel: string; title: string; text: string }[] {
+  expect(HABIT_CHIPS_GROUP).not.toBeNull();
+  return [...HABIT_CHIPS_GROUP![1].matchAll(HABIT_CHIP_RE)].map((m) => ({
+    habit: m[1] as Habit,
+    ariaLabel: m[2],
+    title: m[3],
+    text: m[4],
+  }));
+}
+
 describe("HABIT_PRESETS", () => {
-  it("has a preset, a short label and a chip slot for every Habit", () => {
+  it("has a preset and an index.html chip for every Habit", () => {
+    const chips = habitChipsFromIndexHtml();
     expect([...ALL_HABITS].sort()).toEqual(Object.keys(HABIT_PRESETS).sort());
-    expect([...ALL_HABITS].sort()).toEqual(Object.keys(HABIT_SHORT_LABEL).sort());
-    expect([...ALL_HABITS].sort()).toEqual([...HABIT_CHIP_ORDER].sort());
+    expect([...ALL_HABITS].sort()).toEqual([...chips.map((c) => c.habit)].sort());
   });
 
   it.each(ALL_HABITS)("%s: getHabit(preset.temp, preset.ss) returns that habit", (habit) => {
@@ -37,23 +50,18 @@ describe("HABIT_PRESETS", () => {
 });
 
 describe("index.html chip markup", () => {
-  const html = readFileSync("index.html", "utf8");
-  const group = html.match(/<div class="habit-chips"[^>]*>([\s\S]*?)<\/div>/);
-
   it("is a labelled group inside the Lab Mode controls", () => {
-    expect(group).not.toBeNull();
-    expect(html).toMatch(/id="habit-chips"[^>]*role="group"[^>]*aria-label="Jump to crystal habit"/);
-    expect(html.indexOf('id="lab-controls"')).toBeLessThan(html.indexOf('id="habit-chips"'));
-    expect(html.indexOf('id="pane-mount"')).toBeLessThan(html.indexOf('id="habit-chips"'));
+    expect(HABIT_CHIPS_GROUP).not.toBeNull();
+    expect(INDEX_HTML).toMatch(/id="habit-chips"[^>]*role="group"[^>]*aria-label="Jump to crystal habit"/);
+    expect(INDEX_HTML.indexOf('id="lab-controls"')).toBeLessThan(INDEX_HTML.indexOf('id="habit-chips"'));
+    expect(INDEX_HTML.indexOf('id="pane-mount"')).toBeLessThan(INDEX_HTML.indexOf('id="habit-chips"'));
   });
 
   it("has one native button chip per habit with the short label and full-name aria-label", () => {
-    const chips = [...group![1].matchAll(/<button type="button" class="habit-chip" data-habit="(\w+)" aria-pressed="false" aria-label="([^"]+)" title="([^"]+)">([^<]+)<\/button>/g)];
-    expect(chips.map((m) => m[1])).toEqual([...HABIT_CHIP_ORDER]);
-    for (const [, habit, ariaLabel, title, text] of chips) {
-      expect(ariaLabel).toBe(habitLabel[habit as Habit]);
-      expect(title).toBe(habitLabel[habit as Habit]);
-      expect(text).toBe(HABIT_SHORT_LABEL[habit as Habit]);
+    const chips = habitChipsFromIndexHtml();
+    for (const { habit, ariaLabel, title, text } of chips) {
+      expect(ariaLabel).toBe(habitLabel[habit]);
+      expect(title).toBe(habitLabel[habit]);
       // The visible text stays inside the accessible name (WCAG label-in-name).
       expect(ariaLabel.toLowerCase()).toContain(text.toLowerCase());
     }

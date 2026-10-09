@@ -12,8 +12,6 @@ import { createFrostPlaceholders, loadFrostMaps } from "./frost";
 import { preventSilentContextLoss } from "./context-loss";
 import { advanceAutoRotate, INITIAL_AUTO_ROTATE } from "./auto-rotate";
 
-export type { RenderPipeline };
-
 export interface Scene {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
