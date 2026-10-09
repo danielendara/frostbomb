@@ -19,9 +19,9 @@ date,commit,area,milestone,metric,before,after,unit,reported_improvement,evidenc
 2026-05-12,90397e3,generation,Precalculate metadata and streamline symmetry,buildSnowflake,1.14,0.81,ms/build,29% faster,recorded-local,generation-local,git commit 90397e3
 2026-05-14,ef49261,generation,Manual matrix composition,buildSnowflake,0.2069,0.1404,ms/build,32% faster,recorded-local,generation-local,git commit ef49261
 2026-05-15,3a1d0e6,animation,Replace Math.pow easing with LUT,easing call,1,0.1333,relative time,7.5x faster,recorded-local,easing-microbenchmark,git commit 3a1d0e6
-2026-05-17,8cf83b6,gpu,Segment-major matrix layout,GPU update ranges,6,1,ranges/frame,83% fewer ranges,operation-count,gpu-transfer,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
+2026-05-17,8cf83b6,gpu,Segment-major matrix layout,GPU update ranges,6,1,ranges/frame,83% fewer ranges,operation-count,gpu-transfer,docs/PERFORMANCE_EVOLUTION.md
 2026-05-18,6e46380,generation,Move recursive segments into flat shared buffer,short-lived segment objects,thousands,none,allocations,eliminated allocation churn,architectural,generation-architecture,git commit 6e46380
-2026-05-19,42824d5,generation,Reuse noise and shared buffers with Taylor approximations,complex buildSnowflake,0.117,0.044,ms/build,62% faster,recorded-local,generation-local-complex,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
+2026-05-19,42824d5,generation,Reuse noise and shared buffers with Taylor approximations,complex buildSnowflake,0.117,0.044,ms/build,62% faster,recorded-local,generation-local-complex,docs/PERFORMANCE_EVOLUTION.md
 2026-05-20,5b82f39,generation,Use symmetry ratios and Taylor expansions,complex buildSnowflake,0.053,0.048,ms/build,10% faster,recorded-local,generation-local-complex,git commit 5b82f39
 2026-05-21,6a820d6,generation,Additive recursive tracking and animation bulk copies,buildSnowflake,0.09,0.051,ms/build,43% faster,recorded-local,generation-local,git commit 6a820d6
 2026-05-22,8a8658e,generation,Strength-reduce recursive and animation loops,buildSnowflake,,,ms/build,7-10% faster,reported-claim,generation-local,git commit 8a8658e
@@ -39,8 +39,8 @@ date,commit,area,milestone,metric,before,after,unit,reported_improvement,evidenc
 2026-06-05,e1c2f7b,generation,Hoist 60-degree direction rotation,complex buildSnowflake,0.0403,0.03,ms/build,25.5% faster,recorded-local,generation-local-complex,git commit e1c2f7b
 2026-06-06,5be8fcb,animation,Batch completed-segment typed-array copies,animation loop overhead,1,0.7,relative time,30% less overhead,recorded-local,animation-microbenchmark,git commit 5be8fcb
 2026-06-06,5779f0d,rendering,Prune future growth draws,visible instance count,all instances,started instances,instances,avoids future-branch vertex work,architectural,render-architecture,git commit 5779f0d
-2026-06-06,5779f0d,startup,Optimize procedural material texture loops,bump-map generation,1,0.78,relative time,22% faster,recorded-local,startup-texture,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
-2026-06-06,5779f0d,startup,Optimize procedural material texture loops,environment-map generation,1,0.535,relative time,1.87x faster,recorded-local,startup-texture,docs/ALGORITHMS_AND_PERFORMANCE.md at 5779f0d
+2026-06-06,5779f0d,startup,Optimize procedural material texture loops,bump-map generation,1,0.78,relative time,22% faster,recorded-local,startup-texture,docs/PERFORMANCE_EVOLUTION.md
+2026-06-06,5779f0d,startup,Optimize procedural material texture loops,environment-map generation,1,0.535,relative time,1.87x faster,recorded-local,startup-texture,docs/PERFORMANCE_EVOLUTION.md
 2026-06-08,b49546c,generation,Hoist scale factors and optimize symmetry,huge-profile buildSnowflake,,0.028,ms/build,measured endpoint,recorded-local,generation-local-huge,git commit b49546c
 2026-06-08,ab107a8,generation,Replace index multiplications with additive tracking,hot-loop index multiplications,repeated,additive increments,operations,measurable throughput improvement,architectural,generation-architecture,git commit ab107a8
 2026-06-09,3efc3b2,generation,Use inverse LUTs Taylor jitter and hoisted symmetry,geometry hot path,,,ms/build,2-8% faster,reported-claim,generation-local,git commit 3efc3b2

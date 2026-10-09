@@ -129,7 +129,7 @@ describe("createScene reduced-motion changes", () => {
     expect(firstFrame).toBeDefined();
     firstFrame?.(performance.now() + 100);
 
-    const branchMesh = scene.flakeHolder.children[0] as {
+    const branchMesh = scene.flakeHolder.children[0] as unknown as {
       instanceMatrix: { array: Float32Array };
     };
     const coreMesh = scene.flakeHolder.children[1] as { scale: { x: number; y: number; z: number } };

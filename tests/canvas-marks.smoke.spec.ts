@@ -16,7 +16,7 @@ test("startup marks fire and the canvas is not blank after grow", async ({ page 
     return names.every((name) => found.has(name));
   }, MARKS);
 
-  const present = await page.evaluate((names) => {
+  const present = await page.evaluate((_names) => {
     const marks = performance.getEntriesByType("mark").map((entry) => entry.name);
     const measures = performance.getEntriesByType("measure").map((entry) => entry.name);
     return { marks, measures };

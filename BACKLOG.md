@@ -21,11 +21,6 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - Ideas: load bloom only after first interaction, disable postprocessing on low-power devices, compare before/after screenshots.
 - Done means: first render stays fast and visual difference is intentional.
 
-### Refine mobile layout
-- Goal: make controls feel as intentional on small screens as they do on desktop.
-- Ideas: test narrow devices, reduce footer crowding, tune field guide height.
-- Done means: core controls are comfortable at 360px width with no overlap.
-
 ---
 
 ## Completed
@@ -45,4 +40,5 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - [x] **Photo Mode & UI Toggle:** Added full UI hide/show toggle (`H`) for clean screenshots and immersive viewing.
 - [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `L`, `G`, `?`, `H`, `P`, `M`, `S`, `E`, `T`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
 - [x] **High-Performance Geometry Engine (Bolt):** Controlled benchmarks at `71b97b0` show ~173-181x faster generation vs the initial commit; see `docs/GENERATION_PERFORMANCE_HISTORY.md` (re-run profiles after geometry changes).
+- [x] **Refine mobile layout:** `tests/mobile-360.smoke.spec.ts` covers 360×640 overlap, tap targets, and no horizontal scroll.
 

@@ -18,7 +18,6 @@ test('Clicking growth condition row opens field guide and scrolls to section', a
 });
 
 test('Keyboard activation of growth condition row works', async ({ page }) => {
-  const habitRow = page.locator('.field-notes__row', { hasText: 'Habit' });
   const fieldGuide = page.locator('#field-guide');
   const habitSection = page.locator('#guide-habit');
 
