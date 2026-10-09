@@ -189,7 +189,6 @@ test('Recent Seeds clearing can be undone, restoring items and focusing clear bu
 });
 
 test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page }) => {
-  const recentSeedsContainer = page.locator('#recent-seeds-container');
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
 
@@ -206,8 +205,6 @@ test('Recent Seeds buttons support keyboard Arrow key navigation', async ({ page
     const currentSeed = (await seedDisplay.textContent())?.trim() || '';
     expect(currentSeed).not.toBe(firstSeed);
   }).toPass({ timeout: 5000 });
-
-  const secondSeed = (await seedDisplay.textContent())?.trim() || '';
 
   // Ensure both buttons are present
   const seedButtons = recentSeedsList.locator('button.seed-pill');

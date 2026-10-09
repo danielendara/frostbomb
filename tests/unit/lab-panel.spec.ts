@@ -100,7 +100,15 @@ describe("Lab seed validation (#350)", () => {
     });
     await labPanel.ensurePane();
     if (!seedChange) throw new Error("seed change handler was not registered");
-    return { labPanel, seedChange, onSeedChange, labelSpy, announceSpy, refreshCount: () => refreshCount };
+    const applySeedChange = seedChange as (ev: { value: string }) => void;
+    return {
+      labPanel,
+      seedChange: applySeedChange,
+      onSeedChange,
+      labelSpy,
+      announceSpy,
+      refreshCount: () => refreshCount,
+    };
   }
 
   function expectCopyButtonUntouched() {

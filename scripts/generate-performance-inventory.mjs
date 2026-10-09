@@ -8,7 +8,7 @@ const fieldSeparator = '\x1f';
 const performancePattern =
   /\b(perf|performance|optimi[sz]|faster|speedup|cache|instanc|defer|lazy|prune|hoist|buffer|typedarray|render loop|reduced motion|postprocessing)\b/i;
 const quantitativePattern =
-  /(?:\d+(?:\.\d+)?\s*(?:%|x\b|ms\b|kb\b|kib\b)|O\([^)]+\))/i;
+  /(?:\d+(?:\.\d+)?\s*%|\d+(?:\.\d+)?\s*x\b|\d+\.\d+\s*ms\b|O\([^)]+\)|\d+(?:\.\d+)?\s*(?:kb|kib)\b|(?:→|->)\s*~?\d+(?:\.\d+)?\s*ms\b|~?\d+(?:\.\d+)?\s*ms\s*(?:→|->)\s*~?\d+(?:\.\d+)?\s*ms\b)/i;
 
 function git(...args) {
   return execFileSync('git', args, { encoding: 'utf8' });
