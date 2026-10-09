@@ -51,7 +51,7 @@ export function createFrostPlaceholders(): {
  * Roughness (green) and iridescence thickness share one texture;
  * normals are derived from the same height field.
  */
-export function createFrostMaps(): {
+function createFrostMaps(): {
   roughnessMap: THREE.DataTexture;
   normalMap: THREE.DataTexture;
 } {

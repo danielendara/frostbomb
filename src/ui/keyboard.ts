@@ -39,7 +39,7 @@ export const REPEATABLE_KEYS: ReadonlySet<string> = new Set([
   "arrowright",
 ]);
 
-export function isTyping(target: EventTarget | null): boolean {
+function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
     target.isContentEditable ||
@@ -47,7 +47,7 @@ export function isTyping(target: EventTarget | null): boolean {
   );
 }
 
-export function isInteractive(target: EventTarget | null): boolean {
+function isInteractive(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(target.closest('button, a, [role="button"], [role="link"]'));
 }

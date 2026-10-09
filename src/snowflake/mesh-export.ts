@@ -42,7 +42,7 @@ function scaleToPhysicalMm(geom: THREE.BufferGeometry): void {
  * Merge instanced hex-cylinders and the core into one mesh.
  * Segments overlap; this is not a watertight boolean union.
  */
-export function bakeExportGeometry(data: BuildResult): THREE.BufferGeometry {
+function bakeExportGeometry(data: BuildResult): THREE.BufferGeometry {
   const proto = new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, false);
   const pos = proto.getAttribute("position") as THREE.BufferAttribute;
   const nrm = proto.getAttribute("normal") as THREE.BufferAttribute;
