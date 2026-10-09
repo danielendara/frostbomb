@@ -15,32 +15,38 @@ interface Harness {
 function makeCtx(): Harness {
   const state = { guideOpen: false, diagramFocused: false };
   const handlers: Record<string, ReturnType<typeof vi.fn>> = {};
-  const fn = (name: string) => (handlers[name] = vi.fn());
+  const track = <K extends keyof KeyboardHandlerContext>(
+    name: K,
+    mock: KeyboardHandlerContext[K],
+  ) => {
+    handlers[name as string] = mock as ReturnType<typeof vi.fn>;
+    return mock;
+  };
   const ctx: KeyboardHandlerContext = {
     isGuideOpen: () => state.guideOpen,
     isLabMode: () => false,
     isUIHidden: () => false,
     isDiagramFocused: () => state.diagramFocused,
-    onEscapeGuide: fn("onEscapeGuide"),
-    onEscapeLab: fn("onEscapeLab"),
-    onEscapeUIHidden: fn("onEscapeUIHidden"),
-    onRotateView: fn("onRotateView"),
-    onRefresh: fn("onRefresh"),
-    onResetView: fn("onResetView"),
-    onToggleGuide: fn("onToggleGuide"),
-    onNavigateShortcuts: fn("onNavigateShortcuts"),
-    onToggleLab: fn("onToggleLab"),
-    onToggleUI: fn("onToggleUI"),
-    onTogglePink: fn("onTogglePink"),
-    onTogglePrism: fn("onTogglePrism"),
-    onSave: fn("onSave"),
-    onSaveSvg: fn("onSaveSvg"),
-    onSave3d: fn("onSave3d"),
-    onSaveWallpaper: fn("onSaveWallpaper"),
-    onToggleAutoRotate: fn("onToggleAutoRotate"),
-    onCopyLink: fn("onCopyLink"),
-    onCopySeed: fn("onCopySeed"),
-    onDailyCrystal: fn("onDailyCrystal"),
+    onEscapeGuide: track("onEscapeGuide", vi.fn()),
+    onEscapeLab: track("onEscapeLab", vi.fn()),
+    onEscapeUIHidden: track("onEscapeUIHidden", vi.fn()),
+    onRotateView: track("onRotateView", vi.fn()),
+    onRefresh: track("onRefresh", vi.fn()),
+    onResetView: track("onResetView", vi.fn()),
+    onToggleGuide: track("onToggleGuide", vi.fn()),
+    onNavigateShortcuts: track("onNavigateShortcuts", vi.fn()),
+    onToggleLab: track("onToggleLab", vi.fn()),
+    onToggleUI: track("onToggleUI", vi.fn()),
+    onTogglePink: track("onTogglePink", vi.fn()),
+    onTogglePrism: track("onTogglePrism", vi.fn()),
+    onSave: track("onSave", vi.fn()),
+    onSaveSvg: track("onSaveSvg", vi.fn()),
+    onSave3d: track("onSave3d", vi.fn()),
+    onSaveWallpaper: track("onSaveWallpaper", vi.fn()),
+    onToggleAutoRotate: track("onToggleAutoRotate", vi.fn()),
+    onCopyLink: track("onCopyLink", vi.fn()),
+    onCopySeed: track("onCopySeed", vi.fn()),
+    onDailyCrystal: track("onDailyCrystal", vi.fn()),
   };
   return { ctx, handlers, state };
 }

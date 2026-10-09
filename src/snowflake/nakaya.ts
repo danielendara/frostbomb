@@ -1,4 +1,4 @@
-import { Rand } from './random.ts';
+import { Rand } from './random';
 
 /**
  * Crystal habits from Nakaya's morphology diagram (1954) and refinements
@@ -113,28 +113,6 @@ export const habitLabel: Record<Habit, string> = {
   needle: 'Needle',
   column: 'Hollow column',
   capped_column: 'Capped column',
-};
-
-/** Chip order in Lab Mode (#376): matches the Nakaya diagram's regions, left to right. */
-export const HABIT_CHIP_ORDER: readonly Habit[] = [
-  'plate',
-  'sector_plate',
-  'stellar_dendrite',
-  'fernlike_dendrite',
-  'needle',
-  'column',
-  'capped_column',
-];
-
-/** Short chip text; the full name (`habitLabel`) goes in the chip's aria-label/title. */
-export const HABIT_SHORT_LABEL: Record<Habit, string> = {
-  plate: 'Plate',
-  sector_plate: 'Sector',
-  stellar_dendrite: 'Stellar',
-  fernlike_dendrite: 'Fern',
-  needle: 'Needle',
-  column: 'Column',
-  capped_column: 'Capped',
 };
 
 /**

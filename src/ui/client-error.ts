@@ -7,23 +7,6 @@
  * build id, and a coarse browser family. No seeds, full URLs, or identifiers.
  */
 
-export {
-  CLIENT_ERROR_MAX_REPORTS,
-  CLIENT_ERROR_MESSAGE_MAX,
-  CLIENT_ERROR_SOURCE_MAX,
-  CLIENT_ERROR_KINDS,
-  UA_FAMILIES,
-  buildClientErrorReport,
-  locationFromStack,
-  sanitizeSource,
-  stripUrlParams,
-  uaFamily,
-  type ClientErrorKind,
-  type ClientErrorReport,
-  type ErrorLocation,
-  type UaFamily,
-} from "../client-error-contract";
-
 import {
   CLIENT_ERROR_MAX_REPORTS,
   buildClientErrorReport,

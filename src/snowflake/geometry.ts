@@ -1,6 +1,6 @@
 import { createNoise2D } from "simplex-noise";
-import { Rand } from "./random.ts";
-import { getHabit, GrowthConditions, Habit } from "./nakaya.ts";
+import { Rand } from "./random";
+import { getHabit, GrowthConditions, Habit } from "./nakaya";
 
 /**
  * Generates a single arm of the snowflake (a 2D branching pattern in the

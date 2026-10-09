@@ -88,7 +88,7 @@ function makeFakeScene(opts: { renderThrows?: boolean } = {}) {
   const atRender: { snapshot?: typeof state } = {};
   const calls: string[] = [];
 
-  const domElement = { id: "webgl" } as unknown as HTMLCanvasElement;
+  const domElement = { id: "webgl", width: WINDOW.w, height: WINDOW.h } as unknown as HTMLCanvasElement;
   const scene: WallpaperScene = {
     renderer: {
       domElement,
@@ -100,6 +100,8 @@ function makeFakeScene(opts: { renderThrows?: boolean } = {}) {
         calls.push(`size:${w}x${h}:${updateStyle}`);
         state.size = [w, h];
         state.updateStyle = updateStyle ?? true;
+        domElement.width = w;
+        domElement.height = h;
       },
     },
     camera: {

@@ -83,10 +83,7 @@ export async function shareSnowflake(options: ShareSnowflakeOptions): Promise<Sh
     await nav.share({ files: [file], title, text, url });
     return "shared";
   } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") return "cancelled";
-    if (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError") {
-      return "cancelled";
-    }
+    if ((err as { name?: string })?.name === "AbortError") return "cancelled";
     onError?.(err);
     return "failed";
   }

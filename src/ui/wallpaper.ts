@@ -1,4 +1,5 @@
 import { formatExportFileName, type ExportIdentity } from "./download";
+import { drawOnOpaqueCanvas } from "./share-image";
 
 /**
  * Screen-sized wallpaper export (#377): one tap for a crisp PNG in the
@@ -108,15 +109,7 @@ export function captureWallpaper(
 
     scene.composer.render();
 
-    const out = createCanvas();
-    out.width = width;
-    out.height = height;
-    const ctx = out.getContext("2d");
-    if (!ctx) throw new Error("2D canvas unavailable");
-    ctx.fillStyle = fill;
-    ctx.fillRect(0, 0, width, height);
-    ctx.drawImage(scene.renderer.domElement, 0, 0);
-    return out;
+    return drawOnOpaqueCanvas(scene.renderer.domElement, fill, createCanvas);
   } finally {
     scene.resize();
   }

@@ -40,9 +40,9 @@ describe("canShareFiles", () => {
   });
 
   it("is true when canShare accepts a PNG file, and probes with one", () => {
-    const canShare = vi.fn(() => true);
+    const canShare = vi.fn<(data?: ShareData) => boolean>(() => true);
     expect(canShareFiles({ share: vi.fn(), canShare })).toBe(true);
-    const arg = canShare.mock.calls[0][0] as ShareData;
+    const arg = canShare.mock.calls[0]![0]!;
     expect(arg.files).toHaveLength(1);
     expect(arg.files![0].type).toBe("image/png");
   });
