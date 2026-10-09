@@ -82,30 +82,18 @@ Use Cloudflare Web Analytics or another lightweight RUM source to collect real F
 
 Done means: we can answer whether mobile users are seeing a fast first render without manually running Lighthouse.
 
-### P1: Add a custom first-flake-ready mark
-
-**Status:** Implemented in `src/snowflake/perf-marks.ts` with marks `frostbomb:first-flake-built`, `frostbomb:first-frame-rendered`, and `frostbomb:postprocessing-ready`. Smoke coverage in `tests/canvas-marks.smoke.spec.ts`.
-
-Done means: Playwright or browser DevTools can report app-specific startup timing.
-
 ### P2: Re-check postprocessing after deploys
 
 The intended behavior is: render first with the lightweight pipeline, then load postprocessing afterward for polish. Keep checking production HTML and network traces to ensure `postprocessing` is not preloaded on initial HTML.
 
 Done means: initial HTML does not include a `modulepreload` for the postprocessing chunk.
 
-### P2: Evaluate font strategy
+## Done
 
-**Status:** Done (self-hosted) — fonts live under `public/fonts/` (see `tests/unit/self-hosted-fonts.spec.ts` and `tests/self-hosted-fonts.spec.ts`). Remaining optional work: subset or drop unused weights to shrink initial transfer.
-
-Done means: either record the current font cost as acceptable or reduce initial font transfer.
-
-### P2: Add canvas smoke/performance checks in CI
-
-**Status:** Implemented — `tests/canvas-marks.smoke.spec.ts` (smoke project) checks a nonblank canvas and that the custom performance marks fire.
-
-Done means: CI fails if the canvas does not render or if app-specific startup marks never fire.
+- **Custom first-flake-ready marks** — `src/snowflake/perf-marks.ts` (`frostbomb:first-flake-built`, `frostbomb:first-frame-rendered`, `frostbomb:postprocessing-ready`); smoke coverage in `tests/canvas-marks.smoke.spec.ts`.
+- **Canvas smoke/performance checks in CI** — `tests/canvas-marks.smoke.spec.ts` (smoke project) checks a nonblank canvas and that the custom performance marks fire.
+- **Self-hosted fonts** — fonts under `public/fonts/` (`tests/unit/self-hosted-fonts.spec.ts`, `tests/self-hosted-fonts.spec.ts`). Optional follow-up: subset or drop unused weights to shrink initial transfer.
 
 ## Current priority
 
-Custom startup marks and canvas smoke checks are in place. The best next performance improvement is **field data**: Cloudflare Web Analytics or similar RUM plus trending the existing marks on real devices. Lab Lighthouse runs remain useful but are not the primary metric for this canvas-first app.
+The best next performance improvement is **field data**: Cloudflare Web Analytics or similar RUM plus trending the existing marks on real devices. Lab Lighthouse runs remain useful but are not the primary metric for this canvas-first app.

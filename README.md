@@ -133,7 +133,7 @@ npm test                   # pretest runs unit tests, then Playwright with FROST
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `push` to `main`, `pull_request`, and `workflow_dispatch` (optional `full_e2e` input, default `true`).
 
-Every run that does not skip Playwright executes `npm run build`, `npm run test:unit`, then either `npm run test:e2e:smoke` (default) or `npm run test:e2e:full`.
+Every run that does not skip Playwright executes `npm run build`, `npm run typecheck:tests`, `npm run test:unit`, then either `npm run test:e2e:smoke` (default) or `npm run test:e2e:full`.
 
 | When | Playwright |
 | --- | --- |
