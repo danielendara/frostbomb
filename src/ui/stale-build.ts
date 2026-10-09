@@ -23,7 +23,7 @@ export function sessionStorageOrNull(): StaleBuildStorage | null {
 }
 
 /**
- * Recovers a tab that predates a deploy (#333). Its hashed `/assets/*.js`
+ * Recovers a tab that predates a deploy. Its hashed `/assets/*.js`
  * chunks are gone, so the first lazy import (Lab, 3D export, effects) fails;
  * Chromium also caches that failed fetch for the page's lifetime, so only a
  * fresh page load recovers. Vite dispatches a cancelable `vite:preloadError`

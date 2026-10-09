@@ -1,6 +1,6 @@
 import { handleClientError } from "./client-error";
 
-// Minimal Worker entry (#356). `assets.run_worker_first` routes only `/api/*`
+// Minimal Worker entry. `assets.run_worker_first` routes only `/api/*`
 // here; every other request is served straight from static assets (SPA
 // fallback, `_headers`, caching) exactly as before.
 export default {

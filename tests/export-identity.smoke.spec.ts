@@ -1,10 +1,8 @@
 import { expect, test, type Download, type Page } from "@playwright/test";
-import { readDownload } from "./e2e-helpers";
+import { readDownload, withHeldMeshExport } from "./e2e-helpers";
 
-/**
- * #343 — Save 3D names the files from the crystal captured at click time.
- * Regrow stays available while the exporter module loads.
- */
+/** Save 3D names the files from the crystal captured at click time. Regrow stays
+ * available while the exporter module loads. */
 
 const DOWNLOAD_TEST_GAP_MS = 250;
 
@@ -58,50 +56,39 @@ test("Save 3D filenames stay on the crystal captured before the exporter loads",
   // A second document has not cached the lazy exporter, so the route can hold
   // the import while this page regrows.
   const delayed = await page.context().newPage();
-  let releaseExport!: () => void;
-  const exportGate = new Promise<void>((resolve) => {
-    releaseExport = resolve;
+  let regrownSeed = "";
+  await withHeldMeshExport(delayed, async ({ releaseExport, requested }) => {
+    await delayed.goto("/?seed=abcde");
+    await expect(delayed.locator("#seed-display")).toHaveText("abcde");
+    await armObjectUrlTestHooks(delayed);
+    await waitSave3dIdle(delayed);
+
+    const delayedSave = delayed.locator("#btn-save-3d");
+    const stlDownload = waitForTypedDownload(delayed, ".stl");
+    const glbDownload = waitForTypedDownload(delayed, ".glb");
+
+    await delayedSave.click();
+    await requested;
+    await delayed.keyboard.press("r");
+    await expect(delayed.locator("#seed-display")).not.toHaveText("abcde", { ignoreCase: true });
+    regrownSeed = (await delayed.locator("#seed-display").innerText()).toLowerCase();
+    releaseExport();
+
+    const [stlDownloadResult, glbDownloadResult] = await Promise.all([stlDownload, glbDownload]);
+    await waitSave3dIdle(delayed);
+    const saved = [await readDownload(stlDownloadResult), await readDownload(glbDownloadResult)];
+    const names = saved.map((file) => file.name).sort();
+    expect(names).toEqual([
+      "frostbomb-fernlike-dendrite-abcde.glb",
+      "frostbomb-fernlike-dendrite-abcde.stl",
+    ]);
+    for (const name of names) expect(name).not.toContain(regrownSeed);
+
+    const stl = saved.find((file) => file.name.endsWith(".stl"))!;
+    const glb = saved.find((file) => file.name.endsWith(".glb"))!;
+    expect(stl.sha).toBe(original.stl);
+    expect(glb.sha).toBe(original.glb);
   });
-  let markRequested!: () => void;
-  const requested = new Promise<void>((resolve) => {
-    markRequested = resolve;
-  });
-  await delayed.route(/mesh-export\.ts/, async (route) => {
-    markRequested();
-    await exportGate;
-    await route.continue();
-  });
-
-  await delayed.goto("/?seed=abcde");
-  await expect(delayed.locator("#seed-display")).toHaveText("abcde");
-  await armObjectUrlTestHooks(delayed);
-  await waitSave3dIdle(delayed);
-
-  const delayedSave = delayed.locator("#btn-save-3d");
-  const stlDownload = waitForTypedDownload(delayed, ".stl");
-  const glbDownload = waitForTypedDownload(delayed, ".glb");
-
-  await delayedSave.click();
-  await requested;
-  await delayed.keyboard.press("r");
-  await expect(delayed.locator("#seed-display")).not.toHaveText("abcde", { ignoreCase: true });
-  const regrownSeed = (await delayed.locator("#seed-display").innerText()).toLowerCase();
-  releaseExport();
-
-  const [stlDownloadResult, glbDownloadResult] = await Promise.all([stlDownload, glbDownload]);
-  await waitSave3dIdle(delayed);
-  const saved = [await readDownload(stlDownloadResult), await readDownload(glbDownloadResult)];
-  const names = saved.map((file) => file.name).sort();
-  expect(names).toEqual([
-    "frostbomb-fernlike-dendrite-abcde.glb",
-    "frostbomb-fernlike-dendrite-abcde.stl",
-  ]);
-  for (const name of names) expect(name).not.toContain(regrownSeed);
-
-  const stl = saved.find((file) => file.name.endsWith(".stl"))!;
-  const glb = saved.find((file) => file.name.endsWith(".glb"))!;
-  expect(stl.sha).toBe(original.stl);
-  expect(glb.sha).toBe(original.glb);
 
   await delayed.close();
 

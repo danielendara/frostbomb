@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * #376 — Lab Mode habit chips. Vitest runs with environment "node", so DOM
- * and history behaviour live here.
+ * Lab Mode habit chips. Vitest runs with environment "node", so DOM and history
+ * behaviour live here.
  */
 
 const chip = (page: import("@playwright/test").Page, habit: string) =>

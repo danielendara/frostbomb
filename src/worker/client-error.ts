@@ -6,7 +6,7 @@ import {
   type ClientErrorReport,
 } from "../client-error-contract";
 
-/** Largest accepted report body, in bytes (#356). */
+/** Largest accepted report body, in bytes. */
 export const CLIENT_ERROR_BODY_MAX = 2048;
 
 const REPORT_KEYS = new Set(["kind", "message", "source", "line", "col", "build", "ua"]);

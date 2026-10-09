@@ -24,7 +24,7 @@ function fakeStorage(initial: Record<string, string> = {}) {
   };
 }
 
-describe("installStaleBuildRecovery (#333)", () => {
+describe("installStaleBuildRecovery", () => {
   let uninstall: (() => void) | undefined;
 
   beforeEach(() => {
@@ -244,7 +244,7 @@ describe("installStaleBuildRecovery (#333)", () => {
   });
 });
 
-describe("sessionStorageOrNull (#333)", () => {
+describe("sessionStorageOrNull", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });

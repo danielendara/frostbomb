@@ -155,7 +155,7 @@ describe("crystalStatesEqual", () => {
   });
 });
 
-describe("generation provenance (#341)", () => {
+describe("generation provenance", () => {
   it("treats a seed-only link as sampled and an explicit t/ss pair as manual", () => {
     expect(parseCrystalUrlState("?seed=abcde")).toMatchObject({
       seed: "abcde",
@@ -219,7 +219,7 @@ describe("generation provenance (#341)", () => {
   });
 });
 
-describe("resolveModes (#331)", () => {
+describe("resolveModes", () => {
   const off = { pink: false, prism: false };
   const on = { pink: true, prism: true };
   const params = (query: string) => new URLSearchParams(query);

@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * #377 — W / Save as wallpaper downloads a screen-sized, opaque PNG and leaves
- * the live renderer exactly as it was. (Vitest has no WebGL, so the
- * restore-equality check against the real scene lives here.)
+ * W / Save as wallpaper downloads a screen-sized, opaque PNG and leaves the live
+ * renderer exactly as it was. (Vitest has no WebGL, so the restore-equality check
+ * against the real scene lives here.)
  */
 
 async function liveCanvasState(page: Page) {

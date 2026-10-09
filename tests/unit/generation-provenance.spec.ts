@@ -1,5 +1,5 @@
 /**
- * Encode/reopen of a crystal (#341).
+ * Encode/reopen of a crystal.
  *
  * Goldens pin the sampled pipeline and the manual pipeline separately. They do
  * not pin the transition: copying a sampled crystal used to write its rounded
@@ -79,7 +79,7 @@ function sameGeometry(a: BuildResult, b: BuildResult): boolean {
   return true;
 }
 
-describe("sampled crystal round-trip (#341)", () => {
+describe("sampled crystal round-trip", () => {
   it("replays the sampled crystal from a seed-only link, not the rounded point", () => {
     const sampled = growSeed("abcde");
     const displayed = quantizeLabConditions({

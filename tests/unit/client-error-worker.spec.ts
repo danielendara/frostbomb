@@ -17,7 +17,7 @@ function post(body: string, headers: Record<string, string> = {}): Request {
   return new Request(url, { method: "POST", body, headers: { "content-type": "application/json", ...headers } });
 }
 
-describe("POST /api/client-error (#356)", () => {
+describe("POST /api/client-error", () => {
   it("logs one structured line and returns 204 for a valid report", async () => {
     const log = vi.fn();
     const res = await handleClientError(post(JSON.stringify(valid)), log);
