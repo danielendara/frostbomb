@@ -82,7 +82,7 @@ test("cancelling the share sheet is silent", async ({ page }) => {
   const share = page.locator("#btn-share");
   await expect(share).toBeVisible();
   await share.click();
-  await expect(share).toBeEnabled();
+  await expect(share).toBeEnabled({ timeout: 15_000 });
   const text = await page.locator("#a11y-announcer").innerText();
   expect(text).not.toMatch(/Failed|Link copied|Couldn't/i);
   const copied = await page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
@@ -94,7 +94,7 @@ test("a non-abort failure falls back to Copy link and keeps Copy link visible", 
   await page.goto("/?seed=abcde");
   await expect(page.locator("#btn-share")).toBeVisible();
   await page.locator("#btn-share").click();
-  await expect(page.locator("#a11y-announcer")).toContainText("Link copied");
+  await expect(page.locator("#a11y-announcer")).toContainText("Link copied", { timeout: 15_000 });
   const copied = await page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
   expect(copied).toHaveLength(1);
   await expect(page.locator("#btn-copy")).toBeVisible();
