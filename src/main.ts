@@ -1196,7 +1196,16 @@ function onScreenCrystalState(): CrystalUrlState {
       pink: scene.isPinkModeEnabled,
       prism: scene.isPrismModeEnabled,
       lab: isLabMode,
-      rotate: scene.isAutoRotateEnabled,
+      // The rotate *preference*, not the live scene flag: export/share pause
+      // the scene mid-flight and reduced motion forces it off, while share
+      // URLs encode rotatePref (see writeCurrentModeParams). Comparing the
+      // paused flag would see rotate as "changed" and regrow the crystal.
+      rotate:
+        rotatePref === true && !motionQuery.matches
+          ? true
+          : rotatePref === false
+            ? false
+            : null,
     },
   };
 }
