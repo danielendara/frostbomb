@@ -507,7 +507,7 @@ function navigateToGuideSection(targetId: string, returnTarget: HTMLElement | nu
   requestAnimationFrame(() => {
     const el = document.getElementById(targetId);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.scrollIntoView({ behavior: motionQuery.matches ? "auto" : "smooth", block: "start" });
       el.focus();
       el.classList.remove("section-highlight");
       void el.offsetWidth;

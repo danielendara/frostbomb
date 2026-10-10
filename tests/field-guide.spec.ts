@@ -58,3 +58,36 @@ test('Guide and Lab Mode can coexist', async ({ page }) => {
   await expect(labControls).toBeVisible();
   await expect(labToggle).toHaveAttribute('aria-pressed', 'true');
 });
+
+async function recordScrollBehaviors(page: import('@playwright/test').Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __scrollBehaviors: string[] };
+    w.__scrollBehaviors = [];
+    const orig = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (arg?: boolean | ScrollIntoViewOptions) {
+      w.__scrollBehaviors.push(typeof arg === 'object' && arg ? String(arg.behavior) : 'none');
+      return orig.call(this, arg as ScrollIntoViewOptions);
+    };
+  });
+}
+
+async function jumpToTemperature(page: import('@playwright/test').Page) {
+  await page.locator('.field-notes__row').filter({ hasText: 'Temperature' }).first().click();
+  await expect(page.locator('#guide-temp')).toBeFocused();
+  return page.evaluate(() => (window as unknown as { __scrollBehaviors: string[] }).__scrollBehaviors);
+}
+
+test('Guide jump uses instant scroll when reduced motion is preferred', async ({ page }) => {
+  await recordScrollBehaviors(page);
+  const behaviors = await jumpToTemperature(page);
+  expect(behaviors).toContain('auto');
+  expect(behaviors).not.toContain('smooth');
+});
+
+test('Guide jump smooth-scrolls when there is no motion preference', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await recordScrollBehaviors(page);
+  const behaviors = await jumpToTemperature(page);
+  expect(behaviors).toContain('smooth');
+  expect(behaviors).not.toContain('auto');
+});
