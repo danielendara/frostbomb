@@ -372,8 +372,8 @@ describe('SeedHistoryManager Keep toggle', () => {
 });
 
 describe('SeedHistoryManager cross-tab sync', () => {
-  const emit = (key: string | null, newValue: string | null) =>
-    window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
+  const emit = (key: string | null, newValue: string | null, storageArea: Storage = localStorage) =>
+    window.dispatchEvent(new StorageEvent('storage', { key, newValue, storageArea }));
   const stored = () => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
 
   beforeEach(() => {
@@ -409,6 +409,13 @@ describe('SeedHistoryManager cross-tab sync', () => {
   it('ignores unrelated keys', () => {
     const { manager, onExternalChange } = make();
     emit('other', JSON.stringify(['zulu']));
+    expect(manager.getSeeds()).toEqual([...SEEDS]);
+    expect(onExternalChange).not.toHaveBeenCalled();
+  });
+
+  it('ignores events from a different storage area', () => {
+    const { manager, onExternalChange } = make();
+    emit(STORAGE_KEY, JSON.stringify(['zulu']), sessionStorage);
     expect(manager.getSeeds()).toEqual([...SEEDS]);
     expect(onExternalChange).not.toHaveBeenCalled();
   });

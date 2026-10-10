@@ -86,6 +86,7 @@ export class SeedHistoryManager {
 
   /** Adopt another tab's list so this tab never overwrites it with a stale one. Never writes. */
   private handleStorageEvent(e: StorageEvent): void {
+    if (e.storageArea !== localStorage) return;
     if (e.key !== STORAGE_KEY && e.key !== null) return;
     // Keep a pending undo intact; the list is re-read when the window closes.
     if (this.undoTimeoutId !== null || this.backupEntries !== null) return;
