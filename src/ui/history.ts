@@ -59,6 +59,8 @@ export function withSeedAdded(entries: readonly SeedEntry[], seed: string): Seed
 
 export interface HistoryManagerOptions {
   onSelectSeed: (seed: string) => void;
+  /** Called after another tab changed the stored list and entries were replaced. */
+  onExternalChange?: () => void;
 }
 
 export class SeedHistoryManager {
@@ -66,6 +68,7 @@ export class SeedHistoryManager {
   private backupEntries: SeedEntry[] | null = null;
   private undoTimeoutId: number | null = null;
   private onSelectSeed: (seed: string) => void;
+  private onExternalChange: (() => void) | undefined;
 
   // Change detection cache to prevent layout thrashing
   private lastActiveSeed: string | undefined = undefined;
@@ -76,15 +79,30 @@ export class SeedHistoryManager {
 
   constructor(options: HistoryManagerOptions) {
     this.onSelectSeed = options.onSelectSeed;
+    this.onExternalChange = options.onExternalChange;
     this.loadFromStorage();
+    window.addEventListener("storage", (e) => this.handleStorageEvent(e));
+  }
+
+  /** Adopt another tab's list so this tab never overwrites it with a stale one. Never writes. */
+  private handleStorageEvent(e: StorageEvent): void {
+    if (e.storageArea !== localStorage) return;
+    if (e.key !== STORAGE_KEY && e.key !== null) return;
+    // Keep a pending undo intact; the list is re-read when the window closes.
+    if (this.undoTimeoutId !== null || this.backupEntries !== null) return;
+    try {
+      this.entries = e.newValue ? parseStoredEntries(JSON.parse(e.newValue)) : [];
+    } catch (err) {
+      console.warn("Failed to sync recent seeds from another tab:", err);
+      return;
+    }
+    this.onExternalChange?.();
   }
 
   private loadFromStorage(): void {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        this.entries = parseStoredEntries(JSON.parse(stored));
-      }
+      this.entries = stored ? parseStoredEntries(JSON.parse(stored)) : [];
     } catch (e) {
       console.warn("Failed to parse recent seeds from localStorage:", e);
     }
@@ -189,6 +207,9 @@ export class SeedHistoryManager {
       const undoWasFocused = document.activeElement?.id === "btn-undo-history";
       this.backupEntries = null;
       this.undoTimeoutId = null;
+      // Events were ignored during the window; re-read so the next write isn't stale.
+      this.loadFromStorage();
+      this.onExternalChange?.();
       this.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
       if (undoWasFocused) {
         document.getElementById("guide-toggle")?.focus();

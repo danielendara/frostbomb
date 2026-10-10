@@ -370,3 +370,102 @@ describe('SeedHistoryManager Keep toggle', () => {
     expect(tabStops()).toEqual([pills[0], keepToggle('alpha')]);
   });
 });
+
+describe('SeedHistoryManager cross-tab sync', () => {
+  const emit = (key: string | null, newValue: string | null, storageArea: Storage = localStorage) =>
+    window.dispatchEvent(new StorageEvent('storage', { key, newValue, storageArea }));
+  const stored = () => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+    localStorage.clear();
+    mountHistoryDom();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  function make(onExternalChange = vi.fn()) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(SEEDS));
+    return { manager: new SeedHistoryManager({ onSelectSeed: vi.fn(), onExternalChange }), onExternalChange };
+  }
+
+  it('adopts an external kept entry and keeps it when this tab adds a seed', () => {
+    const { manager, onExternalChange } = make();
+    emit(STORAGE_KEY, JSON.stringify(['alpha', { seed: 'bravo', kept: true }, 'charlie']));
+    expect(manager.getKeptSeeds()).toEqual(['bravo']);
+    expect(onExternalChange).toHaveBeenCalledTimes(1);
+    manager.addSeed('delta');
+    expect(stored()).toEqual(['delta', 'alpha', { seed: 'bravo', kept: true }, 'charlie']);
+  });
+
+  it('ignores unrelated keys', () => {
+    const { manager, onExternalChange } = make();
+    emit('other', JSON.stringify(['zulu']));
+    expect(manager.getSeeds()).toEqual([...SEEDS]);
+    expect(onExternalChange).not.toHaveBeenCalled();
+  });
+
+  it('ignores events from a different storage area', () => {
+    const { manager, onExternalChange } = make();
+    emit(STORAGE_KEY, JSON.stringify(['zulu']), sessionStorage);
+    expect(manager.getSeeds()).toEqual([...SEEDS]);
+    expect(onExternalChange).not.toHaveBeenCalled();
+  });
+
+  it('empties the list for null newValue and for key === null', () => {
+    const { manager } = make();
+    emit(STORAGE_KEY, null);
+    expect(manager.getSeeds()).toEqual([]);
+    emit(STORAGE_KEY, JSON.stringify(['alpha']));
+    expect(manager.getSeeds()).toEqual(['alpha']);
+    emit(null, null);
+    expect(manager.getSeeds()).toEqual([]);
+  });
+
+  it('warns on malformed JSON without throwing or changing entries', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { manager, onExternalChange } = make();
+    expect(() => emit(STORAGE_KEY, '{nope')).not.toThrow();
+    expect(warn).toHaveBeenCalled();
+    expect(manager.getSeeds()).toEqual([...SEEDS]);
+    expect(onExternalChange).not.toHaveBeenCalled();
+  });
+
+  it('never writes to localStorage from the handler', () => {
+    make();
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    emit(STORAGE_KEY, JSON.stringify(['alpha']));
+    expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it('ignores events during the undo window, then re-reads storage when it closes', () => {
+    const { manager, onExternalChange } = make();
+    manager.updateUI(CURRENT, false, false);
+    manager.clear(CURRENT, false, false);
+    const external = JSON.stringify([{ seed: 'bravo', kept: true }]);
+    emit(STORAGE_KEY, external);
+    expect(onExternalChange).not.toHaveBeenCalled();
+    expect(manager.getSeeds()).toEqual([]);
+    localStorage.setItem(STORAGE_KEY, external);
+    vi.advanceTimersByTime(10000);
+    expect(manager.getKeptSeeds()).toEqual(['bravo']);
+    expect(onExternalChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('still restores cleared seeds with Undo after an ignored event', () => {
+    const { manager } = make();
+    manager.updateUI(CURRENT, false, false);
+    manager.clear(CURRENT, false, false);
+    emit(STORAGE_KEY, JSON.stringify(['zulu']));
+    manager.undoClear(CURRENT, false, false);
+    expect(manager.getSeeds()).toEqual([...SEEDS]);
+  });
+});
