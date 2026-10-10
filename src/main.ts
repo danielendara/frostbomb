@@ -128,6 +128,7 @@ let labToggleGeneration = 0;
 
 // History Manager
 const historyManager = new SeedHistoryManager({
+  onExternalChange: () => updateRecentSeedsUI(),
   onSelectSeed: (seedVal) => {
     urlWrites.flush();
     if (seedVal === currentSeedLabel) {
