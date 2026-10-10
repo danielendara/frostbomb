@@ -9,12 +9,22 @@ test('document title updates when a new snowflake is grown', async ({ page }) =>
 
   await page.keyboard.press('r');
 
-  await expect(page).toHaveTitle(/.+ — frostbomb/);
+  await expect(page).toHaveTitle(/.+ · .+ — frostbomb/);
 
-  const habitText = await page.locator('#stat-habit').textContent();
-  if (habitText && habitText !== '—') {
-    await expect(page).toHaveTitle(new RegExp(`${habitText} — frostbomb`));
-  }
+  await expect.poll(() => new URL(page.url()).searchParams.get('seed')).toBeTruthy();
+  const seed = new URL(page.url()).searchParams.get('seed')!;
+  await expect(page).toHaveTitle(new RegExp(` · ${seed} — frostbomb$`));
+});
+
+test('title carries the seed and follows Back history', async ({ page }) => {
+  await page.goto('/?seed=frost1');
+  await expect(page).toHaveTitle(/ · frost1 — frostbomb$/);
+
+  await page.keyboard.press('r');
+  await expect(page).not.toHaveTitle(/frost1/);
+
+  await page.goBack();
+  await expect(page).toHaveTitle(/ · frost1 — frostbomb$/);
 });
 
 test('seed button has descriptive aria-label', async ({ page }) => {

@@ -245,7 +245,7 @@ function grow(
     }
   }
 
-  const title = `${habitLabel[conditions.habit]} — frostbomb`;
+  const title = `${habitLabel[conditions.habit]} · ${label} — frostbomb`;
   if (lastTitle !== title) {
     document.title = title;
     lastTitle = title;
