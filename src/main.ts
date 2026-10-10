@@ -828,16 +828,30 @@ async function copyTextToClipboard(
   } catch (err) {
     console.warn("Clipboard API failed, trying legacy fallback:", err);
     try {
+      const previousFocus = document.activeElement;
       const textArea = document.createElement("textarea");
       textArea.value = text;
+      textArea.readOnly = true;
+      textArea.setAttribute("aria-hidden", "true");
       textArea.style.position = "fixed";
       textArea.style.left = "-9999px";
       textArea.style.top = "0";
       document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand("copy");
-      document.body.removeChild(textArea);
+      let successful = false;
+      try {
+        textArea.focus({ preventScroll: true });
+        textArea.select();
+        successful = document.execCommand("copy");
+      } finally {
+        if (textArea.isConnected) textArea.remove();
+        if (
+          previousFocus instanceof HTMLElement &&
+          previousFocus.isConnected &&
+          previousFocus !== document.body
+        ) {
+          previousFocus.focus({ preventScroll: true });
+        }
+      }
       if (!successful) {
         throw new Error("execCommand copy failed");
       }
