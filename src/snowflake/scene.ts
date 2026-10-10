@@ -41,7 +41,6 @@ export interface SceneOptions {
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {}): Scene {
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   let prefersReducedMotion = reducedMotionQuery.matches;
-  const maxPixelRatio = Math.min(window.devicePixelRatio, prefersReducedMotion ? 1 : 2);
   let qualityScale = prefersReducedMotion ? 0.7 : 1;
 
   const scene = new THREE.Scene();
@@ -60,7 +59,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   });
 
   function applyPixelRatio() {
-    renderer.setPixelRatio(Math.max(0.75, maxPixelRatio * qualityScale));
+    const cap = Math.min(window.devicePixelRatio || 1, prefersReducedMotion ? 1 : 2);
+    renderer.setPixelRatio(Math.max(0.75, cap * qualityScale));
   }
 
   applyPixelRatio();
@@ -223,6 +223,21 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   }
 
   window.addEventListener("resize", updateCamera);
+
+  // Zoom or a monitor change can alter devicePixelRatio without a resize event.
+  let dprQuery: MediaQueryList | null = null;
+
+  function handleDprChange() {
+    updateCamera();
+    watchDevicePixelRatio();
+  }
+
+  function watchDevicePixelRatio() {
+    dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    dprQuery.addEventListener("change", handleDprChange, { once: true });
+  }
+
+  watchDevicePixelRatio();
   updateCamera();
 
   let frameId = 0;
@@ -262,6 +277,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
       window.removeEventListener("resize", updateCamera);
+      dprQuery?.removeEventListener("change", handleDprChange);
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       reducedMotionQuery.removeEventListener("change", handleReducedMotionChange);
