@@ -176,6 +176,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   }
 
   function handlePointerDown(e: PointerEvent) {
+    // Only the primary button rotates. Right/middle clicks open a context menu or autoscroll,
+    // which can swallow the matching pointerup and leave the drag stuck.
+    if (e.button !== 0 || (e.pointerType === "mouse" && e.ctrlKey)) return;
     if (isDragging && e.pointerId !== dragPointerId) return;
     isDragging = true;
     dragPointerId = e.pointerId;
@@ -191,10 +194,19 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     canvas.style.cursor = "grab";
   }
 
+  // A context menu can swallow the pointerup, so end any drag when it opens.
+  function handleContextMenu() {
+    if (!isDragging) return;
+    isDragging = false;
+    dragPointerId = -1;
+    canvas.style.cursor = "grab";
+  }
+
   window.addEventListener("pointermove", handlePointerMove);
   canvas.addEventListener("pointerdown", handlePointerDown);
   window.addEventListener("pointerup", handlePointerUp);
   window.addEventListener("pointercancel", handlePointerUp);
+  canvas.addEventListener("contextmenu", handleContextMenu);
 
   if (import.meta.env.DEV) {
     (window as any).__FROSTBOMB_DRAG__ = () => ({
@@ -276,6 +288,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       canvas.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
+      canvas.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("resize", updateCamera);
       dprQuery?.removeEventListener("change", handleDprChange);
       canvas.removeEventListener("webglcontextlost", handleContextLost);
