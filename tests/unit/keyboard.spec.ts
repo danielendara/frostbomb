@@ -209,3 +209,46 @@ describe("initKeyboardShortcuts key auto-repeat", () => {
     });
   });
 });
+
+describe("initKeyboardShortcuts arrows vs. Lab pane widgets", () => {
+  let h: Harness;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    document.body.innerHTML =
+      '<div id="pane-mount"><div tabindex="0" class="slider"></div></div><div id="other"></div>';
+    h = makeCtx();
+    dispose = initKeyboardShortcuts(h.ctx);
+  });
+
+  afterEach(() => {
+    dispose();
+  });
+
+  it("does not orbit on arrows dispatched inside #pane-mount", () => {
+    const slider = document.querySelector(".slider")!;
+    for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]) {
+      keydown(key, {}, slider);
+    }
+    expect(h.handlers.onRotateView).not.toHaveBeenCalled();
+  });
+
+  it("still fires letter shortcuts inside #pane-mount", () => {
+    keydown("r", {}, document.querySelector(".slider")!);
+    expect(h.handlers.onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores an arrow already defaultPrevented outside the pane", () => {
+    const other = document.getElementById("other")!;
+    other.addEventListener("keydown", (e) => e.preventDefault());
+    keydown("ArrowLeft", {}, other);
+    expect(h.handlers.onRotateView).not.toHaveBeenCalled();
+  });
+
+  it("still orbits on arrows from the window/body, Shift is fast", () => {
+    keydown("ArrowLeft");
+    expect(h.handlers.onRotateView).toHaveBeenLastCalledWith(-0.1, 0);
+    keydown("ArrowRight", { shiftKey: true }, document.body);
+    expect(h.handlers.onRotateView).toHaveBeenLastCalledWith(0.3, 0);
+  });
+});

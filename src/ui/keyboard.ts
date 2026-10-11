@@ -47,6 +47,12 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
+function isInLabPane(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement && Boolean(target.closest("#pane-mount"))
+  );
+}
+
 function isInteractive(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(target.closest('button, a, [role="button"], [role="link"]'));
@@ -81,6 +87,11 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
     const isDiagramFocused = ctx.isDiagramFocused();
     const isGuideOpen = ctx.isGuideOpen();
     if (isGuideOpen && !isDiagramFocused && k.startsWith("arrow")) return;
+
+    // A focused Lab slider owns its arrows (or a widget already consumed the
+    // key), so the camera must not orbit at the same time.
+    if (k.startsWith("arrow") && (e.defaultPrevented || isInLabPane(e.target)))
+      return;
 
     // Space should scroll down the guide instead of refreshing if guide is open and active
     if (k === " " && isGuideOpen && !isDiagramFocused) return;
