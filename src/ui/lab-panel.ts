@@ -1,5 +1,25 @@
 import { announce } from "./announcer";
 import { SEED_PATTERN } from "../url-state";
+import { SHARE_PARAM_SEED } from "../share-url-params";
+
+/**
+ * A pasted share link yields its `?seed=`; anything else is the raw text.
+ * Always trimmed and lowercased. Only http(s) URLs are read as links, so
+ * `javascript:` and other schemes fall through to SEED_PATTERN and are rejected.
+ */
+export function normalizeSeedInput(raw: string): string {
+  const text = (raw || "").trim();
+  try {
+    const url = new URL(text);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      const fromUrl = url.searchParams.get(SHARE_PARAM_SEED);
+      if (fromUrl !== null) return fromUrl.trim().toLowerCase();
+    }
+  } catch {
+    // Not a parseable URL; fall through and let SEED_PATTERN reject it.
+  }
+  return text.toLowerCase();
+}
 
 export type TweakpanePane = import("tweakpane").Pane;
 
@@ -55,7 +75,7 @@ export class LabPanel {
       p.addBinding(this.params, "seed", {
         label: "Seed",
       }).on("change", (ev) => {
-        const val = (ev.value || "").trim().toLowerCase();
+        const val = normalizeSeedInput(ev.value);
         const currentSeedLabel = this.callbacks.getCurrentSeedLabel();
         if (val === currentSeedLabel) return;
 
