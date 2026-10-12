@@ -39,3 +39,27 @@ test('Lab mode slider changes do not trigger growth animation', async ({ page })
   await expect(scene).toHaveAttribute('data-entry-progress', '1.000');
   await expect(habitText).toHaveText(/Needle/i);
 });
+
+test('Arrow keys on a focused Lab slider change Temp without orbiting the camera', async ({ page }) => {
+  await page.goto('/?seed=frost42');
+  await page.waitForFunction(() => typeof (window as any).__FROSTBOMB_DRAG__ === 'function');
+  await page.keyboard.press('l');
+  await expect(page.locator('#lab-controls')).toBeVisible();
+
+  const row = page.locator('#pane-mount .tp-lblv:has-text("Temp (°C)")');
+  const knob = row.locator('.tp-sldv_t');
+  const tempInput = row.locator('input');
+  await expect(tempInput).toBeVisible();
+
+  const readDrag = () => page.evaluate(() => (window as any).__FROSTBOMB_DRAG__() as { x: number; y: number });
+  const dragBefore = await readDrag();
+  const tempBefore = await tempInput.inputValue();
+
+  await knob.focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+
+  await expect.poll(() => tempInput.inputValue()).not.toBe(tempBefore);
+  const dragAfter = await readDrag();
+  expect(dragAfter.x).toBe(dragBefore.x);
+  expect(dragAfter.y).toBe(dragBefore.y);
+});
