@@ -47,6 +47,44 @@ describe("LabPanel.ensurePane retry behavior", () => {
   });
 });
 
+describe("normalizeSeedInput", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("trims and lowercases plain seed text", async () => {
+    const { normalizeSeedInput } = await import("../../src/ui/lab-panel.ts");
+    expect(normalizeSeedInput("  ABC12 ")).toBe("abc12");
+  });
+
+  it("reads ?seed= from a pasted https share link and ignores other params", async () => {
+    const { normalizeSeedInput } = await import("../../src/ui/lab-panel.ts");
+    expect(
+      normalizeSeedInput("https://frostbomb.com/?seed=Frost42&pink=1"),
+    ).toBe("frost42");
+    expect(normalizeSeedInput("http://127.0.0.1:5173/?lab=1&seed=snow7")).toBe(
+      "snow7",
+    );
+  });
+
+  it("returns a URL without seed= unchanged so SEED_PATTERN rejects it", async () => {
+    const { normalizeSeedInput } = await import("../../src/ui/lab-panel.ts");
+    expect(normalizeSeedInput("https://frostbomb.com/")).toBe(
+      "https://frostbomb.com/",
+    );
+  });
+
+  it("never reads a non-http string as a URL", async () => {
+    const { normalizeSeedInput } = await import("../../src/ui/lab-panel.ts");
+    expect(normalizeSeedInput("javascript:alert(1)")).toBe(
+      "javascript:alert(1)",
+    );
+    expect(normalizeSeedInput("javascript:alert(1)?seed=abc12")).toBe(
+      "javascript:alert(1)?seed=abc12",
+    );
+  });
+});
+
 describe("Lab seed validation (#350)", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -151,6 +189,41 @@ describe("Lab seed validation (#350)", () => {
     expect(labPanel.params.seed).toBe("····");
     expect((document.getElementById("pane-seed") as HTMLInputElement).style.outline).toBe("");
     expectCopyButtonUntouched();
+  });
+
+  it("accepts a pasted share link and grows its seed without an error", async () => {
+    const {
+      labPanel,
+      seedChange,
+      onSeedChange,
+      labelSpy,
+      announceSpy,
+      refreshCount,
+    } = await loadPanel();
+
+    seedChange({ value: "https://frostbomb.com/?seed=frost42" });
+
+    expect(onSeedChange).toHaveBeenCalledExactlyOnceWith("frost42");
+    expect(labelSpy).not.toHaveBeenCalled();
+    expect(announceSpy).not.toHaveBeenCalled();
+    expect(refreshCount()).toBe(0);
+    expect(labPanel.params.seed).toBe("····");
+    expect(
+      (document.getElementById("pane-seed") as HTMLInputElement).style.outline,
+    ).toBe("");
+  });
+
+  it("rejects a pasted link with no seed or an invalid seed with the existing message", async () => {
+    const { onSeedChange, announceSpy, seedChange } = await loadPanel();
+
+    seedChange({ value: "https://frostbomb.com/" });
+    seedChange({ value: "https://frostbomb.com/?seed=x" });
+
+    expect(onSeedChange).not.toHaveBeenCalled();
+    expect(announceSpy).toHaveBeenCalledTimes(2);
+    expect(announceSpy).toHaveBeenCalledWith(
+      "Invalid seed. Seeds must be 3 to 12 alphanumeric characters.",
+    );
   });
 
   it("leaves clipboard Copied and Failed labels on the copy buttons only", () => {
