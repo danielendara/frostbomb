@@ -945,7 +945,10 @@ async function shareCurrentSnowflake() {
       shareBtn.disabled = false;
       shareBtn.removeAttribute("aria-busy");
     }
-    if (wasAutoRotating) scene.setAutoRotate(true);
+    if (wasAutoRotating) {
+      scene.setAutoRotate(rotatePref === true && !motionQuery.matches);
+      updateRotateButtonUI();
+    }
   }
 }
 
@@ -975,6 +978,7 @@ async function saveSnowflake() {
       );
     },
     scene,
+    resumeAutoRotateFromPref,
   );
 }
 
@@ -1014,6 +1018,7 @@ async function saveWallpaper() {
       downloadHref(wallpaperFileName(identity), URL.createObjectURL(blob));
     },
     scene,
+    resumeAutoRotateFromPref,
   );
 }
 
@@ -1045,6 +1050,7 @@ async function saveSnowflakeSvg() {
       );
     },
     scene,
+    resumeAutoRotateFromPref,
   );
 }
 
@@ -1092,6 +1098,7 @@ async function saveSnowflake3d() {
       );
     },
     scene,
+    resumeAutoRotateFromPref,
   );
 }
 
@@ -1382,6 +1389,11 @@ function updateRotateButtonUI() {
   }
 }
 
+function resumeAutoRotateFromPref(): void {
+  scene.setAutoRotate(rotatePref === true && !motionQuery.matches);
+  updateRotateButtonUI();
+}
+
 updateRotateButtonUI();
 motionQuery.addEventListener("change", updateRotateButtonUI);
 
@@ -1433,13 +1445,15 @@ let photoModeFocusGeneration = 0;
 
 /**
  * Focus #btn-ui after Photo Mode exits. `exitFocus` is what had focus at
- * exit: it, the scene canvas, body and #btn-ui count as "not moved by the
- * user" (some browsers keep the canvas focused after its tabindex goes).
- * Anything else means the user moved focus, so every attempt stands down,
- * as they all do if Photo Mode re-enters.
+ * exit; it, the scene canvas, and body count as "not moved by the user"
+ * (some browsers keep the canvas focused after its tabindex goes). Anything
+ * else means the user moved focus, so every attempt stands down, as they
+ * all do if Photo Mode re-enters.
  */
 function restorePhotoModeUIFocus(exitFocus: Element | null): void {
   const generation = ++photoModeFocusGeneration;
+  let frameAttempts = 0;
+  const maxFrameAttempts = 60;
   /** true = keep trying, false = done or must stop. */
   const focusBtn = (): boolean => {
     if (!(btnUI instanceof HTMLElement)) return false;
@@ -1462,8 +1476,11 @@ function restorePhotoModeUIFocus(exitFocus: Element | null): void {
   // Slow frames can stall the timeline, so keep retrying for a short while.
   const deadline = performance.now() + 1500;
   const retry = () => {
-    if (performance.now() > deadline) return;
-    if (focusBtn()) requestAnimationFrame(retry);
+    frameAttempts++;
+    const needsRetry = focusBtn();
+    if (!needsRetry) return;
+    if (frameAttempts >= maxFrameAttempts || performance.now() > deadline) return;
+    requestAnimationFrame(retry);
   };
   requestAnimationFrame(retry);
 }

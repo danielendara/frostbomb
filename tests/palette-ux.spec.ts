@@ -299,6 +299,30 @@ test("Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
   await expect(btnUI).toBeFocused();
 });
 
+test("Photo Mode exit restores btn-ui focus when animation frames are slow", async ({
+  page,
+}) => {
+  test.slow();
+  await page.addInitScript(() => {
+    const orig = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (cb) => orig(() => setTimeout(cb, 48));
+  });
+
+  const btnUI = page.locator("#btn-ui");
+  const masthead = page.locator(".masthead");
+  const announcer = page.locator("#a11y-announcer");
+
+  await page.keyboard.press("h");
+  await expect(masthead).toHaveClass(/ui-hidden/);
+
+  await page.keyboard.press("Escape");
+  await expect(masthead).not.toHaveClass(/ui-hidden/);
+  await expect(announcer).toContainText(/Photo Mode exited.*UI restored/i, {
+    timeout: 15_000,
+  });
+  await expect(btnUI).toBeFocused({ timeout: 5_000 });
+});
+
 test("Photo Mode keeps focus out of hidden UI and restores it to btn-ui via Esc and H", async ({
   page,
 }) => {

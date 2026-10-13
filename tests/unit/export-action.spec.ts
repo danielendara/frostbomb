@@ -146,6 +146,21 @@ describe("runExportAction", () => {
     expect(rotate.setAutoRotate).not.toHaveBeenCalled();
   });
 
+  it("calls resumeRotate instead of restoring the pre-pause flag", async () => {
+    const rotate = makeRotateControl(true);
+    const resumeRotate = vi.fn(() => {
+      rotate.setAutoRotate(false);
+    });
+
+    await runExportAction("btn-save-svg", MESSAGES, () => {}, rotate, resumeRotate);
+
+    expect(rotate.isAutoRotateEnabled).toBe(false);
+    expect(resumeRotate).toHaveBeenCalledTimes(1);
+    expect(rotate.setAutoRotate).toHaveBeenCalledTimes(2);
+    expect(rotate.setAutoRotate).toHaveBeenNthCalledWith(1, false);
+    expect(rotate.setAutoRotate).toHaveBeenNthCalledWith(2, false);
+  });
+
   it("leaves rotation untouched when no rotate control is provided", async () => {
     const result = await runExportAction("btn-save-svg", MESSAGES, () => {});
     expect(result).toBe(true);
