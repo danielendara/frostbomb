@@ -1,4 +1,5 @@
 import { announce } from "./announcer";
+import { LAB_TEMP_MAX_C, LAB_TEMP_MIN_C } from "../snowflake/nakaya";
 import { SEED_PATTERN } from "../url-state";
 import { SHARE_PARAM_SEED } from "../share-url-params";
 
@@ -121,8 +122,8 @@ export class LabPanel {
       });
 
       p.addBinding(this.params, "temperature", {
-        min: -40,
-        max: 0,
+        min: LAB_TEMP_MIN_C,
+        max: LAB_TEMP_MAX_C,
         step: 0.5,
         label: "Temp (°C)",
       }).on("change", (ev) => {

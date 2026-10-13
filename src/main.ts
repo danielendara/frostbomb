@@ -35,6 +35,7 @@ import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-buil
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { createUrlWriteCoalescer } from "./url-write-coalescer";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
+import { NAKAYA_NAV_KEYS, nakayaKeyStep, nakayaPointToConditions } from "./ui/nakaya-input";
 import { loadModePrefs, resolveRotatePref, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
   crystalStatesEqual,
@@ -560,11 +561,7 @@ function handleNakayaPointer(e: PointerEvent) {
     visualPress("nakaya-diagram");
   }
   const rect = nakayaCanvas.getBoundingClientRect();
-  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-
-  const t = x * 40 - 40;
-  const ss = 1 - y;
+  const { temperatureC: t, ss } = nakayaPointToConditions(e.clientX, e.clientY, rect);
 
   labPanel.params.temperature = t;
   labPanel.params.supersaturation = ss * 100;
@@ -586,11 +583,7 @@ nakayaCanvas?.addEventListener("pointermove", (e) => {
     handleNakayaPointer(e);
   } else {
     const rect = nakayaCanvas.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-
-    const t = x * 40 - 40;
-    const ss = 1 - y;
+    const { temperatureC: t, ss } = nakayaPointToConditions(e.clientX, e.clientY, rect);
     updateNakayaStatus(t, ss, true);
 
     if (currentConditions) {
@@ -630,16 +623,7 @@ nakayaCanvas?.addEventListener("blur", () => {
 
 nakayaCanvas?.addEventListener("keydown", (e: Event) => {
   const { key } = e as KeyboardEvent;
-  const isNav = [
-    "ArrowUp",
-    "ArrowDown",
-    "ArrowLeft",
-    "ArrowRight",
-    "Home",
-    "End",
-    "PageUp",
-    "PageDown",
-  ].includes(key);
+  const isNav = NAKAYA_NAV_KEYS.includes(key);
   const isAction = key === " " || key === "Enter";
 
   if (isNav || isAction) {
@@ -651,47 +635,10 @@ nakayaCanvas?.addEventListener("keydown", (e: Event) => {
     }
 
     if (isNav) {
-      const ke = e as KeyboardEvent;
-      const multiplier = ke.shiftKey ? 3 : 1;
-      const tStep = 1 * multiplier;
-      const ssStep = 5 * multiplier;
-      let changed = false;
-
-      if (key === "ArrowLeft") {
-        labPanel.params.temperature = Math.max(-40, labPanel.params.temperature - tStep);
-        changed = true;
-      }
-      if (key === "ArrowRight") {
-        labPanel.params.temperature = Math.min(0, labPanel.params.temperature + tStep);
-        changed = true;
-      }
-      if (key === "ArrowUp") {
-        labPanel.params.supersaturation = Math.min(100, labPanel.params.supersaturation + ssStep);
-        changed = true;
-      }
-      if (key === "ArrowDown") {
-        labPanel.params.supersaturation = Math.max(0, labPanel.params.supersaturation - ssStep);
-        changed = true;
-      }
-
-      if (key === "Home") {
-        labPanel.params.temperature = -40;
-        changed = true;
-      }
-      if (key === "End") {
-        labPanel.params.temperature = 0;
-        changed = true;
-      }
-      if (key === "PageUp") {
-        labPanel.params.supersaturation = Math.min(100, labPanel.params.supersaturation + 25);
-        changed = true;
-      }
-      if (key === "PageDown") {
-        labPanel.params.supersaturation = Math.max(0, labPanel.params.supersaturation - 25);
-        changed = true;
-      }
-
-      if (changed) {
+      const next = nakayaKeyStep(key, (e as KeyboardEvent).shiftKey, labPanel.params);
+      if (next) {
+        labPanel.params.temperature = next.temperature;
+        labPanel.params.supersaturation = next.supersaturation;
         visualPress("nakaya-diagram");
         updateFromPane();
       }

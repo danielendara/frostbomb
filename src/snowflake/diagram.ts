@@ -1,4 +1,4 @@
-import { getHabit, Habit } from './nakaya';
+import { getHabit, Habit, LAB_TEMP_MAX_C, LAB_TEMP_MIN_C } from './nakaya';
 
 const HABIT_COLORS: Record<Habit, string> = {
   plate: 'rgba(158, 201, 255, 0.15)',
@@ -25,7 +25,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
 
   function toX(temp: number) {
     // 0 to -40 maps to width to 0 (0 on right, -40 on left)
-    return ((temp + 40) / 40) * width;
+    return ((temp - LAB_TEMP_MIN_C) / (LAB_TEMP_MAX_C - LAB_TEMP_MIN_C)) * width;
   }
 
   function toY(ss: number) {
@@ -48,7 +48,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     const res = 4;
     for (let x = 0; x < width; x += res) {
       for (let y = 0; y < height; y += res) {
-        const temp = (x / width) * 40 - 40;
+        const temp = (x / width) * (LAB_TEMP_MAX_C - LAB_TEMP_MIN_C) + LAB_TEMP_MIN_C;
         const ss = (height - y) / height;
         const habit = getHabit(temp, ss);
         cacheCtx.fillStyle = HABIT_COLORS[habit];
@@ -60,7 +60,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     cacheCtx.strokeStyle = 'rgba(230, 237, 245, 0.05)';
     cacheCtx.lineWidth = 1;
     cacheCtx.beginPath();
-    for (let t = -40; t <= 0; t += 10) {
+    for (let t = LAB_TEMP_MIN_C; t <= LAB_TEMP_MAX_C; t += 10) {
       const x = toX(t);
       cacheCtx.moveTo(x, 0);
       cacheCtx.lineTo(x, height);
