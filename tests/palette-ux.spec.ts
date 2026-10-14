@@ -299,6 +299,31 @@ test("Photo Mode (UI hidden) is not exited by dragging/rotating camera, but exit
   await expect(btnUI).toBeFocused();
 });
 
+test("Photo Mode exit restores btn-ui focus under heavy CPU throttling", async ({
+  page,
+  browserName,
+}) => {
+  test.slow();
+  test.skip(browserName !== "chromium", "CDP CPU throttling is Chromium-only");
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+
+  const btnUI = page.locator("#btn-ui");
+  const masthead = page.locator(".masthead");
+  const announcer = page.locator("#a11y-announcer");
+
+  await page.keyboard.press("h");
+  await expect(masthead).toHaveClass(/ui-hidden/);
+
+  await page.keyboard.press("Escape");
+  await expect(masthead).not.toHaveClass(/ui-hidden/);
+  await expect(announcer).toContainText(/Photo Mode exited.*UI restored/i, {
+    timeout: 20_000,
+  });
+  await expect(btnUI).toBeFocused({ timeout: 10_000 });
+});
+
 test("Photo Mode keeps focus out of hidden UI and restores it to btn-ui via Esc and H", async ({
   page,
 }) => {

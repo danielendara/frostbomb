@@ -1,4 +1,19 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+// Upper bound on roll drift when auto-rotate is off (see auto-rotate-freeze.spec.ts).
+const MAX_Z_RATE = 0.3 * (0.08 + 0.04 * 0.3) * 1.1;
+
+/** Scene auto-rotate is off when the crystal roll does not advance. */
+async function expectSceneAutoRotateOff(page: Page): Promise<void> {
+  await page.waitForFunction(() => typeof (window as any).__FROSTBOMB_AUTOROTATE__ === "function");
+  const drift = await page.evaluate(async () => {
+    const readZ = () => (window as any).__FROSTBOMB_AUTOROTATE__().z as number;
+    const z0 = readZ();
+    await new Promise((r) => setTimeout(r, 500));
+    return Math.abs(readZ() - z0);
+  });
+  expect(drift).toBeLessThan(MAX_Z_RATE * 0.5 + 1e-4);
+}
 
 /**
  * Held-export popstate must compare rotate against the rotate *preference*,
@@ -80,5 +95,46 @@ test("held 3D export: same-crystal popstate does not regrow, rotate change still
   await expect(page.locator("#btn-save-3d")).not.toHaveAttribute("aria-busy", "true", {
     timeout: 30_000,
   });
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+  await expectSceneAutoRotateOff(page);
+  await page.unroute(/mesh-export\.ts/);
+});
+
+test("held 3D export: pressing A during export leaves rotate off after resume", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  let releaseExport!: () => void;
+  const exportGate = new Promise<void>((resolve) => {
+    releaseExport = resolve;
+  });
+  let markRequested!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    markRequested = resolve;
+  });
+  await page.route(/mesh-export\.ts/, async (route) => {
+    markRequested();
+    await exportGate;
+    await route.continue();
+  });
+
+  await page.goto("/?seed=abcde&rotate=1");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+
+  await page.locator("#btn-save-3d").click();
+  await requested;
+
+  await page.keyboard.press("a");
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+
+  const download = page.waitForEvent("download", { timeout: 60_000 });
+  releaseExport();
+  await download;
+  await expect(page.locator("#btn-save-3d")).not.toHaveAttribute("aria-busy", "true", {
+    timeout: 30_000,
+  });
+  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+  await expectSceneAutoRotateOff(page);
   await page.unroute(/mesh-export\.ts/);
 });

@@ -205,7 +205,7 @@ body.pink-mode {
   padding: 0.2rem 0.4rem;
   margin: -0.2rem -0.4rem;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, visibility 0s;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -477,7 +477,7 @@ body.pink-mode {
   text-transform: uppercase;
   cursor: pointer;
   letter-spacing: 0.05em;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, visibility 0s;
 }
 
 .lab-toggle:hover,
@@ -785,7 +785,7 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s ease-in-out, visibility 0s;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -875,7 +875,7 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s ease-in-out, visibility 0s;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -1104,7 +1104,7 @@ kbd {
   letter-spacing: 0.1em;
   cursor: pointer;
   margin-top: 1rem;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, visibility 0s;
   display: inline-flex;
   align-items: center;
   justify-content: center;

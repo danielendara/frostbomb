@@ -21,6 +21,7 @@ export async function runExportAction(
   messages: { start: string; success: string; failure: string },
   work: () => void | Promise<void>,
   rotate?: ExportRotateControl,
+  resumeRotate?: () => void,
 ): Promise<boolean> {
   if (inflight.has(buttonId)) return false;
   inflight.add(buttonId);
@@ -62,7 +63,11 @@ export async function runExportAction(
       btn.removeAttribute("aria-busy");
     }
     if (rotate && wasAutoRotating) {
-      rotate.setAutoRotate(true);
+      if (resumeRotate) {
+        resumeRotate();
+      } else {
+        rotate.setAutoRotate(true);
+      }
     }
   }
 }
