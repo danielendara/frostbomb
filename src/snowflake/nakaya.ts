@@ -15,6 +15,10 @@ import { Rand } from './random';
  *  -22 to -40°C : columns again, then thick plates
  */
 
+/** Lab/diagram temperature range, °C. */
+export const LAB_TEMP_MIN_C = -40;
+export const LAB_TEMP_MAX_C = 0;
+
 export type Habit =
   | 'plate' // simple hexagonal plate
   | 'sector_plate' // plate with sector markings
@@ -96,7 +100,7 @@ function generatePath(
     currentSS += rand.range(-0.1, 0.1);
 
     // Clamp to valid ranges
-    currentTemp = Math.max(-40, Math.min(0, currentTemp));
+    currentTemp = Math.max(LAB_TEMP_MIN_C, Math.min(LAB_TEMP_MAX_C, currentTemp));
     currentSS = Math.max(0.05, Math.min(0.95, currentSS));
 
     points.push({ temp: currentTemp, ss: currentSS });

@@ -9,6 +9,7 @@ import {
   type ShareFlagTriState,
 } from "./share-url-params";
 import type { ModePrefs } from "./mode-prefs";
+import { LAB_TEMP_MAX_C, LAB_TEMP_MIN_C } from "./snowflake/nakaya";
 
 export interface LabConditionsState {
   temperatureC: number;
@@ -49,10 +50,6 @@ export interface CrystalUrlState {
 
 export const SEED_PATTERN = /^[a-z0-9]{3,12}$/i;
 
-/** Lab temperatures live on the Nakaya diagram: −40 °C to 0 °C, 0–100 % SS. */
-const MIN_TEMPERATURE_C = -40;
-const MAX_TEMPERATURE_C = 0;
-
 function parseSeed(raw: string | null): string | null {
   return raw && SEED_PATTERN.test(raw) ? raw.toLowerCase() : null;
 }
@@ -62,7 +59,7 @@ function parseLab(tRaw: string | null, ssRaw: string | null): LabConditionsState
   const temperatureC = Number(tRaw);
   const ssPercent = Number(ssRaw);
   if (!Number.isFinite(temperatureC) || !Number.isFinite(ssPercent)) return null;
-  if (temperatureC < MIN_TEMPERATURE_C || temperatureC > MAX_TEMPERATURE_C) return null;
+  if (temperatureC < LAB_TEMP_MIN_C || temperatureC > LAB_TEMP_MAX_C) return null;
   if (ssPercent < 0 || ssPercent > 100) return null;
   return { temperatureC, supersaturation: ssPercent / 100 };
 }
