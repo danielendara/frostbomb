@@ -11,6 +11,7 @@ import { initHabitChips, syncHabitChips } from "./ui/habit-presets";
 import { mulberry32, resolveSeed, randomSeed, dailySeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
 import { announce as announceRaw } from "./ui/announcer";
+import { MODE_TOGGLES, syncModeToggleButton, type ShareModeKind } from "./ui/mode-toggle";
 import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
 import {
   visualPress,
@@ -1053,49 +1054,33 @@ document.getElementById("btn-save-3d")?.addEventListener("click", () => {
   void saveSnowflake3d();
 });
 
-const btnPink = document.getElementById("btn-pink");
+const modeToggleButtons: Record<ShareModeKind, HTMLElement | null> = {
+  pink: document.getElementById(MODE_TOGGLES.pink.buttonId),
+  prism: document.getElementById(MODE_TOGGLES.prism.buttonId),
+};
 
-function setPinkMode(enabled: boolean) {
-  visualPress("btn-pink");
-  if (btnPink) {
-    btnPink.setAttribute("aria-pressed", enabled.toString());
-    btnPink.classList.toggle("active", enabled);
-    btnPink.setAttribute("aria-label", "Pink Mode (P)");
-    btnPink.title = `Toggle pink mode (P) - current: ${enabled ? "active" : "inactive"}`;
-  }
-  scene.setPinkMode(enabled);
-  document.body.classList.toggle("pink-mode", enabled);
-  syncModeParam(SHARE_PARAM_PINK, enabled);
-  announce(`Pink mode ${enabled ? "enabled" : "disabled"}`);
+const sceneModes: Record<ShareModeKind, { set: (enabled: boolean) => void; isEnabled: () => boolean }> = {
+  pink: { set: (enabled) => scene.setPinkMode(enabled), isEnabled: () => scene.isPinkModeEnabled },
+  prism: { set: (enabled) => scene.setPrismMode(enabled), isEnabled: () => scene.isPrismModeEnabled },
+};
+
+function setShareMode(kind: ShareModeKind, enabled: boolean) {
+  const spec = MODE_TOGGLES[kind];
+  visualPress(spec.buttonId);
+  syncModeToggleButton(modeToggleButtons[kind], spec, enabled);
+  sceneModes[kind].set(enabled);
+  document.body.classList.toggle(spec.bodyClass, enabled);
+  syncModeParam(spec.param, enabled);
+  announce(`${spec.label} mode ${enabled ? "enabled" : "disabled"}`);
 }
 
-function togglePinkMode() {
-  setPinkMode(!scene.isPinkModeEnabled);
+function toggleShareMode(kind: ShareModeKind) {
+  setShareMode(kind, !sceneModes[kind].isEnabled());
 }
 
-btnPink?.addEventListener("click", togglePinkMode);
-
-const btnPrism = document.getElementById("btn-prism");
-
-function setPrismMode(enabled: boolean) {
-  visualPress("btn-prism");
-  if (btnPrism) {
-    btnPrism.setAttribute("aria-pressed", enabled.toString());
-    btnPrism.classList.toggle("active", enabled);
-    btnPrism.setAttribute("aria-label", "Prism Mode (M)");
-    btnPrism.title = `Toggle prism mode (M) - current: ${enabled ? "active" : "inactive"}`;
-  }
-  scene.setPrismMode(enabled);
-  document.body.classList.toggle("prism-mode", enabled);
-  syncModeParam(SHARE_PARAM_PRISM, enabled);
-  announce(`Prism mode ${enabled ? "enabled" : "disabled"}`);
+for (const kind of Object.keys(MODE_TOGGLES) as ShareModeKind[]) {
+  modeToggleButtons[kind]?.addEventListener("click", () => toggleShareMode(kind));
 }
-
-function togglePrismMode() {
-  setPrismMode(!scene.isPrismModeEnabled);
-}
-
-btnPrism?.addEventListener("click", togglePrismMode);
 
 // The user's rotate choice, not the live scene flag (which export/share
 // pauses and reduced motion force off). Set by applyModes and toggleAutoRotate.
@@ -1187,7 +1172,7 @@ function readBootLabConditionsFromUrl(): { temperatureC: number; supersaturation
 function applyModes(source: ModeSource) {
   const params = new URLSearchParams(window.location.search);
   const stored = loadModePrefs();
-  // Before setPinkMode/setPrismMode: they persist prefs and must see the intent.
+  // Before setShareMode: it persists prefs and must see the intent.
   const rotateParam = readShareFlag(params, SHARE_PARAM_ROTATE);
   rotatePref = resolveRotatePref(
     rotateParam === null ? null : rotateParam === "1",
@@ -1196,8 +1181,8 @@ function applyModes(source: ModeSource) {
   );
 
   const target = resolveModes(source, params, stored);
-  if (target.pink !== scene.isPinkModeEnabled) setPinkMode(target.pink);
-  if (target.prism !== scene.isPrismModeEnabled) setPrismMode(target.prism);
+  if (target.pink !== scene.isPinkModeEnabled) setShareMode("pink", target.pink);
+  if (target.prism !== scene.isPrismModeEnabled) setShareMode("prism", target.prism);
 
   if (rotateParam !== null) {
     if (!motionQuery.matches) {
@@ -1540,10 +1525,10 @@ initKeyboardShortcuts({
     toggleUI();
   },
   onTogglePink: () => {
-    togglePinkMode();
+    toggleShareMode("pink");
   },
   onTogglePrism: () => {
-    togglePrismMode();
+    toggleShareMode("prism");
   },
   onSave: () => {
     saveSnowflake();
