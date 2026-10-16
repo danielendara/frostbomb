@@ -37,6 +37,17 @@ export function resolveRotatePref(
   return rotateParam ?? stored ?? true;
 }
 
+/** What the URL / on-screen state records for rotate: true, false, or null (unset).
+ * Reduced motion hides a `true` pref but not an explicit `false`. */
+export function effectiveRotateFlag(
+  pref: boolean | undefined,
+  reducedMotion: boolean,
+): boolean | null {
+  if (pref === true && !reducedMotion) return true;
+  if (pref === false) return false;
+  return null;
+}
+
 /** A blocked/missing/corrupt value all fall back to pink/prism/lab off and rotate unset
  * (today's default), same as before rotate prefs existed. */
 export function loadModePrefs(): ModePrefs {
