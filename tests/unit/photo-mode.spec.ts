@@ -100,6 +100,27 @@ describe("createPhotoMode", () => {
     expect(pm.isHidden()).toBe(true);
   });
 
+  it("exit/enter/exit leaves only the latest restore running", () => {
+    const focusSpy = vi.spyOn(btn, "focus").mockImplementation(() => {});
+    // Baseline: one enter/exit, run to completion.
+    pm.toggle();
+    pm.toggle(true);
+    vi.advanceTimersByTime(2000);
+    const single = focusSpy.mock.calls.length;
+    expect(single).toBeGreaterThan(1);
+
+    // Exit, re-enter, exit again before any retry fires: the first exit's
+    // retries are stale and must not add focus attempts on top of the second's.
+    focusSpy.mockClear();
+    pm.toggle();
+    pm.toggle(true);
+    pm.toggle();
+    pm.toggle(true);
+    vi.advanceTimersByTime(2000);
+    // Two immediate attempts (one per exit) plus one exit's worth of retries.
+    expect(focusSpy.mock.calls.length).toBe(single + 1);
+  });
+
   it("pulls focus back to the canvas if it lands inside hidden UI", () => {
     pm.toggle();
     inUI.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
