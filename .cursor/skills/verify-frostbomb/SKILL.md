@@ -11,9 +11,10 @@ Surface: a single-page web app (canvas crystal, Lab Mode, share/export, URL stat
 ```bash
 npm ci && npx playwright install chromium     # once
 setsid ./node_modules/.bin/vite --host 127.0.0.1 --port 5173 > /tmp/frostbomb-dev.log 2>&1 &
-echo $! > /tmp/frostbomb-dev.pid
-ps -o pgid= -p "$(cat /tmp/frostbomb-dev.pid)" | tr -d ' ' > /tmp/frostbomb-dev.pgid
 until curl -sf http://127.0.0.1:5173/ >/dev/null; do sleep 1; done
+# record the real port owner: `$!` can be a setsid wrapper that forks and exits, depending on the shell
+ss -ltnpH 'sport = :5173' | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2 > /tmp/frostbomb-dev.pid
+ps -o pgid= -p "$(cat /tmp/frostbomb-dev.pid)" | tr -d ' ' > /tmp/frostbomb-dev.pgid
 ```
 Ready = `/` returns HTML (the app needs no env vars, DB, auth or seed data; state lives in the URL, e.g. `/?seed=abcde`). Playwright's own `webServer` (playwright.config.ts) starts the same command on 5173 and reuses a running one, so a manual instance doubles as the e2e server.
 
@@ -45,12 +46,10 @@ Fixed port 5173 (playwright.config.ts `baseURL`). Do not start a second instance
 
 ## Cleanup
 ```bash
-kill -- -"$(cat /tmp/frostbomb-dev.pgid)"; sleep 1
-rm -f /tmp/frostbomb-dev.pid /tmp/frostbomb-dev.pgid /tmp/frostbomb-dev.log
-if ss -ltnp | grep ':5173 '; then echo "FAIL: 5173 still listening"; false; fi
-if curl -sf http://127.0.0.1:5173/ >/dev/null; then echo "FAIL: health URL still answers"; false; fi
-echo "port 5173 free"
+bash .cursor/skills/verify-frostbomb/cleanup.sh
 ```
+Kills the saved process group, then one chained check prints `port 5173 free` and exits 0 only if nothing listens on 5173 and the health URL fails; otherwise it prints `FAIL: 5173 still in use` and exits 1. Check the exit code, not just the last line. `bash .cursor/skills/verify-frostbomb/cleanup-selftest.sh` proves this against a deliberate stray listener (needs 5173 free).
+
 Launch the binary `./node_modules/.bin/vite` directly under `setsid` (not `npx` or `npm run dev`: those wrappers' PIDs differ from the vite process that owns the port), and kill by process group. Never `pkill`. Evidence directory is kept.
 
 ## Gates
