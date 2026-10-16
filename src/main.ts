@@ -908,6 +908,11 @@ if (shareBtn && canShareFiles(navigator)) {
 }
 document.getElementById("btn-copy-seed")?.addEventListener("click", copySeedOnly);
 
+// What an export is named after. Read it at the moment each export captures its output.
+function currentExportIdentity() {
+  return { habit: currentConditions.habit, seed: currentSeedLabel };
+}
+
 async function saveSnowflake() {
   await runExportAction(
     "btn-save",
@@ -921,7 +926,7 @@ async function saveSnowflake() {
       triggerFlash(motionQuery.matches);
       scene.composer.render();
       downloadHref(
-        formatExportFileName({ habit: currentConditions.habit, seed: currentSeedLabel }, "png"),
+        formatExportFileName(currentExportIdentity(), "png"),
         canvas.toDataURL("image/png"),
       );
     },
@@ -930,13 +935,9 @@ async function saveSnowflake() {
   );
 }
 
-document.getElementById("btn-save")?.addEventListener("click", () => {
-  void saveSnowflake();
-});
-
 async function saveWallpaper() {
   // Identity is fixed at click time; the capture below is one synchronous block.
-  const identity = { habit: currentConditions.habit, seed: currentSeedLabel };
+  const identity = currentExportIdentity();
   await runExportAction(
     "btn-save-wallpaper",
     {
@@ -970,10 +971,6 @@ async function saveWallpaper() {
   );
 }
 
-document.getElementById("btn-save-wallpaper")?.addEventListener("click", () => {
-  void saveWallpaper();
-});
-
 async function saveSnowflakeSvg() {
   await runExportAction(
     "btn-save-svg",
@@ -987,13 +984,10 @@ async function saveSnowflakeSvg() {
         throw new Error("No snowflake geometry to export");
       }
 
-      const svg = buildSnowflakeSvg(lastFlake, {
-        habit: currentConditions.habit,
-        seed: currentSeedLabel,
-      });
+      const svg = buildSnowflakeSvg(lastFlake, currentExportIdentity());
       const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
       downloadHref(
-        formatExportFileName({ habit: currentConditions.habit, seed: currentSeedLabel }, "svg"),
+        formatExportFileName(currentExportIdentity(), "svg"),
         URL.createObjectURL(blob),
       );
     },
@@ -1001,10 +995,6 @@ async function saveSnowflakeSvg() {
     resumeAutoRotateFromPref,
   );
 }
-
-document.getElementById("btn-save-svg")?.addEventListener("click", () => {
-  void saveSnowflakeSvg();
-});
 
 async function saveSnowflake3d() {
   await runExportAction(
@@ -1028,10 +1018,7 @@ async function saveSnowflake3d() {
       };
       // Same moment as the geometry copy. Regrow and Back stay available
       // while the module and the encoder run; the names must not follow them.
-      const identity = {
-        habit: currentConditions.habit,
-        seed: currentSeedLabel,
-      };
+      const identity = currentExportIdentity();
 
       const files = await filesForExportIdentity(identity, snapshot, async () => {
         const { exportSnowflakeModels } = await import("./snowflake/mesh-export");
@@ -1050,9 +1037,15 @@ async function saveSnowflake3d() {
   );
 }
 
-document.getElementById("btn-save-3d")?.addEventListener("click", () => {
-  void saveSnowflake3d();
-});
+const exportButtons: Array<[buttonId: string, handler: () => void]> = [
+  ["btn-save", () => void saveSnowflake()],
+  ["btn-save-wallpaper", () => void saveWallpaper()],
+  ["btn-save-svg", () => void saveSnowflakeSvg()],
+  ["btn-save-3d", () => void saveSnowflake3d()],
+];
+for (const [buttonId, handler] of exportButtons) {
+  document.getElementById(buttonId)?.addEventListener("click", handler);
+}
 
 const modeToggleButtons: Record<ShareModeKind, HTMLElement | null> = {
   pink: document.getElementById(MODE_TOGGLES.pink.buttonId),
