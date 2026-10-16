@@ -10,22 +10,16 @@ Surface: a single-page web app (canvas crystal, Lab Mode, share/export, URL stat
 ## Launch
 ```bash
 npm ci && npx playwright install chromium     # once
-setsid ./node_modules/.bin/vite --host 127.0.0.1 --port 5173 > /tmp/frostbomb-dev.log 2>&1 &
-until curl -sf http://127.0.0.1:5173/ >/dev/null; do sleep 1; done
-# record the real port owner: `$!` can be a setsid wrapper that forks and exits, depending on the shell
-ss -ltnpH 'sport = :5173' | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2 > /tmp/frostbomb-dev.pid
-ps -o pgid= -p "$(cat /tmp/frostbomb-dev.pid)" | tr -d ' ' > /tmp/frostbomb-dev.pgid
+bash .cursor/skills/verify-frostbomb/launch.sh
 ```
+`launch.sh` REFUSES (exit 1, `REFUSE: 5173 already in use ...`) if anything already listens on 5173; it never adopts a foreign server. Otherwise it starts `./node_modules/.bin/vite --strictPort` under `setsid`, waits for readiness, requires the port owner's `/proc/<pid>/cwd` to be this checkout, and records the owner pid/pgid in `/tmp/frostbomb-dev.{pid,pgid}`. Check the exit code.
 Ready = `/` returns HTML (the app needs no env vars, DB, auth or seed data; state lives in the URL, e.g. `/?seed=abcde`). Playwright's own `webServer` (playwright.config.ts) starts the same command on 5173 and reuses a running one, so a manual instance doubles as the e2e server.
 
 ## Doctor (read-only)
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:5173/        # 200
-kill -0 "$(cat /tmp/frostbomb-dev.pid)" && echo up
-# the port owner must be our saved pid (not an npx wrapper or another checkout's server)
-OWNER=$(ss -ltnpH 'sport = :5173' | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)
-[ "$OWNER" = "$(cat /tmp/frostbomb-dev.pid)" ] && echo "owner ok: $OWNER" || { echo "FAIL: port owner $OWNER != saved pid"; false; }
+bash .cursor/skills/verify-frostbomb/doctor.sh
 ```
+Exits 1 unless `/` returns 200, the port owner's cwd is this checkout, and the owner is the saved pid.
 
 ## Drive
 Playwright (already a devDependency). Stable handles: `#seed-display`, `#lab-toggle`, `#lab-status` (reads `ON` once the Tweakpane chunk loads), `#habit-chips .habit-chip[data-habit=…]`, `#stat-habit`. Helper:
@@ -48,7 +42,7 @@ Fixed port 5173 (playwright.config.ts `baseURL`). Do not start a second instance
 ```bash
 bash .cursor/skills/verify-frostbomb/cleanup.sh
 ```
-Kills the saved process group, then one chained check prints `port 5173 free` and exits 0 only if nothing listens on 5173 and the health URL fails; otherwise it prints `FAIL: 5173 still in use` and exits 1. Check the exit code, not just the last line. `bash .cursor/skills/verify-frostbomb/cleanup-selftest.sh` proves this against a deliberate stray listener (needs 5173 free).
+Kills the saved process group, then one chained check prints `port 5173 free` and exits 0 only if nothing listens on 5173 and the health URL fails; otherwise it prints `FAIL: 5173 still in use` and exits 1. Check the exit code, not just the last line. `cleanup-selftest.sh` proves this against a deliberate stray listener; `launch-selftest.sh` proves launch refuses (and leaves alive) a foreign listener on 5173, doctor fails on it, and launch+doctor+cleanup pass once it is gone. Both need 5173 free.
 
 Launch the binary `./node_modules/.bin/vite` directly under `setsid` (not `npx` or `npm run dev`: those wrappers' PIDs differ from the vite process that owns the port), and kill by process group. Never `pkill`. Evidence directory is kept.
 
