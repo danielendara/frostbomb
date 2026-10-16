@@ -229,10 +229,11 @@ describe("Lab seed validation (#350)", () => {
   it("leaves clipboard Copied and Failed labels on the copy buttons only", () => {
     const panel = readFileSync("src/ui/lab-panel.ts", "utf8");
     const main = readFileSync("src/main.ts", "utf8");
+    const clipboard = readFileSync("src/ui/clipboard.ts", "utf8");
     expect(panel).not.toContain("setTemporaryLabel");
     expect(main).toContain('labelIds: ["btn-copy", "btn-seed"]');
-    expect(main).toContain('setTemporaryLabel(id, "Copied!", "✓", false, true)');
-    expect(main).toContain('setTemporaryLabel(id, "Failed", "✕", true)');
+    expect(clipboard).toContain('setTemporaryLabel(id, "Copied!", "✓", false, true)');
+    expect(clipboard).toContain('setTemporaryLabel(id, "Failed", "✕", true)');
     expect(main).not.toContain('setTemporaryLabel("btn-seed", "3-12 chars"');
   });
 });
