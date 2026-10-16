@@ -39,7 +39,7 @@ import { installClientErrorReporting, reportClientError } from "./ui/client-erro
 import { createUrlWriteCoalescer } from "./url-write-coalescer";
 import { MARK_FIRST_FLAKE_BUILT, markOnce } from "./snowflake/perf-marks";
 import { NAKAYA_NAV_KEYS, nakayaKeyStep, nakayaPointToConditions } from "./ui/nakaya-input";
-import { loadModePrefs, resolveRotatePref, saveModePrefs as writeModePrefs } from "./mode-prefs";
+import { effectiveRotateFlag, loadModePrefs, resolveRotatePref, saveModePrefs as writeModePrefs } from "./mode-prefs";
 import {
   crystalStatesEqual,
   parseCrystalUrlState,
@@ -827,10 +827,7 @@ async function shareCurrentSnowflake() {
       shareBtn.disabled = false;
       shareBtn.removeAttribute("aria-busy");
     }
-    if (wasAutoRotating) {
-      scene.setAutoRotate(rotatePref === true && !motionQuery.matches);
-      updateRotateButtonUI();
-    }
+    if (wasAutoRotating) resumeAutoRotateFromPref();
   }
 }
 
@@ -1021,11 +1018,8 @@ function writeCurrentModeParams(params: URLSearchParams) {
   } else if (loadModePrefs().lab === false) {
     setShareFlag(params, SHARE_PARAM_LAB, false);
   }
-  if (rotatePref === true && !motionQuery.matches) {
-    setShareFlag(params, SHARE_PARAM_ROTATE, true);
-  } else if (rotatePref === false) {
-    setShareFlag(params, SHARE_PARAM_ROTATE, false);
-  }
+  const rotate = effectiveRotateFlag(rotatePref, motionQuery.matches);
+  if (rotate !== null) setShareFlag(params, SHARE_PARAM_ROTATE, rotate);
 }
 
 /** Last query string we wrote or accepted — hash-only popstate keeps this unchanged. */
@@ -1081,12 +1075,7 @@ function onScreenCrystalState(): CrystalUrlState {
       // the scene mid-flight and reduced motion forces it off, while share
       // URLs encode rotatePref (see writeCurrentModeParams). Comparing the
       // paused flag would see rotate as "changed" and regrow the crystal.
-      rotate:
-        rotatePref === true && !motionQuery.matches
-          ? true
-          : rotatePref === false
-            ? false
-            : null,
+      rotate: effectiveRotateFlag(rotatePref, motionQuery.matches),
     },
   };
 }
@@ -1249,7 +1238,7 @@ function updateRotateButtonUI() {
 }
 
 function resumeAutoRotateFromPref(): void {
-  scene.setAutoRotate(rotatePref === true && !motionQuery.matches);
+  scene.setAutoRotate(effectiveRotateFlag(rotatePref, motionQuery.matches) === true);
   updateRotateButtonUI();
 }
 

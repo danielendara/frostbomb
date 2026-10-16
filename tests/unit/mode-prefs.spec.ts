@@ -1,6 +1,7 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  effectiveRotateFlag,
   loadModePrefs,
   resolveRotatePref,
   saveModePrefs,
@@ -21,6 +22,19 @@ describe("resolveRotatePref", () => {
     expect(resolveRotatePref(null, undefined, true)).toBeUndefined();
     expect(resolveRotatePref(true, false, true)).toBe(false);
     expect(resolveRotatePref(null, true, true)).toBe(true);
+  });
+});
+
+describe("effectiveRotateFlag", () => {
+  it.each([
+    [true, false, true],
+    [true, true, null],
+    [false, false, false],
+    [false, true, false],
+    [undefined, false, null],
+    [undefined, true, null],
+  ] as const)("pref=%s reducedMotion=%s -> %s", (pref, reduced, expected) => {
+    expect(effectiveRotateFlag(pref, reduced)).toBe(expected);
   });
 });
 
