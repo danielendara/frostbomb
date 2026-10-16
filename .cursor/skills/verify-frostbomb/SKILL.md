@@ -10,8 +10,9 @@ Surface: a single-page web app (canvas crystal, Lab Mode, share/export, URL stat
 ## Launch
 ```bash
 npm ci && npx playwright install chromium     # once
-npx vite --host 127.0.0.1 --port 5173 > /tmp/frostbomb-dev.log 2>&1 &
+setsid ./node_modules/.bin/vite --host 127.0.0.1 --port 5173 > /tmp/frostbomb-dev.log 2>&1 &
 echo $! > /tmp/frostbomb-dev.pid
+ps -o pgid= -p "$(cat /tmp/frostbomb-dev.pid)" | tr -d ' ' > /tmp/frostbomb-dev.pgid
 until curl -sf http://127.0.0.1:5173/ >/dev/null; do sleep 1; done
 ```
 Ready = `/` returns HTML (the app needs no env vars, DB, auth or seed data; state lives in the URL, e.g. `/?seed=abcde`). Playwright's own `webServer` (playwright.config.ts) starts the same command on 5173 and reuses a running one, so a manual instance doubles as the e2e server.
@@ -20,7 +21,9 @@ Ready = `/` returns HTML (the app needs no env vars, DB, auth or seed data; stat
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:5173/        # 200
 kill -0 "$(cat /tmp/frostbomb-dev.pid)" && echo up
-ss -ltnp 2>/dev/null | grep ':5173'                                     # owned by our pid
+# the port owner must be our saved pid (not an npx wrapper or another checkout's server)
+OWNER=$(ss -ltnpH 'sport = :5173' | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)
+[ "$OWNER" = "$(cat /tmp/frostbomb-dev.pid)" ] && echo "owner ok: $OWNER" || { echo "FAIL: port owner $OWNER != saved pid"; false; }
 ```
 
 ## Drive
@@ -42,9 +45,13 @@ Fixed port 5173 (playwright.config.ts `baseURL`). Do not start a second instance
 
 ## Cleanup
 ```bash
-kill "$(cat /tmp/frostbomb-dev.pid)"; rm -f /tmp/frostbomb-dev.pid /tmp/frostbomb-dev.log
+kill -- -"$(cat /tmp/frostbomb-dev.pgid)"; sleep 1
+rm -f /tmp/frostbomb-dev.pid /tmp/frostbomb-dev.pgid /tmp/frostbomb-dev.log
+if ss -ltnp | grep ':5173 '; then echo "FAIL: 5173 still listening"; false; fi
+if curl -sf http://127.0.0.1:5173/ >/dev/null; then echo "FAIL: health URL still answers"; false; fi
+echo "port 5173 free"
 ```
-Start with `npx vite` (not `npm run dev`): killing the npm wrapper PID leaves the vite child holding the port. Never `pkill node`. Evidence directory is kept.
+Launch the binary `./node_modules/.bin/vite` directly under `setsid` (not `npx` or `npm run dev`: those wrappers' PIDs differ from the vite process that owns the port), and kill by process group. Never `pkill`. Evidence directory is kept.
 
 ## Gates
 `npm run verify` = tsc --noEmit, typecheck:tests, vitest, vite build, Playwright smoke. There is no linter and no coverage provider in the repo, so those gates do not exist yet.
