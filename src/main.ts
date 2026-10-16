@@ -10,6 +10,8 @@ import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snow
 import { initHabitChips, syncHabitChips } from "./ui/habit-presets";
 import { mulberry32, resolveSeed, randomSeed, dailySeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram } from "./snowflake/diagram";
+import { copyTextToClipboard } from "./ui/clipboard";
+import { createPhotoMode } from "./ui/photo-mode";
 import { announce as announceRaw } from "./ui/announcer";
 import { MODE_TOGGLES, syncModeToggleButton, type ShareModeKind } from "./ui/mode-toggle";
 import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
@@ -117,7 +119,6 @@ let lastTitle = "";
 
 let isLabMode = false;
 let isGuideOpen = false;
-let isUIHidden = false;
 let guideReturnTarget: HTMLElement | null = null;
 let currentConditions: GrowthConditions;
 /** Sampled crystals replay the seed path. Only a real Lab commit is manual. */
@@ -738,98 +739,31 @@ function buildShareUrl(): string {
   return `${window.location.origin}${window.location.pathname}?${shareSearchParams().toString()}`;
 }
 
-async function copyTextToClipboard(
-  text: string,
-  feedback: {
-    pressIds: string[];
-    labelIds: string[];
-    successAnnounce: string;
-    failureAnnounce: string;
-  },
-): Promise<boolean> {
-  for (const id of feedback.pressIds) {
-    visualPress(id);
-  }
-
-  const markCopied = () => {
-    for (const id of feedback.labelIds) {
-      setTemporaryLabel(id, "Copied!", "✓", false, true);
-    }
-    announce(feedback.successAnnounce);
-  };
-
-  const markFailed = () => {
-    for (const id of feedback.labelIds) {
-      setTemporaryLabel(id, "Failed", "✕", true);
-    }
-    announce(feedback.failureAnnounce);
-  };
-
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      throw new Error("Clipboard API unavailable");
-    }
-    markCopied();
-    return true;
-  } catch (err) {
-    console.warn("Clipboard API failed, trying legacy fallback:", err);
-    try {
-      const previousFocus = document.activeElement;
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.readOnly = true;
-      textArea.setAttribute("aria-hidden", "true");
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      textArea.style.top = "0";
-      document.body.appendChild(textArea);
-      let successful = false;
-      try {
-        textArea.focus({ preventScroll: true });
-        textArea.select();
-        successful = document.execCommand("copy");
-      } finally {
-        if (textArea.isConnected) textArea.remove();
-        if (
-          previousFocus instanceof HTMLElement &&
-          previousFocus.isConnected &&
-          previousFocus !== document.body
-        ) {
-          previousFocus.focus({ preventScroll: true });
-        }
-      }
-      if (!successful) {
-        throw new Error("execCommand copy failed");
-      }
-      markCopied();
-      return true;
-    } catch (fallbackErr) {
-      console.error("Legacy fallback failed:", fallbackErr);
-      markFailed();
-      return false;
-    }
-  }
-}
-
 async function copyLink(failureAnnounce = "Failed to copy link"): Promise<boolean> {
-  return copyTextToClipboard(buildShareUrl(), {
-    pressIds: ["btn-copy", "btn-seed"],
-    labelIds: ["btn-copy", "btn-seed"],
-    successAnnounce: `Link copied for seed ${currentSeedLabel}`,
-    failureAnnounce,
-  });
+  return copyTextToClipboard(
+    buildShareUrl(),
+    {
+      pressIds: ["btn-copy", "btn-seed"],
+      labelIds: ["btn-copy", "btn-seed"],
+      successAnnounce: `Link copied for seed ${currentSeedLabel}`,
+      failureAnnounce,
+    },
+    announce,
+  );
 }
 
 async function copySeedOnly() {
   const seed = currentSeedLabel;
-  await copyTextToClipboard(seed, {
-    pressIds: ["btn-copy-seed"],
-    labelIds: ["btn-copy-seed"],
-    successAnnounce: `Seed ${seed} copied`,
-    failureAnnounce: "Failed to copy seed",
-  });
+  await copyTextToClipboard(
+    seed,
+    {
+      pressIds: ["btn-copy-seed"],
+      labelIds: ["btn-copy-seed"],
+      successAnnounce: `Seed ${seed} copied`,
+      failureAnnounce: "Failed to copy seed",
+    },
+    announce,
+  );
 }
 
 document.getElementById("btn-copy")?.addEventListener("click", () => {
@@ -1336,121 +1270,15 @@ function toggleAutoRotate() {
 
 btnRotate?.addEventListener("click", toggleAutoRotate);
 
-const btnUI = document.getElementById("btn-ui");
-const PHOTO_MODE_UI_SELECTOR = ".masthead, .field-notes, .footer, .lab-controls";
-
-function getPhotoModeUIElements(): NodeListOf<Element> {
-  return document.querySelectorAll(PHOTO_MODE_UI_SELECTOR);
-}
-
-function isFocusInPhotoModeUI(el: Element | null): boolean {
-  if (!(el instanceof HTMLElement)) return false;
-  return Array.from(getPhotoModeUIElements()).some((root) => root.contains(el));
-}
-
-function setPhotoModeUIInert(inert: boolean): void {
-  getPhotoModeUIElements().forEach((el) => {
-    if (inert) {
-      el.setAttribute("inert", "");
-    } else {
-      el.removeAttribute("inert");
-    }
-  });
-}
-
-function focusSceneForPhotoMode(): void {
-  if (!canvas.hasAttribute("tabindex")) {
-    canvas.setAttribute("tabindex", "-1");
-  }
-  canvas.focus({ preventScroll: true });
-}
-
-/** Bumped on every Photo Mode toggle so a stale focus restore stops. */
-let photoModeFocusGeneration = 0;
-
-/**
- * Focus #btn-ui after Photo Mode exits. `exitFocus` is what had focus at
- * exit; it, the scene canvas, and body count as "not moved by the user"
- * (some browsers keep the canvas focused after its tabindex goes). Anything
- * else means the user moved focus, so every attempt stands down, as they
- * all do if Photo Mode re-enters.
- */
-function restorePhotoModeUIFocus(exitFocus: Element | null): void {
-  const generation = ++photoModeFocusGeneration;
-  let frameAttempts = 0;
-  const maxFrameAttempts = 60;
-  /** true = keep trying, false = done or must stop. */
-  const focusBtn = (): boolean => {
-    if (!(btnUI instanceof HTMLElement)) return false;
-    if (generation !== photoModeFocusGeneration || isUIHidden) return false;
-    const active = document.activeElement;
-    if (active === btnUI) return false;
-    const untouched = !active || active === document.body || active === exitFocus || active === canvas;
-    if (!untouched) return false;
-    btnUI.focus({ preventScroll: true });
-    return document.activeElement !== btnUI;
-  };
-
-  // Visibility switches instantly on show (style.css), so this usually lands
-  // at once; the retries cover slow frames and stale focus state.
-  if (!focusBtn()) return;
-  requestAnimationFrame(() => requestAnimationFrame(focusBtn));
-  setTimeout(focusBtn, 350);
-  setTimeout(focusBtn, 700);
-
-  // Slow frames can stall the timeline, so keep retrying for a short while.
-  const deadline = performance.now() + 1500;
-  const retry = () => {
-    frameAttempts++;
-    const needsRetry = focusBtn();
-    if (!needsRetry) return;
-    if (frameAttempts >= maxFrameAttempts || performance.now() > deadline) return;
-    requestAnimationFrame(retry);
-  };
-  requestAnimationFrame(retry);
-}
-
-document.addEventListener("focusin", (e) => {
-  if (!isUIHidden) return;
-  const target = e.target;
-  if (target instanceof HTMLElement && target.closest(".ui-hidden")) {
-    focusSceneForPhotoMode();
-  }
+const photoMode = createPhotoMode({
+  canvas,
+  button: document.getElementById("btn-ui"),
+  scene,
+  announce,
+  reducedMotion: () => motionQuery.matches,
 });
 
-function toggleUI(forceShow?: boolean) {
-  isUIHidden = forceShow === undefined ? !isUIHidden : !forceShow;
-  visualPress("btn-ui");
-
-  getPhotoModeUIElements().forEach((el) => el.classList.toggle("ui-hidden", isUIHidden));
-  setPhotoModeUIInert(isUIHidden);
-
-  if (btnUI) {
-    btnUI.setAttribute("aria-pressed", isUIHidden.toString());
-    btnUI.classList.toggle("active", isUIHidden);
-  }
-
-  scene.setPhotoMode(isUIHidden);
-
-  if (isUIHidden) {
-    photoModeFocusGeneration++;
-    announce(
-      motionQuery.matches
-        ? "Photo Mode. Press H or Esc to show UI."
-        : "Photo Mode. Depth of field on. Press H or Esc to show UI.",
-    );
-    if (isFocusInPhotoModeUI(document.activeElement)) {
-      focusSceneForPhotoMode();
-    }
-  } else {
-    const exitFocus = document.activeElement;
-    canvas.removeAttribute("tabindex");
-    announce("Photo Mode exited. UI restored.");
-    restorePhotoModeUIFocus(exitFocus);
-  }
-}
-
-btnUI?.addEventListener("click", () => toggleUI());
+document.getElementById("btn-ui")?.addEventListener("click", () => photoMode.toggle());
 
 let canvasPointerDownX = 0;
 let canvasPointerDownY = 0;
@@ -1461,12 +1289,12 @@ canvas.addEventListener("pointerdown", (e: PointerEvent) => {
 });
 
 canvas.addEventListener("click", (e: MouseEvent) => {
-  if (isUIHidden) {
+  if (photoMode.isHidden()) {
     const dx = e.clientX - canvasPointerDownX;
     const dy = e.clientY - canvasPointerDownY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < 6) {
-      toggleUI(true);
+      photoMode.toggle(true);
     }
   }
 });
@@ -1485,7 +1313,7 @@ document.getElementById("btn-reset")?.addEventListener("click", resetView);
 initKeyboardShortcuts({
   isGuideOpen: () => isGuideOpen,
   isLabMode: () => isLabMode,
-  isUIHidden: () => isUIHidden,
+  isUIHidden: () => photoMode.isHidden(),
   isDiagramFocused: () => document.activeElement === nakayaCanvas,
   onEscapeGuide: () => {
     toggleFieldGuide();
@@ -1494,7 +1322,7 @@ initKeyboardShortcuts({
     toggleLabMode();
   },
   onEscapeUIHidden: () => {
-    toggleUI(true);
+    photoMode.toggle(true);
   },
   onRotateView: (dx, dy) => {
     scene.rotateView(dx, dy);
@@ -1515,7 +1343,7 @@ initKeyboardShortcuts({
     toggleLabMode();
   },
   onToggleUI: () => {
-    toggleUI();
+    photoMode.toggle();
   },
   onTogglePink: () => {
     toggleShareMode("pink");
