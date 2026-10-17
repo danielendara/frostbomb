@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "verify": "bash scripts/verify.sh",
     "build": "tsc && vite build",
     "typecheck:tests": "tsc -p tsconfig.test.json",
     "pretest": "npm run test:unit",
