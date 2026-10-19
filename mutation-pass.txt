@@ -1,0 +1,5 @@
+$ (restored) git diff --no-index good vs working: 
+(empty = restored)
+$ npx vitest run tests/unit/segment-geometry.spec.ts tests/unit/mesh-export-watertight.spec.ts
+ Test Files  2 passed (2)
+      Tests  17 passed (17)

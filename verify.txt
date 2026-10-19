@@ -1,0 +1,94 @@
+
+> frostbomb@0.1.0 verify
+> bash scripts/verify.sh
+
+
+=== verify: typecheck (app) ===
+
+=== verify: typecheck (tests) ===
+
+> frostbomb@0.1.0 typecheck:tests
+> tsc -p tsconfig.test.json
+
+
+=== verify: unit tests ===
+
+> frostbomb@0.1.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.3 /workspace/frostbomb-441-2026-10-19/frostbomb
+
+
+ Test Files  42 passed (42)
+      Tests  487 passed (487)
+   Start at  00:53:24
+   Duration  2.76s (environment 44%, tests 36%, transform 10%, import 8%, worker 2%)
+
+    Isolate  42 workers spawned · ~176ms startup each (spawn + environment, per file)
+             at least ~879ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+=== verify: build ===
+vite v8.3.4 building frostbombsite environment for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/frostbombsite/.vite/manifest.json  0.15 kB │ gzip: 0.11 kB
+dist/frostbombsite/wrangler.json        1.41 kB │ gzip: 0.70 kB
+dist/frostbombsite/index.js             3.58 kB │ gzip: 1.55 kB
+
+✓ built in 29ms
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 52 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/.assetsignore                      0.02 kB
+dist/client/assets/frost.worker-D4_4-P4K.js    3.22 kB
+dist/client/index.html                        18.60 kB │ gzip:   4.10 kB
+dist/client/assets/index-CTlR4lNU.css         22.26 kB │ gzip:   5.07 kB
+dist/client/assets/mesh-export-CEvikDZ_.js     2.01 kB │ gzip:   1.01 kB
+dist/client/assets/index-C2SFAPc2.js          85.49 kB │ gzip:  29.70 kB
+dist/client/assets/tweakpane-CuKAiaYZ.js     148.24 kB │ gzip:  30.38 kB
+dist/client/assets/build-YLmsYuDT.js         166.43 kB │ gzip:  74.70 kB
+dist/client/assets/three-De2tP61T.js         578.80 kB │ gzip: 144.89 kB
+
+✓ built in 229ms
+
+=== verify: e2e smoke ===
+
+> frostbomb@0.1.0 test:e2e:smoke
+> FROSTBOMB_E2E=smoke playwright test --project=sequential-smoke
+
+
+Running 18 tests using 1 worker
+
+(node:183501) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [sequential-smoke] › tests/canvas-marks.smoke.spec.ts:11:1 › startup marks fire and the canvas is not blank after grow (3.7s)
+  ✓   2 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:38:1 › Copy Link of a sampled crystal reopens the same geometry (7.8s)
+  ✓   3 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:55:1 › Back and Forward restore sampled geometry, not the rounded Lab point (7.9s)
+  ✓   4 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:80:1 › an explicit Lab link and a later seed edit round-trip at URL precision (15.0s)
+  ✓   5 [sequential-smoke] › tests/export-identity.smoke.spec.ts:46:1 › Save 3D filenames stay on the crystal captured before the exporter loads (16.4s)
+  ✓   6 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:11:1 › chips are hidden until Lab Mode is on (2.6s)
+  ✓   7 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:20:1 › a chip jumps to its habit, and one Back step returns to the previous crystal (4.9s)
+  ✓   8 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:49:1 › the active chip follows the Nakaya diagram keyboard, and only one is pressed (7.2s)
+  ✓   9 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:70:1 › chips wrap inside the 360px panel without horizontal overflow (2.6s)
+  ✓  10 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:44:1 › 360×640 keeps masthead, field notes, and actions from overlapping (3.7s)
+  ✓  11 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:10:1 › Share is hidden where the browser cannot share files (1.5s)
+  ✓  12 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:54:1 › Share appears with a file-capable navigator and shares one PNG plus the link (7.6s)
+  ✓  13 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:79:1 › cancelling the share sheet is silent (6.0s)
+[WebServer] 12:55:04 AM [vite] (client) [console.error] Failed to share snowflake NotAllowedError: no activation
+[WebServer] {"event":"client_error","kind":"export","message":"no activation","build":"client-error","ua":"chrome"}
+  ✓  14 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:92:1 › a non-abort failure falls back to Copy link and keeps Copy link visible (7.8s)
+  ✓  15 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:31:1 › W downloads a screen-sized opaque wallpaper PNG and restores the live canvas (5.5s)
+  ✓  16 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:65:1 › the Save as wallpaper button works too, and the shortcut is documented (6.1s)
+  ✓  17 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:79:1 › W still works in Photo Mode, where the action bar is hidden (5.4s)
+[WebServer] {"event":"client_error","kind":"error","message":"smoke","build":"smoke","ua":"chrome"}
+  ✓  18 [sequential-smoke] › tests/worker-assets.smoke.spec.ts:6:3 › worker entry keeps assets unchanged › serves the app shell and SPA fallback, and handles /api/client-error (110ms)
+
+  18 passed (1.9m)
+
+=== verify: ALL PASSED ===

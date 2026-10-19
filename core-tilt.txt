@@ -1,0 +1,2 @@
+XYZ core thin-axis world z = 0.8660
+ZXY core thin-axis world z = 1.0000

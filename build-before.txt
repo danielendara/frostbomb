@@ -1,0 +1,25 @@
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/frostbombsite/.vite/manifest.json  0.15 kB │ gzip: 0.11 kB
+dist/frostbombsite/wrangler.json        1.35 kB │ gzip: 0.69 kB
+dist/frostbombsite/index.js             3.58 kB │ gzip: 1.55 kB
+
+✓ built in 33ms
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 51 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/.assetsignore                      0.02 kB
+dist/client/assets/frost.worker-D4_4-P4K.js    3.22 kB
+dist/client/index.html                        18.60 kB │ gzip:   4.10 kB
+dist/client/assets/index-CTlR4lNU.css         22.26 kB │ gzip:   5.07 kB
+dist/client/assets/mesh-export-BcKIOlYG.js     1.85 kB │ gzip:   0.97 kB
+dist/client/assets/index-CTCgk7PO.js          84.23 kB │ gzip:  29.23 kB
+dist/client/assets/tweakpane-CuKAiaYZ.js     148.24 kB │ gzip:  30.38 kB
+dist/client/assets/build-3yW_xRDM.js         166.43 kB │ gzip:  74.70 kB
+dist/client/assets/three-DqisUITM.js         580.43 kB │ gzip: 145.52 kB
+
+✓ built in 260ms

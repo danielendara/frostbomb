@@ -1,0 +1,7 @@
+$ npx vitest run tests/unit/geometry-golden.spec.ts
+ RUN  v5.0.3 /workspace/frostbomb-441-2026-10-19/frostbomb
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Duration  246ms (transform 59%, tests 21%, import 17%, worker 2%)
+$ git diff --stat origin/main -- src/snowflake/geometry.ts src/snowflake/nakaya.ts src/snowflake/random.ts src/snowflake/svg-export.ts tests/unit/geometry-golden.spec.ts
+(no output above = empty)
