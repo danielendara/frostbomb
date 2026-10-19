@@ -1,0 +1,13 @@
+# Export sizes and triangles: origin/main bcf2740 (before) vs HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0 (after)
+# render: open tube 12 tris/segment -> faceted prism 44 (core 12 -> 44): 3.67x render triangles
+# export: old export cylinder was CLOSED (24 tris/segment incl. caps) -> prism 44: 1.83x export triangles/bytes
+
+| seed | segments | export tris before -> after | STL bytes before -> after | GLB bytes before -> after | STL x | GLB x |
+|---|---|---|---|---|---|---|
+| fox | 6 + core | 168 -> 308 | 8,484 -> 15,484 | 9,768 -> 18,808 | 1.83 | 1.93 |
+| nov | 6 + core | 168 -> 308 | 8,484 -> 15,484 | 9,768 -> 18,808 | 1.83 | 1.93 |
+| charlie | 336 + core | 8,088 -> 14,828 | 404,484 -> 741,484 | 421,596 -> 858,352 | 1.83 | 2.04 |
+| alpha | 240 + core | 5,784 -> 10,604 | 289,284 -> 530,284 | 301,784 -> 614,128 | 1.83 | 2.03 |
+| whisky | 84 + core | 2,040 -> 3,740 | 102,084 -> 187,084 | 107,092 -> 217,252 | 1.83 | 2.03 |
+
+Largest of 1000 labels s0..s999: s505 (744 segments): STL 894,084 -> 1,639,084 B, GLB 930,780 -> 1,896,304 B

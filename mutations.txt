@@ -1,0 +1,75 @@
+# Mutation runs on HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0  (2026-10-19T01:54:33-04:00)
+# each: apply with sed, show diff, run 'npx vitest run tests/unit', restore with 'git checkout -- src/snowflake/segment-geometry.ts', confirm clean
+
+## 1. face removal (drop the far end cap)
+$ sed -i 's/for (const end of \[rings\[0\], rings\[rings.length - 1\]\])/for (const end of [rings[0]])/' src/snowflake/segment-geometry.ts
+@@ -123 +123 @@ function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
+-  for (const end of [rings[0], rings[rings.length - 1]]) {
++  for (const end of [rings[0]]) {
+$ npx vitest run tests/unit
+     × bakes only closed prisms (every edge in 2 faces) for seed abcde 74ms
+     × bakes only closed prisms (every edge in 2 faces) for seed a1b 13ms
+     × bakes only closed prisms (every edge in 2 faces) for seed 9z9z9 12ms
+     × is closed: every edge is shared by exactly 2 faces 10ms
+     × is closed: every edge is shared by exactly 2 faces 1ms
+ FAIL  tests/unit/mesh-export-watertight.spec.ts > STL/GLB export of the faceted segments > bakes only closed prisms (every edge in 2 faces) for seed abcde
+ FAIL  tests/unit/mesh-export-watertight.spec.ts > STL/GLB export of the faceted segments > bakes only closed prisms (every edge in 2 faces) for seed a1b
+ FAIL  tests/unit/mesh-export-watertight.spec.ts > STL/GLB export of the faceted segments > bakes only closed prisms (every edge in 2 faces) for seed 9z9z9
+ FAIL  tests/unit/segment-geometry.spec.ts > segment geometry > is closed: every edge is shared by exactly 2 faces
+ FAIL  tests/unit/segment-geometry.spec.ts > core plate geometry > is closed: every edge is shared by exactly 2 faces
+ Test Files  2 failed | 40 passed (42)
+      Tests  5 failed | 484 passed (489)
+restored: git status --porcelain -> ''
+
+## 2. core rotation (CORE_EULER_ORDER back to three's default XYZ)
+$ sed -i 's/export const CORE_EULER_ORDER: THREE.EulerOrder = "ZXY";/export const CORE_EULER_ORDER: THREE.EulerOrder = "XYZ";/' src/snowflake/segment-geometry.ts
+@@ -51 +51 @@ const CORE_SPEC: PrismSpec = {
+-export const CORE_EULER_ORDER: THREE.EulerOrder = "ZXY";
++export const CORE_EULER_ORDER: THREE.EulerOrder = "XYZ";
+$ npx vitest run tests/unit
+     × lays the core plate flat: its thin local Y lands on world Z 4ms
+ FAIL  tests/unit/segment-geometry.spec.ts > instance matrices and the flat plate > lays the core plate flat: its thin local Y lands on world Z
+ Test Files  1 failed | 41 passed (42)
+      Tests  1 failed | 488 passed (489)
+restored: git status --porcelain -> ''
+
+## 3. segment not flat (SEGMENT_SPEC ridge/shoulder 0.2/0.05 -> 0.5/0.5)
+$ sed -i '/^const SEGMENT_SPEC/,/^};/{s/  ridge: 0.2,/  ridge: 0.5,/;s/  shoulder: 0.05,/  shoulder: 0.5,/}' src/snowflake/segment-geometry.ts
+@@ -30,2 +30,2 @@ const SEGMENT_SPEC: PrismSpec = {
+-  ridge: 0.2,
+-  shoulder: 0.05,
++  ridge: 0.5,
++  shoulder: 0.5,
+$ npx vitest run tests/unit
+     × is wound outward, with matching flat normals 8ms
+     × points every face normal away from the mesh centroid 5ms
+     × has unit tangents perpendicular to the normals, and UVs in [0, 1] 7ms
+     × is flat: Z extent is smaller than X extent 1ms
+     × renders each segment thinner in world Z than in its own width 2ms
+ FAIL  tests/unit/segment-geometry.spec.ts > segment geometry > is wound outward, with matching flat normals
+ FAIL  tests/unit/segment-geometry.spec.ts > segment geometry > points every face normal away from the mesh centroid
+ FAIL  tests/unit/segment-geometry.spec.ts > segment geometry > has unit tangents perpendicular to the normals, and UVs in [0, 1]
+ FAIL  tests/unit/segment-geometry.spec.ts > segment geometry > is flat: Z extent is smaller than X extent
+ FAIL  tests/unit/segment-geometry.spec.ts > instance matrices and the flat plate > renders each segment thinner in world Z than in its own width
+ Test Files  1 failed | 41 passed (42)
+      Tests  5 failed | 484 passed (489)
+restored: git status --porcelain -> ''
+
+## 4. winding flip disabled (buildPrism no longer reverses inward faces)
+$ sed -i 's/    if (n.dot(centre) < 0) {/    if (false \&\& n.dot(centre) < 0) {/' src/snowflake/segment-geometry.ts
+@@ -92 +92 @@ function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
+-    if (n.dot(centre) < 0) {
++    if (false && n.dot(centre) < 0) {
+$ npx vitest run tests/unit
+     × points every face normal away from the mesh centroid 7ms
+     × points every face normal away from the mesh centroid 2ms
+ FAIL  tests/unit/segment-geometry.spec.ts > segment geometry > points every face normal away from the mesh centroid
+ FAIL  tests/unit/segment-geometry.spec.ts > core plate geometry > points every face normal away from the mesh centroid
+ Test Files  1 failed | 41 passed (42)
+      Tests  2 failed | 487 passed (489)
+restored: git status --porcelain -> ''
+
+## restored tip
+$ npx vitest run tests/unit
+ Test Files  42 passed (42)
+      Tests  489 passed (489)

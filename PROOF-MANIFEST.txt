@@ -1,0 +1,69 @@
+# Proof bundle for PR #446 (issue #441)
+PR_HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0
+BASE=bcf27403667d9bac1511f312af4531c006989911 (origin/main)
+generated: 2026-10-19T02:32:27-04:00 (America/New_York)
+
+## Freshness check
+fresh clone of the PR head at 627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0, npm ci, npm run build -> build-after.txt
+working-tree build of the same commit produced identical asset names: YES
+served after-build (port 8788) index chunk: assets/index-C2SFAPc2.js  (expected index-C2SFAPc2.js, mesh-export-CEvikDZ_.js)
+served before-build (port 8787) index chunk: assets/index-CTCgk7PO.js
+all screenshots, videos, viewer shots, perf, verify, e2e and mutation runs below were produced from these two builds / this commit.
+
+## sha256 (first 16) of every file
+2c338768f50fc457  after-lite-capped_column.png
+19f20c6a9c82fe14  after-lite-fernlike_dendrite.png
+92f1b7e463332e5c  after-lite-grid.png
+18c40b90453f515b  after-lite-plate.png
+7b92625fa3f58dd3  after-lite-sector_plate.png
+b6cee4ce25f8b31c  after-lite-stellar_dendrite.png
+457b1a25b53c6e5b  after-rich-capped_column.png
+a3a31ef436e156d5  after-rich-fernlike_dendrite.png
+2aeda83dfd012ae7  after-rich-grid.png
+48dbe4d10fd6e950  after-rich-plate.png
+a6ca1855834aa7c4  after-rich-sector_plate.png
+28a5789e8c054c79  after-rich-stellar_dendrite.png
+b27b956a0b7e7b9c  before-lite-capped_column.png
+4ec22c40ad105517  before-lite-fernlike_dendrite.png
+111ac345acfab10a  before-lite-grid.png
+1ae7a9c1025c738e  before-lite-plate.png
+4bd75ab60d11457c  before-lite-sector_plate.png
+c8f4bfa5735cbb10  before-lite-stellar_dendrite.png
+28da6d371fd9f6a8  before-rich-capped_column.png
+430121c3f17371b1  before-rich-fernlike_dendrite.png
+efc32d9723ed6440  before-rich-grid.png
+306cf6d812d19c3c  before-rich-plate.png
+e6e640c8aeeb50bd  before-rich-sector_plate.png
+6dc0d6cceada1b9f  before-rich-stellar_dendrite.png
+57f8b5df5862c0f6  build-after.txt
+f4356841b4a05960  build-before.txt
+01645e0348ab463e  core-tilt.txt
+7d0990b5c274cc65  e2e-full.txt
+0a1f99ae0b18d211  export-size.spec.ts
+6d3537db4d677ac9  golden.txt
+a03c2260bcdd029c  modes-after-default-lite.png
+dc28394d62e0014f  modes-after-default-rich.png
+d9404a2511108e74  modes-after-pink-lite.png
+ed222c1914213300  modes-after-pink-rich.png
+386c25c4f50b35a2  modes-after-prism-lite.png
+cc82c1f86d29f22e  modes-after-prism-rich.png
+443860053a242e5f  modes.mjs
+d0e76fdeff94710c  modes.txt
+971352efdc0e1b83  mutate.sh
+77ba9489f353dda2  mutations.txt
+1877a4b3d7bfda7a  orbit-lite.webm
+0b48d4a92cb7dcb3  orbit-rich.webm
+3e0d9186706c218a  orbit-videos.txt
+30284ad17782af7b  perf-driver.mjs
+601b2cf0b4df7484  perf-driver.txt
+47a3385184dfe228  perf-interleaved.json
+371efcb500c43f59  serve.mjs
+cfe615d8ea2ab015  sizes.txt
+4a532eb686c88714  triangles.txt
+37a477b2e1e31105  verify.txt
+66664d7d02992ec4  video.mjs
+5a12b87cbb3bbc9a  viewer-glb-charlie.png
+685a33d0c92b9230  viewer-glb-whisky-core.png
+227cc600e13db635  viewer-shots.mjs
+e3da66f6785b4b38  viewer-stl-charlie.png
+49e3b0ab5a4ba1ad  viewer-stl-whisky-core.png

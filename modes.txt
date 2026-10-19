@@ -1,0 +1,6 @@
+default rich data-quality = rich
+default lite data-quality = lite
+pink rich data-quality = rich
+pink lite data-quality = lite
+prism rich data-quality = rich
+prism lite data-quality = lite

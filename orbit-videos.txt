@@ -1,0 +1,6 @@
+rich data-quality = rich index js: http://127.0.0.1:8788/assets/index-C2SFAPc2.js
+/tmp/fb441v2/video-raw/rich/page@11fc51e7407d9e6e69c35f17799a9b6d.webm
+orbit-rich.webm: Duration: 00:00:10.00
+lite data-quality = lite index js: http://127.0.0.1:8788/assets/index-C2SFAPc2.js
+/tmp/fb441v2/video-raw/lite/page@6171df806521ea3339687ba73624d6b7.webm
+orbit-lite.webm: Duration: 00:00:10.00

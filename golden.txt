@@ -1,7 +1,33 @@
-$ npx vitest run tests/unit/geometry-golden.spec.ts
- RUN  v5.0.3 /workspace/frostbomb-441-2026-10-19/frostbomb
+# HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0
+$ git diff --stat bcf2740 -- src/snowflake/geometry.ts src/snowflake/nakaya.ts src/snowflake/random.ts src/snowflake/svg-export.ts tests/unit/geometry-golden.spec.ts
+(no output above = empty)
+
+$ grep -n "56106ffe95744cf3" tests/unit/geometry-golden.spec.ts
+309:    expect(digest(svg)).toBe('56106ffe95744cf3');
+
+$ npx vitest run tests/unit/geometry-golden.spec.ts --reporter=verbose
+ RUN  v5.0.3 /tmp/fb441v2/tip
+ ✓ tests/unit/geometry-golden.spec.ts > fingerprintFlake > quantises to 1e-4 and treats -0 like 0 4ms
+ ✓ tests/unit/geometry-golden.spec.ts > fingerprintFlake > notices a 1e-3 change in a delay, a matrix cell, the core or a count 4ms
+ ✓ tests/unit/geometry-golden.spec.ts > fingerprintFlake > refuses to hash NaN or Infinity 1ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > pins today's crystal to the fixed label d20260925, not the clock date 4ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "abcde" still grows the same crystal 2ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "xyz" still grows the same crystal 0ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "a1b" still grows the same crystal 0ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "snowflake-12" still grows the same crystal 5ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "00000" still grows the same crystal 1ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "winter" still grows the same crystal 0ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "9z9z9" still grows the same crystal 0ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "zx9k2" still grows the same crystal 1ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from seed labels > seed "d20260925" still grows the same crystal 1ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from manual Lab conditions > plate (T=-2, SS=0.3) still grows the same crystal 1ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from manual Lab conditions > column (T=-6, SS=0.1) still grows the same crystal 0ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from manual Lab conditions > needle (T=-5, SS=0.6) still grows the same crystal 0ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from manual Lab conditions > stellar dendrite (T=-15, SS=0.6) still grows the same crystal 2ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden crystals from manual Lab conditions > fernlike dendrite (T=-15, SS=0.9) still grows the same crystal 1ms
+ ✓ tests/unit/geometry-golden.spec.ts > build order and shared scratch buffers > grows the same crystals when the table is built in reverse order 7ms
+ ✓ tests/unit/geometry-golden.spec.ts > build order and shared scratch buffers > keeps a copied flake intact while the next build reuses the scratch buffers 3ms
+ ✓ tests/unit/geometry-golden.spec.ts > golden SVG export > still exports the same laser-cutter SVG for a seed 13ms
  Test Files  1 passed (1)
       Tests  21 passed (21)
-   Duration  246ms (transform 59%, tests 21%, import 17%, worker 2%)
-$ git diff --stat origin/main -- src/snowflake/geometry.ts src/snowflake/nakaya.ts src/snowflake/random.ts src/snowflake/svg-export.ts tests/unit/geometry-golden.spec.ts
-(no output above = empty)
+   Duration  476ms (transform 64%, tests 20%, import 14%, worker 2%)
