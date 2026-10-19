@@ -14,7 +14,7 @@ node scripts/shots.mjs --label=<before|after|...>   # -> docs/pr-shots/rendering
 - `perf-orbit.mjs` loads `?seed=fox&rotate=0`, waits for `canvas[data-entry-active="false"]`, then drags a 10 s scripted orbit. It prints JSON (3 runs, median) and a markdown row, including the URL it hit, the `WEBGL_debug_renderer_info` UNMASKED_RENDERER, the Chrome version and headless/headed. Flags: `--profile`, `--seed`, `--quality`, `--runs`, `--url`, `--headed`.
   - **desktop**: no throttle, 1440×900, DPR 2.
   - **low-end-mobile**: CDP `Emulation.setCPUThrottlingRate` 6, 360×640, DPR 2, touch.
-- `--quality=rich|lite` is passed as `?quality=`. **It is a no-op until A4 lands.**
+- `--quality=rich|lite` is passed as `?quality=` (the debug tier override, A4). Without it the tier is chosen automatically: the `low-end-mobile` profile (coarse pointer, 360 px) starts on LITE, `desktop` on RICH. The override is not written to share links.
 - `shots.mjs` captures five seeds, one per habit, with `?rotate=0`, the default camera, after the entry tween settles (`data-entry-active="false"` plus two RAFs). It writes one PNG per seed plus `grid.png`. Background particles are random per load, so compare by eye (the flake matches); there is no pixel-diff threshold.
 
 | habit | seed |

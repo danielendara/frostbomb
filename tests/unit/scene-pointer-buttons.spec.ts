@@ -77,11 +77,13 @@ describe("createScene pointer buttons", () => {
         render() {}
         dispose() {}
         setPhotoMode() {}
+        setTier() {}
         requestLoad() {}
         load() {
           return Promise.resolve();
         }
       },
+      shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
     }));
   });

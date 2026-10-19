@@ -6,7 +6,7 @@
 //   node scripts/perf-orbit.mjs --profile=desktop|low-end-mobile [--seed=fox]
 //        [--quality=rich|lite] [--runs=3] [--url=http://127.0.0.1:8787] [--headed]
 //
-// --quality is passed as ?quality=; it is a no-op until the quality tiers (A4) land.
+// --quality is passed as ?quality= (tier override). Without it the app picks the tier itself.
 // Chrome throttles CPU (Emulation.setCPUThrottlingRate), not the GPU process.
 // Headless Chromium usually renders WebGL with SwiftShader: on a software renderer
 // the absolute fps budgets do not apply; compare before/after on one box and session.
@@ -118,7 +118,7 @@ const med = (k) => (results.some((r) => r[k] === null) ? null : +median(results.
 const summary = {
   profile: profileName,
   seed,
-  quality: quality ?? "default (no-op until A4)",
+  quality: quality ?? "default (auto tier)",
   url: results[0].url,
   renderer: results[0].renderer,
   softwareRenderer: /swiftshader|llvmpipe|software/i.test(results[0].renderer ?? ""),

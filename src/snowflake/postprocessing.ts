@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { MARK_POSTPROCESSING_READY, markOnce } from "./perf-marks";
 import { reportClientError } from "../ui/client-error";
+import type { QualityTier } from "./quality";
 
 export interface PostprocessingSkipHints {
   prefersReducedMotion: boolean;
@@ -104,6 +105,7 @@ export class PostprocessingPipeline implements RenderPipeline {
   private nextAttemptAt = 0;
   private gaveUp = false;
   private photoMode = false;
+  private lite = false;
   private dofPass: { enabled: boolean } | null = null;
   private readonly focusTarget = new THREE.Vector3(0, 0, 0);
   private readonly importer: () => Promise<PostprocessingModule>;
@@ -140,6 +142,24 @@ export class PostprocessingPipeline implements RenderPipeline {
     this.dofPass = null;
   }
 
+  /**
+   * LITE never imports the postprocessing chunk. Demoting after the effects
+   * loaded falls back to the plain renderer, which frees the composer targets.
+   * Returning to RICH (an explicit Lab Mode choice) lets `requestLoad` fetch again.
+   */
+  public setTier(tier: QualityTier): void {
+    this.lite = tier === "lite";
+    if (!this.lite || !this.isLoaded) return;
+    this.currentComposer.dispose();
+    this.currentComposer = {
+      render: () => this.renderer.render(this.scene, this.camera),
+      setSize: () => {},
+      dispose: () => {},
+    };
+    this.dofPass = null;
+    this.isLoaded = false;
+  }
+
   public setPhotoMode(enabled: boolean): void {
     this.photoMode = enabled;
     if (this.dofPass) this.dofPass.enabled = enabled;
@@ -152,7 +172,7 @@ export class PostprocessingPipeline implements RenderPipeline {
    */
   public requestLoad(skipEffects: boolean): void {
     if (this.isLoaded) return;
-    if (skipEffects) {
+    if (skipEffects || this.lite) {
       markOnce(MARK_POSTPROCESSING_READY);
       return;
     }
@@ -176,7 +196,7 @@ export class PostprocessingPipeline implements RenderPipeline {
    */
   public async load(skipEffects: boolean): Promise<void> {
     if (this.isLoaded) return;
-    if (skipEffects) {
+    if (skipEffects || this.lite) {
       markOnce(MARK_POSTPROCESSING_READY);
       return;
     }
@@ -188,7 +208,7 @@ export class PostprocessingPipeline implements RenderPipeline {
   }
 
   private async loadEffects(): Promise<void> {
-    if (this.isLoaded || this.isLoading) return;
+    if (this.isLoaded || this.isLoading || this.lite) return;
     this.isLoading = true;
 
     try {
@@ -201,6 +221,8 @@ export class PostprocessingPipeline implements RenderPipeline {
         SMAAPreset,
         DepthOfFieldEffect,
       } = await this.importer();
+      // Demoted to LITE while the chunk was in flight: don't build the composer.
+      if (this.lite) return;
 
       const nextComposer = new EffectComposer(this.renderer);
       nextComposer.addPass(new RenderPass(this.scene, this.camera));

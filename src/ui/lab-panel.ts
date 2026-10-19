@@ -2,6 +2,7 @@ import { announce } from "./announcer";
 import { LAB_TEMP_MAX_C, LAB_TEMP_MIN_C } from "../snowflake/nakaya";
 import { SEED_PATTERN } from "../url-state";
 import { SHARE_PARAM_SEED } from "../share-url-params";
+import type { QualityTier } from "../snowflake/quality";
 
 /**
  * A pasted share link yields its `?seed=`; anything else is the raw text.
@@ -30,6 +31,8 @@ export interface LabPanelParams {
   temperatureF: number;
   supersaturation: number;
   habit: string;
+  /** Debug quality tier (`?quality=` equivalent). Never part of a share link. */
+  quality: QualityTier;
 }
 
 export interface LabPanelCallbacks {
@@ -37,6 +40,10 @@ export interface LabPanelCallbacks {
   onRandomizeSeed: () => void;
   onConditionsChange: (temp: number, ss: number, last?: boolean) => void;
   getCurrentSeedLabel: () => string;
+  /** Active tier, read when the pane opens. */
+  getQualityTier?: () => QualityTier;
+  /** Returns the tier actually applied (reduced motion keeps LITE). */
+  onQualityChange?: (tier: QualityTier) => QualityTier;
 }
 
 export class LabPanel {
@@ -46,6 +53,7 @@ export class LabPanel {
     temperatureF: 5,
     supersaturation: 80,
     habit: "—",
+    quality: "rich",
   };
 
   private pane: TweakpanePane | null = null;
@@ -154,6 +162,18 @@ export class LabPanel {
 
       p.addBinding(this.params, "habit", { readonly: true, label: "Habit" });
 
+      if (this.callbacks.onQualityChange) {
+        this.params.quality = this.callbacks.getQualityTier?.() ?? this.params.quality;
+        p.addBinding(this.params, "quality", {
+          label: "Quality",
+          options: { RICH: "rich", LITE: "lite" },
+        }).on("change", (ev) => {
+          if (this.refreshDepth > 0) return;
+          const applied = this.callbacks.onQualityChange?.(ev.value as QualityTier);
+          if (applied && applied !== ev.value) this.syncQuality(applied);
+        });
+      }
+
       this.pane = p;
       return p;
     });
@@ -175,6 +195,12 @@ export class LabPanel {
     this.params.temperature = tempC;
     this.params.temperatureF = (tempC * 9) / 5 + 32;
     this.params.supersaturation = ssPercent;
+    this.refresh();
+  }
+
+  /** Show the active tier (it can fall on its own while the pane is open). */
+  public syncQuality(tier: QualityTier): void {
+    this.params.quality = tier;
     this.refresh();
   }
 

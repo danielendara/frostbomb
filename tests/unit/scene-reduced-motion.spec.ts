@@ -107,11 +107,13 @@ describe("createScene reduced-motion changes", () => {
         render() {}
         dispose() {}
         setPhotoMode() {}
+        setTier() {}
         requestLoad() {}
         load() {
           return Promise.resolve();
         }
       },
+      shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
     }));
 

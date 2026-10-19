@@ -11,6 +11,17 @@ import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
 import { createFrostPlaceholders, loadFrostMaps } from "./frost";
 import { preventSilentContextLoss } from "./context-loss";
 import { advanceAutoRotate, INITIAL_AUTO_ROTATE } from "./auto-rotate";
+import {
+  TIER_PROFILES,
+  TierController,
+  dprCapFor,
+  readTierHints,
+  selectStartingTier,
+  type QualityTier,
+} from "./quality";
+
+/** `MeshPhysicalMaterial.transmission` on RICH (LITE overrides it, see TIER_PROFILES). */
+const RICH_TRANSMISSION = 0.85;
 
 export interface Scene {
   scene: THREE.Scene;
@@ -23,10 +34,14 @@ export interface Scene {
   isAutoRotateEnabled: boolean;
   isPinkModeEnabled: boolean;
   isPrismModeEnabled: boolean;
+  /** Active quality tier; also on `canvas[data-quality]`. */
+  qualityTier: QualityTier;
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
   setPrismMode: (enabled: boolean) => void;
   setPhotoMode: (enabled: boolean) => void;
+  /** Explicit tier choice (Lab Mode). Reduced motion keeps LITE. Returns the tier applied. */
+  setQualityTier: (tier: QualityTier) => QualityTier;
   updateFlake: (data: BuildResult, animate?: boolean) => void;
   resetView: () => void;
   rotateView: (dx: number, dy: number) => void;
@@ -41,7 +56,9 @@ export interface SceneOptions {
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {}): Scene {
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   let prefersReducedMotion = reducedMotionQuery.matches;
-  let qualityScale = prefersReducedMotion ? 0.7 : 1;
+  const tierController = new TierController(
+    selectStartingTier(readTierHints(prefersReducedMotion)),
+  );
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x050912, 0.06);
@@ -59,8 +76,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   });
 
   function applyPixelRatio() {
-    const cap = Math.min(window.devicePixelRatio || 1, prefersReducedMotion ? 1 : 2);
-    renderer.setPixelRatio(Math.max(0.75, cap * qualityScale));
+    const cap = Math.min(
+      window.devicePixelRatio || 1,
+      dprCapFor(tierController.tier, prefersReducedMotion),
+    );
+    renderer.setPixelRatio(Math.max(0.75, cap));
   }
 
   applyPixelRatio();
@@ -100,7 +120,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     // Multiplied by the frost roughness map (green). Peaks frost over, facets stay glossier.
     roughness: 0.28,
     roughnessMap: frost.roughnessMap,
-    transmission: 0.85,
+    transmission: TIER_PROFILES[tierController.tier].transmission ?? RICH_TRANSMISSION,
     thickness: 0.5,
     ior: 1.31,
     dispersion: 0.02,
@@ -145,10 +165,25 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   let currentFlakeData: BuildResult | null = null;
 
   // Domain subsystems
-  const particles = new SnowfallParticleSystem(prefersReducedMotion);
+  const particles = new SnowfallParticleSystem(
+    prefersReducedMotion,
+    TIER_PROFILES.rich.particleCount,
+  );
   scene.add(particles.particles);
 
   const pipeline = new PostprocessingPipeline(renderer, scene, camera);
+
+  /** Push the controller's tier to everything it drives except the pixel ratio. */
+  function applyTier() {
+    const tier = tierController.tier;
+    const profile = TIER_PROFILES[tier];
+    canvas.setAttribute("data-quality", tier);
+    sceneInterface.qualityTier = tier;
+    material.transmission = profile.transmission ?? RICH_TRANSMISSION;
+    material.needsUpdate = true;
+    particles.setCount(profile.particleCount);
+    pipeline.setTier(tier);
+  }
   const animator = new GrowthAnimator(canvas);
 
   // Interaction State
@@ -257,8 +292,6 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   let autoRotateState = INITIAL_AUTO_ROTATE;
   let isRunning = false;
   let contextLost = false;
-  let averageDelta = 1 / 60;
-  let slowFrameCount = 0;
   let firstFrameMarked = false;
   let sceneNonblank = false;
 
@@ -273,6 +306,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     isAutoRotateEnabled: !prefersReducedMotion,
     isPinkModeEnabled: false,
     isPrismModeEnabled: false,
+    qualityTier: tierController.tier,
     start: () => {
       if (!isRunning && !document.hidden && !contextLost) {
         isRunning = true;
@@ -339,6 +373,12 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     },
     setPhotoMode: (enabled: boolean) => {
       pipeline.setPhotoMode(enabled);
+    },
+    setQualityTier: (tier: QualityTier) => {
+      tierController.set(prefersReducedMotion ? "lite" : tier);
+      applyTier();
+      updateCamera();
+      return tierController.tier;
     },
     resize: updateCamera,
     resetView: () => {
@@ -492,7 +532,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     particles.setReducedMotion(prefersReducedMotion);
 
     if (prefersReducedMotion) {
-      qualityScale = Math.min(qualityScale, 0.7);
+      tierController.set("lite");
+      applyTier();
       sceneInterface.setAutoRotate(false);
       animator.cancelEntryTween();
       animator.entryState.progress = 1;
@@ -500,9 +541,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
         animator.updateMatrices(branchMesh, coreMesh, flakeHolder, currentFlakeData);
       }
       animator.syncEntryState();
-    } else if (!skipPostprocessingFromEnvironment(prefersReducedMotion)) {
-      pipeline.load(false);
     }
+    // No re-promotion when reduced motion turns off: the tier only falls in-session.
     updateCamera();
   }
 
@@ -510,16 +550,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
 
   function adaptQuality(delta: number) {
-    if (prefersReducedMotion || qualityScale <= 0.75) return;
-
-    averageDelta = averageDelta * 0.95 + delta * 0.05;
-    slowFrameCount = averageDelta > 1 / 32 ? slowFrameCount + 1 : 0;
-
-    if (slowFrameCount > 90) {
-      qualityScale = 0.75;
-      slowFrameCount = 0;
-      updateCamera();
-    }
+    const demoted = tierController.update(delta);
+    if (!demoted) return;
+    console.info(
+      `[frostbomb] quality tier demoted rich -> ${demoted} (EMA frame time > 25 ms for 90 frames) at ${new Date().toISOString()} (t=${Math.round(performance.now())} ms)`,
+    );
+    applyTier();
+    updateCamera();
   }
 
   if (import.meta.env.DEV) {
@@ -590,5 +627,6 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     pipeline.requestLoad(skipPostprocessingFromEnvironment(prefersReducedMotion));
   }
 
+  applyTier();
   return sceneInterface;
 }

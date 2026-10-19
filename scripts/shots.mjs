@@ -5,7 +5,7 @@
 //   node scripts/shots.mjs --label=baseline [--url=http://127.0.0.1:8787] [--quality=rich|lite]
 //
 // Writes docs/pr-shots/rendering/<label>/<habit>.png plus grid.png (all five labeled).
-// --quality is passed as ?quality=; a no-op until the quality tiers (A4) land.
+// --quality is passed as ?quality= (tier override); without it the app picks the tier itself.
 // Comparison is by eye: background particles are random per load, so "near-identical"
 // means the flake matches. There is no pixel-diff threshold.
 import { mkdirSync, readFileSync } from "node:fs";

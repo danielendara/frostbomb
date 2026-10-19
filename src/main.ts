@@ -168,6 +168,8 @@ const urlWrites = createUrlWriteCoalescer(
 
 const labPanel = new LabPanel({
   getCurrentSeedLabel: () => currentSeedLabel,
+  getQualityTier: () => scene.qualityTier,
+  onQualityChange: (tier) => scene.setQualityTier(tier),
   onSeedChange: (val) => {
     urlWrites.flush();
     currentSeed = {
@@ -410,6 +412,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     }
     try {
       await labPanel.ensurePane();
+      labPanel.syncQuality(scene.qualityTier);
     } catch (err) {
       console.error("Failed to load Lab Mode:", err);
       reportClientError("chunk-load", err);

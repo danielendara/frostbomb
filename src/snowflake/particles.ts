@@ -6,6 +6,8 @@ export class SnowfallParticleSystem {
   public material: THREE.PointsMaterial;
 
   private particleCount: number;
+  /** Buffer size; `setCount` can only shrink below it. */
+  private readonly capacity: number;
   private particlePos: Float32Array;
   private particleVelBase: Float32Array;
   private particleSinPhaseBase: Float32Array;
@@ -21,8 +23,9 @@ export class SnowfallParticleSystem {
   public timeStep: number;
   public driftScale: number;
 
-  constructor(prefersReducedMotion: boolean) {
-    this.particleCount = prefersReducedMotion ? 80 : 200;
+  constructor(prefersReducedMotion: boolean, particleCount = 200) {
+    this.particleCount = particleCount;
+    this.capacity = particleCount;
     this.geometry = new THREE.BufferGeometry();
     this.particlePos = new Float32Array(this.particleCount * 3);
     this.particleVelBase = new Float32Array(this.particleCount);
@@ -57,6 +60,12 @@ export class SnowfallParticleSystem {
       blending: THREE.AdditiveBlending,
     });
     this.particles = new THREE.Points(this.geometry, this.material);
+  }
+
+  /** Draw and animate only the first `count` particles (a quality tier change). */
+  public setCount(count: number): void {
+    this.particleCount = Math.max(0, Math.min(count, this.capacity));
+    this.geometry.setDrawRange(0, this.particleCount);
   }
 
   public updateScaledBuffers(): void {
