@@ -1,0 +1,12 @@
+computing gzip size...
+dist/client/.assetsignore                      0.02 kB
+dist/client/assets/frost.worker-D4_4-P4K.js    3.22 kB
+dist/client/index.html                        18.60 kB │ gzip:   4.10 kB
+dist/client/assets/index-BWy2dVu4.css         22.24 kB │ gzip:   5.06 kB
+dist/client/assets/mesh-export-BcKIOlYG.js     1.85 kB │ gzip:   0.97 kB
+dist/client/assets/index-DDc1Woeu.js          84.23 kB │ gzip:  29.23 kB
+dist/client/assets/tweakpane-CuKAiaYZ.js     148.24 kB │ gzip:  30.38 kB
+dist/client/assets/build-3yW_xRDM.js         166.43 kB │ gzip:  74.70 kB
+dist/client/assets/three-DqisUITM.js         580.43 kB │ gzip: 145.52 kB
+
+✓ built in 299ms

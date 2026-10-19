@@ -1,0 +1,29 @@
+{
+  "mode": "rich",
+  "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+  "cores": 8,
+  "tierAtStart": "rich",
+  "fpsAtStart": {
+    "fps": 5.1,
+    "p95Ms": 216.7,
+    "frames": 26
+  },
+  "tierAfterWait": "lite",
+  "secondsToDemotion": 10.8,
+  "fpsAfterDemotion": {
+    "fps": 60,
+    "p95Ms": 16.8,
+    "frames": 301
+  },
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "chrome": "156.0.8078.4",
+  "consoleLog": [
+    "+19.6s (script clock) [frostbomb] quality tier demoted rich -> lite (EMA frame time > 25 ms for 90 frames) at 2026-10-19T03:44:30.334Z (t=19451 ms)"
+  ],
+  "assetRequests": [
+    "+0.2s index-DDc1Woeu.js",
+    "+0.2s three-DqisUITM.js",
+    "+0.5s frost.worker-D4_4-P4K.js",
+    "+1.3s build-3yW_xRDM.js"
+  ]
+}

@@ -1,0 +1,6 @@
+1	before	| low-end-mobile | rich | 2 | 483.4 | 549.9 | 481 | ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) |
+1	after	| low-end-mobile | rich | 2.5 | 499.9 | 566.6 | 551 | ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) |
+2	before	| low-end-mobile | rich | 4.8 | 200 | 266.7 | 548 | ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) |
+2	after	| low-end-mobile | rich | 2.1 | 483.3 | 533.3 | 536 | ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) |
+3	before	| low-end-mobile | rich | 2.1 | 483.3 | 550 | 498 | ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) |
+3	after	| low-end-mobile | rich | 4.9 | 200 | 233.4 | 352 | ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) |

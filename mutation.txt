@@ -1,0 +1,62 @@
+### Mutation 1: selectStartingTier always returns RICH
+$ git diff src/snowflake/quality.ts
++  if (hints) return "rich";
+$ npx vitest run tests/unit/quality.spec.ts
+     × reduced motion 5ms
+     × Save-Data 1ms
+     × deviceMemory <= 4 0ms
+     × hardwareConcurrency <= 2 0ms
+     × coarse pointer at 480 px 0ms
+     × coarse pointer at 360 px 0ms
+     × ?quality=lite on a capable desktop 0ms
+     × ?quality=rich under reduced motion 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > reduced motion
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > Save-Data
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > deviceMemory <= 4
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > hardwareConcurrency <= 2
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > coarse pointer at 480 px
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > coarse pointer at 360 px
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > ?quality=lite on a capable desktop
+ FAIL  tests/unit/quality.spec.ts > selectStartingTier > ?quality=rich under reduced motion
+ Test Files  1 failed (1)
+      Tests  8 failed | 17 passed (25)
+--- restored:
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
+
+### Mutation 2: controller re-promotes on fast frames
+-    if (this.current === "lite") return null;
++    if (this.ema <= SLOW_FRAME_SECONDS) this.current = "rich";
+$ npx vitest run tests/unit/quality.spec.ts
+     × returns the new tier exactly once 7ms
+     × does not oscillate: fast frames after demotion keep LITE 2ms
+     × stays LITE when it starts LITE 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  tests/unit/quality.spec.ts > TierController > returns the new tier exactly once
+ FAIL  tests/unit/quality.spec.ts > TierController > does not oscillate: fast frames after demotion keep LITE
+ FAIL  tests/unit/quality.spec.ts > TierController > stays LITE when it starts LITE
+ Test Files  1 failed (1)
+      Tests  3 failed | 22 passed (25)
+--- restored:
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
+
+### Mutation 3: drop the LITE guard in PostprocessingPipeline
+-    if (skipEffects || this.lite) {
++    if (skipEffects) {
+-    if (skipEffects || this.lite) {
++    if (skipEffects) {
+-    if (this.isLoaded || this.isLoading || this.lite) return;
++    if (this.isLoaded || this.isLoading) return;
+$ npx vitest run tests/unit/quality.spec.ts
+     × never imports across many frames, an explicit load and a retry window 10ms
+     × demoting after the effects loaded falls back to the plain renderer 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  tests/unit/quality.spec.ts > LITE never calls the postprocessing importer > never imports across many frames, an explicit load and a retry window
+ FAIL  tests/unit/quality.spec.ts > LITE never calls the postprocessing importer > demoting after the effects loaded falls back to the plain renderer
+ Test Files  1 failed (1)
+      Tests  2 failed | 23 passed (25)
+--- restored:
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
