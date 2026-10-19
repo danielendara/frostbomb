@@ -83,11 +83,13 @@ describe("createScene pixel ratio", () => {
         render() {}
         dispose() {}
         setPhotoMode() {}
+        setTier() {}
         requestLoad() {}
         load() {
           return Promise.resolve();
         }
       },
+      shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
     }));
   });
@@ -119,14 +121,51 @@ describe("createScene pixel ratio", () => {
     scene.dispose();
   });
 
-  it("caps the ratio at 1 under reduced motion (floored at 0.75 by quality scale)", async () => {
+  it("caps the ratio at 1 under reduced motion (reduced motion forces LITE)", async () => {
     reducedMotion = true;
     setDpr(2);
     const scene = await makeScene();
-    expect(lastRatio()).toBe(0.75);
+    expect(lastRatio()).toBe(1);
     fireDprChange(3);
+    expect(lastRatio()).toBe(1);
+    scene.dispose();
+  });
+
+  it("caps the ratio at 1.5 on LITE and 2 on RICH", async () => {
+    setDpr(3);
+    const scene = await makeScene();
+    expect(scene.qualityTier).toBe("rich");
+    expect(lastRatio()).toBe(2);
+    scene.setQualityTier("lite");
+    expect(lastRatio()).toBe(1.5);
+    scene.dispose();
+  });
+
+  it("keeps the 0.75 floor on a sub-1 devicePixelRatio", async () => {
+    setDpr(0.5);
+    const scene = await makeScene();
     expect(lastRatio()).toBe(0.75);
     scene.dispose();
+  });
+
+  it("reflects the tier on canvas[data-quality] and lets reduced motion keep LITE", async () => {
+    const { createScene } = await import("../../src/snowflake/scene.ts");
+    const canvas = document.createElement("canvas");
+    const scene = createScene(canvas);
+    expect(canvas.getAttribute("data-quality")).toBe("rich");
+    scene.setQualityTier("lite");
+    expect(canvas.getAttribute("data-quality")).toBe("lite");
+    scene.dispose();
+
+    vi.resetModules();
+    reducedMotion = true;
+    const again = await import("../../src/snowflake/scene.ts");
+    const canvas2 = document.createElement("canvas");
+    const scene2 = again.createScene(canvas2);
+    expect(canvas2.getAttribute("data-quality")).toBe("lite");
+    expect(scene2.setQualityTier("rich")).toBe("lite");
+    expect(canvas2.getAttribute("data-quality")).toBe("lite");
+    scene2.dispose();
   });
 
   it("removes the DPR listener on dispose", async () => {

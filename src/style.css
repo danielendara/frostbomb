@@ -547,7 +547,9 @@ body.pink-mode {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--rule);
-  max-height: 300px;
+  /* Shorter than 300px only on viewports under ~750px tall, so Guide + Lab Mode
+     (the panel is bottom-anchored) keep the Guide toggle on screen. */
+  max-height: min(300px, calc(100dvh - 28rem));
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--rule) transparent;
