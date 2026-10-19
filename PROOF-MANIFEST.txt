@@ -8,7 +8,11 @@ fresh clone of the PR head at 627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0, npm ci, 
 working-tree build of the same commit produced identical asset names: YES
 served after-build (port 8788) index chunk: assets/index-C2SFAPc2.js  (expected index-C2SFAPc2.js, mesh-export-CEvikDZ_.js)
 served before-build (port 8787) index chunk: assets/index-CTCgk7PO.js
-all screenshots, videos, viewer shots, perf, verify, e2e and mutation runs below were produced from these two builds / this commit.
+all screenshots, videos, perf, verify, e2e and mutation runs were produced from these two builds / this commit.
+update (proof commit after 7f0c209): the four STL/GLB viewer shots were re-exported and re-rendered from the PR head in one run
+(see viewer-render.txt) and now carry an on-image PR-head stamp; viewer-control-pretweak-*.png are a 0.16/0.07 control.
+identity check: proof-identity-check.sh vs 612c789 -> proof-identity-check.txt (RESULT: PASS, exit 0).
+
 
 ## sha256 (first 16) of every file
 2c338768f50fc457  after-lite-capped_column.png
@@ -57,13 +61,22 @@ d0e76fdeff94710c  modes.txt
 30284ad17782af7b  perf-driver.mjs
 601b2cf0b4df7484  perf-driver.txt
 47a3385184dfe228  perf-interleaved.json
+df6c5e89a0f69894  proof-identity-check.sh
+8e7d9210aaeb4253  proof-identity-check.txt
 371efcb500c43f59  serve.mjs
 cfe615d8ea2ab015  sizes.txt
 4a532eb686c88714  triangles.txt
 37a477b2e1e31105  verify.txt
 66664d7d02992ec4  video.mjs
-5a12b87cbb3bbc9a  viewer-glb-charlie.png
-685a33d0c92b9230  viewer-glb-whisky-core.png
-227cc600e13db635  viewer-shots.mjs
-e3da66f6785b4b38  viewer-stl-charlie.png
-49e3b0ab5a4ba1ad  viewer-stl-whisky-core.png
+5c90abe6f98d1bfa  viewer-control-pretweak-glb-charlie.png
+428812bab3e69e26  viewer-control-pretweak-glb-whisky-core.png
+c9ea9b103fedc0f4  viewer-control-pretweak-stl-charlie.png
+3986309d01d0ae44  viewer-control-pretweak-stl-whisky-core.png
+318f12842c10fc7d  viewer-export.spec.ts
+24d6ae9d63c06c84  viewer-glb-charlie.png
+d1d210a873ae576e  viewer-glb-whisky-core.png
+d6ea96907c9e5f31  viewer-index.html
+0c7db7017973e3d8  viewer-render.txt
+773857fa9beb71c8  viewer-shots.mjs
+8c3cdcf056c24036  viewer-stl-charlie.png
+3d06d021c25f5219  viewer-stl-whisky-core.png

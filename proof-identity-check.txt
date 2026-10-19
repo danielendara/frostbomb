@@ -1,0 +1,52 @@
+# proof identity check vs 612c789 (612c789), 2026-10-19T02:53:59-04:00
+CHANGED    after-lite-capped_column.png
+CHANGED    after-lite-fernlike_dendrite.png
+CHANGED    after-lite-grid.png
+CHANGED    after-lite-plate.png
+CHANGED    after-lite-sector_plate.png
+CHANGED    after-lite-stellar_dendrite.png
+CHANGED    after-rich-capped_column.png
+CHANGED    after-rich-fernlike_dendrite.png
+CHANGED    after-rich-grid.png
+CHANGED    after-rich-plate.png
+CHANGED    after-rich-sector_plate.png
+CHANGED    after-rich-stellar_dendrite.png
+CHANGED    before-lite-capped_column.png
+CHANGED    before-lite-fernlike_dendrite.png
+CHANGED    before-lite-grid.png
+CHANGED    before-lite-plate.png
+CHANGED    before-lite-sector_plate.png
+CHANGED    before-lite-stellar_dendrite.png
+CHANGED    before-rich-capped_column.png
+CHANGED    before-rich-fernlike_dendrite.png
+CHANGED    before-rich-grid.png
+CHANGED    before-rich-plate.png
+CHANGED    before-rich-sector_plate.png
+CHANGED    before-rich-stellar_dendrite.png
+NEW        modes-after-default-lite.png
+NEW        modes-after-default-rich.png
+CHANGED    modes-after-pink-lite.png
+CHANGED    modes-after-pink-rich.png
+CHANGED    modes-after-prism-lite.png
+CHANGED    modes-after-prism-rich.png
+CHANGED    orbit-lite.webm
+CHANGED    orbit-rich.webm
+NEW        viewer-control-pretweak-glb-charlie.png
+NEW        viewer-control-pretweak-glb-whisky-core.png
+NEW        viewer-control-pretweak-stl-charlie.png
+NEW        viewer-control-pretweak-stl-whisky-core.png
+CHANGED    viewer-glb-charlie.png
+CHANGED    viewer-glb-whisky-core.png
+CHANGED    viewer-stl-charlie.png
+CHANGED    viewer-stl-whisky-core.png
+checked 40 png/webm files
+RESULT: PASS (no png/webm byte-identical to 612c789)
+
+## self-test: put back the 612c789 copy of viewer-stl-charlie.png, re-run
+IDENTICAL  viewer-stl-charlie.png  (blob ea09b51a3f677534c0669df3ec05a8ef7bba5c07)
+RESULT: FAIL (byte-identical files above)
+exit=1
+
+## after restoring the fresh render
+RESULT: PASS (no png/webm byte-identical to 612c789)
+exit=0

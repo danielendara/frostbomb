@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#0b1220;color:#9fb3d1;font:13px monospace}#l{position:fixed;left:10px;top:8px}</style>
+<div id="l"></div>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+const q = new URLSearchParams(location.search);
+const [file, fmt, zoom] = [q.get("file"), q.get("fmt"), q.get("zoom") ?? "full"];
+const stamp = q.get("stamp") ? `  |  ${q.get("stamp")}` : "";
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(900, 700); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1220);
+scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x1a2540, 1.2));
+const k = new THREE.DirectionalLight(0xffffff, 3); k.position.set(4, 6, 8); scene.add(k);
+const r = new THREE.DirectionalLight(0x9ec9ff, 1.5); r.position.set(-6, -3, 2); scene.add(r);
+const cam = new THREE.PerspectiveCamera(35, 900 / 700, 0.1, 500);
+const holder = new THREE.Group(); scene.add(holder);
+holder.rotation.set(-0.95, 0.0, 0.35);
+let obj;
+if (fmt === "stl") {
+  const g = await new STLLoader().loadAsync(`${file}.stl`);
+  g.computeVertexNormals();
+  obj = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xdfeaff, roughness: 0.4, metalness: 0 }));
+  document.getElementById("l").textContent = `${file}.stl  ${g.getAttribute("position").count / 3} triangles (binary STL)${stamp}`;
+} else {
+  const gltf = await new GLTFLoader().loadAsync(`${file}.glb`);
+  obj = gltf.scene;
+  let n = 0; obj.traverse((o) => { if (o.isMesh) n += o.geometry.index.count / 3; });
+  document.getElementById("l").textContent = `${file}.glb  ${n} triangles (GLB)${stamp}`;
+}
+holder.add(obj);
+const box = new THREE.Box3().setFromObject(holder); const s = box.getSize(new THREE.Vector3()).length();
+cam.position.set(0, 0, zoom === "core" ? s * 0.55 : s * 1.1);
+if (zoom === "core") cam.lookAt(0, 0, 0); else cam.lookAt(0, 0, 0);
+renderer.render(scene, cam); window.__done = true;
+</script>

@@ -1,0 +1,23 @@
+# STL/GLB viewer shots for PR #446, regenerated 2026-10-19T02:53:59-04:00 (America/New_York)
+PR_HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0  (clean clone /tmp/fb441v2/tip, rebuilt this run: index-C2SFAPc2.js, mesh-export-CEvikDZ_.js)
+exports (viewer-export.spec.ts -> exportSnowflakeModels at PR head), sha256/16:
+  1a4707599faed003  charlie.stl
+  419d90cbf5f6960a  charlie.glb
+  e13d8c5cf67d40e2  whisky.stl
+  a0d77c8cc1903ec7  whisky.glb
+control exports (same tree, SEGMENT_SPEC ridge/shoulder set back to 0.16/0.07; not the PR), sha256/16:
+  61a8a6dbf965e213  charlie.stl
+  561a175c7ef801b4  charlie.glb
+  4723408f4cff74c6  whisky.stl
+  c15251ccf792b337  whisky.glb
+
+Why the 7f0c209 viewer PNGs matched 612c789 byte for byte: the renderer is deterministic, and the
+612c789 viewer shots had already been rendered from the final 0.2/0.05 geometry (they were taken after
+the ridge tweak; only build-after.txt and earlier logs predated it). Unstamped renders from this run:
+  viewer-stl-charlie.png      PR head e3da66f6785b4b38   control 43f40081cc36f47b   612c789 e3da66f6785b4b38
+  viewer-glb-charlie.png      PR head 5a12b87cbb3bbc9a   control 2ebfc30102061926   612c789 5a12b87cbb3bbc9a
+  viewer-stl-whisky-core.png  PR head 49e3b0ab5a4ba1ad   control 9ecc685ea6d5d526   612c789 49e3b0ab5a4ba1ad
+  viewer-glb-whisky-core.png  PR head 685a33d0c92b9230   control 8382e96cdec67733   612c789 685a33d0c92b9230
+So PR-head geometry renders to the old bytes and the pre-tweak geometry does not. The committed
+viewer-*.png now carry an on-image stamp naming the PR head, so they can't be confused with old copies;
+viewer-control-pretweak-*.png are the pre-tweak control renders, kept for comparison only.
