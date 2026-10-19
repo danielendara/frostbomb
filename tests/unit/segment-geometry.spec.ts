@@ -97,6 +97,27 @@ describe.each(MESHES)("$name geometry", ({ make }) => {
     }
   });
 
+  it("points every face normal away from the mesh centroid", () => {
+    // Signed volume alone misses a single inward face; on a convex prism each face must face out.
+    const geom = make();
+    const pos = geom.getAttribute("position") as THREE.BufferAttribute;
+    const index = geom.getIndex()!;
+    const centroid = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) centroid.add(new THREE.Vector3().fromBufferAttribute(pos, i));
+    centroid.divideScalar(pos.count);
+    const [a, b, c] = [0, 1, 2].map(() => new THREE.Vector3());
+    const inward: number[] = [];
+    for (let t = 0; t < index.count; t += 3) {
+      a.fromBufferAttribute(pos, index.getX(t));
+      b.fromBufferAttribute(pos, index.getX(t + 1));
+      c.fromBufferAttribute(pos, index.getX(t + 2));
+      const face = b.clone().sub(a).cross(c.clone().sub(a));
+      const out = a.clone().add(b).add(c).divideScalar(3).sub(centroid);
+      if (face.dot(out) <= 0) inward.push(t / 3);
+    }
+    expect(inward).toEqual([]);
+  });
+
   it("has unit tangents perpendicular to the normals, and UVs in [0, 1]", () => {
     const geom = make();
     const nrm = geom.getAttribute("normal") as THREE.BufferAttribute;
