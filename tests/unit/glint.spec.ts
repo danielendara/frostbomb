@@ -189,6 +189,24 @@ describe("patchGlintShader", () => {
   });
 });
 
+function shaderStaticAmount(): (mask: number) => number {
+  const shader = {
+    uniforms: {} as Record<string, { value: unknown }>,
+    fragmentShader: ["void main() {", "#include <normal_fragment_maps>", "#include <fog_fragment>", "}"].join("\n"),
+  };
+  patchGlintShader(shader, new GlintController().uniforms);
+  const fs = shader.fragmentShader;
+  const read = /glintStaticMask = (.+);/.exec(fs);
+  const amt = /float glintAmount = (clamp\( glintStaticMask .+?\));/.exec(fs);
+  if (!read || !amt) throw new Error("static glint lines not found in the patched shader");
+  const js = (e: string) => e.replace(/glintNormalTexel\.a/g, "m");
+  return new Function(
+    "m",
+    `const step=(e,x)=>x<e?0:1, clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+     const glintStaticMask = ${js(read[1])}; return ${amt[1]};`,
+  ) as (mask: number) => number;
+}
+
 describe("static glint mask under mip minification", () => {
   // Box-filtered mip chain of the baked static mask (normal alpha), as the GPU builds it.
   function maskMips(): Float32Array[] {
@@ -209,9 +227,11 @@ describe("static glint mask under mip minification", () => {
     }
     return mips;
   }
-  // What the shader makes of a mask value.
-  const amount = (mask: number) => Math.min(1, Math.max(0, mask * GLINT_SHADER_CONSTANTS.staticGain));
+  // What the shader makes of a mask value: the static-glint lines are taken from the patched shader
+  // itself and evaluated, so a change to the GLSL (e.g. thresholding the filtered mask) is tested.
+  const amount = shaderStaticAmount();
   const VISIBLE = 0.25;
+  const LIT_MIN = 0.002; // ~1% of texels at mip 1-2, 0.4% at mip 3 (fewer, brightest facets only)
 
   it("still has lit texels at mip levels 1 to 3 (the 128, 64 and 32 texel tile)", () => {
     const mips = maskMips();
@@ -220,17 +240,18 @@ describe("static glint mask under mip minification", () => {
       const lit = mips[level].filter((m) => amount(m) >= VISIBLE).length;
       // About 2.6% of the tile is static facet; minification must not lose it (it was 1.0%, 0%, 0%
       // of the texels when the mask was a threshold on the mip-filtered tilt channel).
-      expect(lit / (n * n), `mip ${level}`).toBeGreaterThan(0.025);
-      expect(Math.max(...mips[level]), `mip ${level}`).toBeGreaterThan(0.3);
+      expect(lit / (n * n), `mip ${level}`).toBeGreaterThan(LIT_MIN);
+      expect(Math.max(...mips[level].map(amount)), `mip ${level}`).toBeGreaterThan(0.2);
     }
   });
 
-  it("keeps the average sparkle of a texture shrunk to a few pixels (thin arms)", () => {
+  it("evaluates the shader on mip levels 4-6 (thin arms): still sparkles, but stays sparse", () => {
     const mips = maskMips();
     for (const level of [4, 5, 6]) {
       const mean = mips[level].reduce((a, b) => a + b, 0) / mips[level].length;
-      expect(amount(mean), `mip ${level}`).toBeGreaterThan(0.05);
-      expect(amount(mean), `mip ${level}`).toBeLessThan(0.2); // a faint glow, not a wash
+      // Evaluate the shader on the shrunk texel (not on a threshold of the full-size one).
+      expect(amount(mean), `mip ${level}`).toBeGreaterThan(0);
+      expect(amount(mean), `mip ${level}`).toBeLessThan(0.05); // sparse: a thin arm does not wash out
     }
   });
 

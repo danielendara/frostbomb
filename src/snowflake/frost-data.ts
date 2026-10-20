@@ -28,9 +28,9 @@ const GLINT_TILT_MAX = 0.97;
 /** Facet roughness map value; the material roughness 0.28 multiplies on, so ~0.13 (the frost is 0.1 to 0.24). */
 const GLINT_ROUGHNESS = 0.45;
 // LITE static sparkle: a facet is "static" when its baked tilt-x channel (a stand-in for a random
-// draw) is between these, so about a fifth of the facets sparkle. `glint.ts` re-exports them.
-export const GLINT_STATIC_FROM = 0.72;
-export const GLINT_STATIC_TO = 0.93;
+// draw) is between these, so only the brightest few facets sparkle. `glint.ts` re-exports them.
+export const GLINT_STATIC_FROM = 0.85;
+export const GLINT_STATIC_TO = 0.97;
 // Independent stream so the frost grain above is unchanged by facet tuning.
 const GLINT_SEED = FROST_SEED ^ 0x9e3779b9;
 

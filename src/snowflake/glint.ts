@@ -39,14 +39,14 @@ export const GLINT_SHADER_CONSTANTS = {
   gain: 3,
   /** `static` shows facets whose baked tilt-x channel (a stand-in for a random draw) is above this... */
   staticFrom: GLINT_STATIC_FROM,
-  /** ...fully lit from here, so about a fifth of the facets sparkle. */
+  /** ...fully lit from here, so only the brightest few facets sparkle (sparse on LITE, #448 review). */
   staticTo: GLINT_STATIC_TO,
   /**
-   * `static` glint = clamp(mask * gain): the mask is the static-facet coverage of the pixel, ~2.6%
-   * of the tile on average, so a heavily minified pixel (a thin arm) brightens by ~gain * 2.6%
-   * and one that straddles a facet more. Full coverage (large caps) saturates at 1.
+   * `static` glint = clamp(mask * gain): the mask is the static-facet coverage of the pixel, ~1%
+   * of the tile at mip 1, so a heavily minified pixel (a thin arm) brightens by ~1% (below what reads
+   * as grain) while a pixel that lands on a facet still lights up. Gain 1 keeps thin arms sparse.
    */
-  staticGain: 4,
+  staticGain: 1,
 } as const;
 
 const GLINT_PARS = /* glsl */ `
