@@ -43,10 +43,10 @@ export const GLINT_SHADER_CONSTANTS = {
   staticTo: GLINT_STATIC_TO,
   /**
    * `static` glint = clamp(mask * gain): the mask is the static-facet coverage of the pixel, ~1%
-   * of the tile at mip 1, so a heavily minified pixel (a thin arm) brightens by ~1% (below what reads
-   * as grain) while a pixel that lands on a facet still lights up. Gain 1 keeps thin arms sparse.
+   * of the tile at mip 1, so a heavily minified pixel (a thin arm) brightens by ~0.6% (below what reads
+   * as grain) while a pixel that lands on a facet still lights up. Gain 0.6 keeps thin arms sparse and keeps every 1 px tile under 3 flashes/s on LITE (flash-lite-*.json).
    */
-  staticGain: 1,
+  staticGain: 0.6,
 } as const;
 
 const GLINT_PARS = /* glsl */ `

@@ -230,7 +230,7 @@ describe("static glint mask under mip minification", () => {
   // What the shader makes of a mask value: the static-glint lines are taken from the patched shader
   // itself and evaluated, so a change to the GLSL (e.g. thresholding the filtered mask) is tested.
   const amount = shaderStaticAmount();
-  const VISIBLE = 0.25;
+  const VISIBLE = 0.1; // a lit texel after the shader gain (0.6)
   const LIT_MIN = 0.002; // ~1% of texels at mip 1-2, 0.4% at mip 3 (fewer, brightest facets only)
 
   it("still has lit texels at mip levels 1 to 3 (the 128, 64 and 32 texel tile)", () => {
@@ -241,7 +241,7 @@ describe("static glint mask under mip minification", () => {
       // About 2.6% of the tile is static facet; minification must not lose it (it was 1.0%, 0%, 0%
       // of the texels when the mask was a threshold on the mip-filtered tilt channel).
       expect(lit / (n * n), `mip ${level}`).toBeGreaterThan(LIT_MIN);
-      expect(Math.max(...mips[level].map(amount)), `mip ${level}`).toBeGreaterThan(0.2);
+      expect(Math.max(...mips[level].map(amount)), `mip ${level}`).toBeGreaterThan(0.1);
     }
   });
 
