@@ -27,6 +27,10 @@ const GLINT_TILT_MIN = 0.7;
 const GLINT_TILT_MAX = 0.97;
 /** Facet roughness map value; the material roughness 0.28 multiplies on, so ~0.13 (the frost is 0.1 to 0.24). */
 const GLINT_ROUGHNESS = 0.45;
+// LITE static sparkle: a facet is "static" when its baked tilt-x channel (a stand-in for a random
+// draw) is between these, so about a fifth of the facets sparkle. `glint.ts` re-exports them.
+export const GLINT_STATIC_FROM = 0.72;
+export const GLINT_STATIC_TO = 0.93;
 // Independent stream so the frost grain above is unchanged by facet tuning.
 const GLINT_SEED = FROST_SEED ^ 0x9e3779b9;
 
@@ -62,6 +66,11 @@ function fbm(
  * other channels are the glint facet field, read by the glint shader on both tiers: red/blue =
  * facet tilt xy (0.5 = flat), alpha = facet coverage (0 off the facets). The same facets are
  * also baked into `normalData` and the roughness green.
+ *
+ * `normalData` alpha is the LITE static-glint mask: coverage of the static facets only (0 off
+ * them). It is its own channel because a mask thresholded on a mip-filtered tilt channel dies
+ * where the texture is minified (a thin arm shows a whole tile in a few pixels): the box-filtered
+ * mask just becomes the fraction of static facet in the pixel, which the shader scales.
  */
 export interface FrostBuffers {
   roughnessData: Uint8Array;
@@ -73,7 +82,14 @@ interface GlintFacet {
   cy: number;
   tx: number;
   ty: number;
+  /** 0..1: how much of the LITE static sparkle this facet takes part in (0 or 1 but for a soft ramp). */
+  staticWeight: number;
 }
+
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
 
 function glintFacets(): GlintFacet[] {
   const rand = mulberry32(GLINT_SEED);
@@ -86,6 +102,7 @@ function glintFacets(): GlintFacet[] {
       cy: rand() * FROST_SIZE,
       tx: Math.cos(azimuth) * tilt,
       ty: Math.sin(azimuth) * tilt,
+      staticWeight: smoothstep(GLINT_STATIC_FROM, GLINT_STATIC_TO, (Math.cos(azimuth) * tilt) * 0.5 + 0.5),
     });
   }
   return facets;
@@ -136,7 +153,7 @@ export function generateFrostBuffers(): FrostBuffers {
       normalData[o] = Math.round((nx * invLen * 0.5 + 0.5) * 255);
       normalData[o + 1] = Math.round((ny * invLen * 0.5 + 0.5) * 255);
       normalData[o + 2] = Math.round((nz * invLen * 0.5 + 0.5) * 255);
-      normalData[o + 3] = 255;
+      normalData[o + 3] = 0; // static glint mask, see FrostBuffers
     }
   }
 
@@ -178,6 +195,7 @@ export function generateFrostBuffers(): FrostBuffers {
         normalData[o] = Math.round((mx * inv * 0.5 + 0.5) * 255);
         normalData[o + 1] = Math.round((my * inv * 0.5 + 0.5) * 255);
         normalData[o + 2] = Math.round((mz * inv * 0.5 + 0.5) * 255);
+        normalData[o + 3] = Math.max(normalData[o + 3], Math.round(cover * f.staticWeight * 255));
       }
     }
   }

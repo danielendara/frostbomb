@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
+import { FROST_SIZE, generateFrostBuffers } from "../../src/snowflake/frost-data.ts";
 import {
   GLINT_PHASE_GAIN,
   GLINT_SHADER_CONSTANTS,
@@ -150,7 +151,7 @@ describe("patchGlintShader", () => {
     expect(fs.indexOf("uniform vec3 uGlintLight")).toBeGreaterThan(fs.indexOf("#include <common>"));
     const fog = fs.indexOf("#include <fog_fragment>");
     expect(fs.indexOf("glintSpec")).toBeGreaterThan(fog);
-    expect(fs.indexOf("GLINT_STATIC")).toBeGreaterThan(fog);
+    expect(fs.indexOf("clamp( glintStaticMask")).toBeGreaterThan(fog);
     expect(fs.indexOf("glintSpec")).toBeLessThan(fs.indexOf("#include <premultiplied_alpha_fragment>"));
   });
 
@@ -167,12 +168,16 @@ describe("patchGlintShader", () => {
     expect(stripped.replace(/\s+/g, "")).toBe(source.replace(/\s+/g, ""));
   });
 
-  it("reuses the roughness texel for the static glint: no extra sampler on LITE", () => {
-    const shader = { uniforms: {}, fragmentShader: source };
+  it("reads the static mask from the normal texel already fetched: no extra sampler on LITE", () => {
+    const shader = { uniforms: {}, fragmentShader: `${source}\n#include <normal_fragment_maps>` };
     patchGlintShader(shader, new GlintController().uniforms);
-    const staticBlock = shader.fragmentShader.match(/#if defined\( GLINT_STATIC \)[\s\S]*?#endif/)?.[0] ?? "";
-    expect(staticBlock).toContain("texelRoughness");
+    const fs = shader.fragmentShader;
+    const staticBlock = fs.match(/#if defined\( GLINT_STATIC \)[\s\S]*?#endif/)?.[0] ?? "";
+    expect(staticBlock).toContain("glintStaticMask");
     expect(staticBlock).not.toContain("texture2D");
+    // The chunk is patched in place (its tangent-space fetch keeps the alpha), not fetched again.
+    expect(fs).not.toContain("#include <normal_fragment_maps>");
+    expect(fs).toContain("glintStaticMask = glintNormalTexel.a");
   });
 
   it("keeps the tuning inside the range the baked facets can reach", () => {
@@ -181,5 +186,58 @@ describe("patchGlintShader", () => {
     expect(c.edge1).toBeLessThan(1);
     expect(c.staticFrom).toBeLessThan(c.staticTo);
     expect(c.staticTo).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("static glint mask under mip minification", () => {
+  // Box-filtered mip chain of the baked static mask (normal alpha), as the GPU builds it.
+  function maskMips(): Float32Array[] {
+    const { normalData } = generateFrostBuffers();
+    let level = new Float32Array(FROST_SIZE * FROST_SIZE);
+    for (let i = 0; i < level.length; i++) level[i] = normalData[i * 4 + 3] / 255;
+    const mips = [level];
+    for (let n = FROST_SIZE / 2; n >= 1; n /= 2) {
+      const next = new Float32Array(n * n);
+      for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n; x++) {
+          const i = 2 * y * 2 * n + 2 * x;
+          next[y * n + x] = (level[i] + level[i + 1] + level[i + 2 * n] + level[i + 2 * n + 1]) / 4;
+        }
+      }
+      mips.push(next);
+      level = next;
+    }
+    return mips;
+  }
+  // What the shader makes of a mask value.
+  const amount = (mask: number) => Math.min(1, Math.max(0, mask * GLINT_SHADER_CONSTANTS.staticGain));
+  const VISIBLE = 0.25;
+
+  it("still has lit texels at mip levels 1 to 3 (the 128, 64 and 32 texel tile)", () => {
+    const mips = maskMips();
+    for (const level of [1, 2, 3]) {
+      const n = FROST_SIZE >> level;
+      const lit = mips[level].filter((m) => amount(m) >= VISIBLE).length;
+      // About 2.6% of the tile is static facet; minification must not lose it (it was 1.0%, 0%, 0%
+      // of the texels when the mask was a threshold on the mip-filtered tilt channel).
+      expect(lit / (n * n), `mip ${level}`).toBeGreaterThan(0.025);
+      expect(Math.max(...mips[level]), `mip ${level}`).toBeGreaterThan(0.3);
+    }
+  });
+
+  it("keeps the average sparkle of a texture shrunk to a few pixels (thin arms)", () => {
+    const mips = maskMips();
+    for (const level of [4, 5, 6]) {
+      const mean = mips[level].reduce((a, b) => a + b, 0) / mips[level].length;
+      expect(amount(mean), `mip ${level}`).toBeGreaterThan(0.05);
+      expect(amount(mean), `mip ${level}`).toBeLessThan(0.2); // a faint glow, not a wash
+    }
+  });
+
+  it("is zero off the static facets", () => {
+    const { normalData } = generateFrostBuffers();
+    let zero = 0;
+    for (let i = 0; i < FROST_SIZE * FROST_SIZE; i++) if (normalData[i * 4 + 3] === 0) zero++;
+    expect(zero / (FROST_SIZE * FROST_SIZE)).toBeGreaterThan(0.9);
   });
 });

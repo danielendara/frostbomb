@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLINT_STATIC_FROM, GLINT_STATIC_TO } from "./frost-data";
 import type { QualityTier } from "./quality";
 
 /**
@@ -15,8 +16,11 @@ import type { QualityTier } from "./quality";
  *   far the flake has turned, so an idle frame renders identically to the last and nothing here
  *   keeps the animation loop alive.
  * - `static` (LITE, and reduced motion, which forces LITE): a fixed subset of the facets shows
- *   as a constant sparkle. It reuses the roughness texel the shader already fetched, so it adds
- *   a few ALU operations and no sampler, uniform or per-frame work.
+ *   as a constant sparkle. Its mask is the alpha of the normal texel the shader already fetches
+ *   (`frost-data.ts`), read through a small patch of the normal map chunk, so it adds a few ALU
+ *   operations and no sampler, uniform or per-frame work. The mask is a coverage (the fraction of
+ *   the pixel that is static facet), so it survives mip minification: a pixel that covers many
+ *   facets gets the sparkle scaled by that fraction instead of losing it to an averaged threshold.
  */
 export type GlintMode = "view" | "static";
 
@@ -34,16 +38,36 @@ export const GLINT_SHADER_CONSTANTS = {
   /** Linear gain; anything past 1 saturates, so this only sets how soft the rim is. */
   gain: 3,
   /** `static` shows facets whose baked tilt-x channel (a stand-in for a random draw) is above this... */
-  staticFrom: 0.72,
+  staticFrom: GLINT_STATIC_FROM,
   /** ...fully lit from here, so about a fifth of the facets sparkle. */
-  staticTo: 0.93,
+  staticTo: GLINT_STATIC_TO,
+  /**
+   * `static` glint = clamp(mask * gain): the mask is the static-facet coverage of the pixel, ~2.6%
+   * of the tile on average, so a heavily minified pixel (a thin arm) brightens by ~gain * 2.6%
+   * and one that straddles a facet more. Full coverage (large caps) saturates at 1.
+   */
+  staticGain: 4,
 } as const;
 
 const GLINT_PARS = /* glsl */ `
 #if defined( GLINT ) && defined( USE_NORMALMAP_TANGENTSPACE ) && defined( USE_ROUGHNESSMAP )
 uniform vec3 uGlintLight;
 #endif
+#if defined( GLINT_STATIC ) && defined( USE_NORMALMAP_TANGENTSPACE )
+float glintStaticMask = 0.0;
+#endif
 `;
+
+/** The line of three's `normal_fragment_maps` chunk that samples the normal map (the one fetch). */
+const NORMAL_MAP_FETCH = "vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;";
+const NORMAL_MAP_FETCH_KEEPING_ALPHA = /* glsl */ `
+#if defined( GLINT_STATIC )
+	vec4 glintNormalTexel = texture2D( normalMap, vNormalMapUv );
+	glintStaticMask = glintNormalTexel.a;
+	vec3 mapN = glintNormalTexel.xyz * 2.0 - 1.0;
+#else
+	${NORMAL_MAP_FETCH}
+#endif`;
 
 const GLINT_BODY = /* glsl */ `
 #if defined( GLINT ) && defined( USE_NORMALMAP_TANGENTSPACE ) && defined( USE_ROUGHNESSMAP )
@@ -61,9 +85,9 @@ const GLINT_BODY = /* glsl */ `
 	}
 }
 #endif
-#if defined( GLINT_STATIC ) && defined( USE_ROUGHNESSMAP )
+#if defined( GLINT_STATIC ) && defined( USE_NORMALMAP_TANGENTSPACE )
 	{
-		float glintAmount = smoothstep( ${GLINT_SHADER_CONSTANTS.staticFrom.toFixed(3)}, ${GLINT_SHADER_CONSTANTS.staticTo.toFixed(3)}, texelRoughness.r ) * texelRoughness.a;
+		float glintAmount = clamp( glintStaticMask * ${GLINT_SHADER_CONSTANTS.staticGain.toFixed(2)}, 0.0, 1.0 );
 		gl_FragColor.rgb += vec3( 1.0, 0.97, 0.9 ) * glintAmount;
 		gl_FragColor.a = max( gl_FragColor.a, glintAmount );
 	}
@@ -82,6 +106,9 @@ export function patchGlintShader(
 ): void {
   Object.assign(shader.uniforms, uniforms);
   shader.fragmentShader = shader.fragmentShader
+    .replace("#include <normal_fragment_maps>", () =>
+      THREE.ShaderChunk.normal_fragment_maps.replace(NORMAL_MAP_FETCH, NORMAL_MAP_FETCH_KEEPING_ALPHA),
+    )
     .replace("#include <common>", `#include <common>\n${GLINT_PARS}`)
     .replace("#include <fog_fragment>", `#include <fog_fragment>\n${GLINT_BODY}`);
 }

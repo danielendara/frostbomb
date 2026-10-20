@@ -31,10 +31,10 @@ function buffersToTextures(buffers: FrostBuffers): FrostMaps {
   return { roughnessMap, normalMap };
 }
 
-/** Flat 1×1 stand-in until the async bake lands (base roughness, up-facing normal, no glint facets). */
+/** Flat 1×1 stand-in until the async bake lands (base roughness, up-facing normal, no glint facets or static-glint mask). */
 export function createFrostPlaceholders(): FrostMaps {
   const roughness = new Uint8Array([128, 89, 128, 0]);
-  const normal = new Uint8Array([128, 128, 255, 255]);
+  const normal = new Uint8Array([128, 128, 255, 0]);
   const roughnessMap = new THREE.DataTexture(roughness, 1, 1, THREE.RGBAFormat);
   const normalMap = new THREE.DataTexture(normal, 1, 1, THREE.RGBAFormat);
   roughnessMap.colorSpace = THREE.NoColorSpace;
