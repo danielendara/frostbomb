@@ -1,3 +1,0 @@
-# core rotation [pi/2, 0, pi/6]; HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0 uses CORE_EULER_ORDER=ZXY
-XYZ thin-axis world z = 0.8660
-ZXY thin-axis world z = 1.0000

@@ -1,0 +1,312 @@
+{
+ "page": {
+  "tier": "rich",
+  "glint": "view",
+  "autoRotatePressed": "true"
+ },
+ "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+ "top5": [
+  {
+   "tile": {
+    "x": 1438,
+    "y": 902
+   },
+   "peak": 1,
+   "framesAbove0_84": 600,
+   "raw": {
+    "0.74": [
+     0,
+     0
+    ],
+    "0.84": [
+     0,
+     0
+    ],
+    "0.94": [
+     0,
+     0
+    ]
+   },
+   "debounced": {
+    "0.74": [
+     0,
+     0
+    ],
+    "0.84": [
+     0,
+     0
+    ],
+    "0.94": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "tile": {
+    "x": 1446,
+    "y": 868
+   },
+   "peak": 1,
+   "framesAbove0_84": 425,
+   "raw": {
+    "0.74": [
+     2,
+     1
+    ],
+    "0.84": [
+     14,
+     9
+    ],
+    "0.94": [
+     6,
+     5
+    ]
+   },
+   "debounced": {
+    "0.74": [
+     2,
+     1
+    ],
+    "0.84": [
+     2,
+     1
+    ],
+    "0.94": [
+     2,
+     1
+    ]
+   }
+  },
+  {
+   "tile": {
+    "x": 1406,
+    "y": 906
+   },
+   "peak": 0.944,
+   "framesAbove0_84": 374,
+   "raw": {
+    "0.74": [
+     6,
+     5
+    ],
+    "0.84": [
+     2,
+     1
+    ],
+    "0.94": [
+     10,
+     9
+    ]
+   },
+   "debounced": {
+    "0.74": [
+     2,
+     1
+    ],
+    "0.84": [
+     2,
+     1
+    ],
+    "0.94": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "tile": {
+    "x": 1434,
+    "y": 926
+   },
+   "peak": 0.755,
+   "framesAbove0_84": 0,
+   "raw": {
+    "0.74": [
+     4,
+     3
+    ],
+    "0.84": [
+     0,
+     0
+    ],
+    "0.94": [
+     0,
+     0
+    ]
+   },
+   "debounced": {
+    "0.74": [
+     0,
+     0
+    ],
+    "0.84": [
+     0,
+     0
+    ],
+    "0.94": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "tile": {
+    "x": 1480,
+    "y": 910
+   },
+   "peak": 1,
+   "framesAbove0_84": 340,
+   "raw": {
+    "0.74": [
+     2,
+     1
+    ],
+    "0.84": [
+     4,
+     3
+    ],
+    "0.94": [
+     2,
+     1
+    ]
+   },
+   "debounced": {
+    "0.74": [
+     2,
+     1
+    ],
+    "0.84": [
+     2,
+     1
+    ],
+    "0.94": [
+     2,
+     1
+    ]
+   }
+  }
+ ],
+ "worstAny": {
+  "0.74": {
+   "worst1sWindowAnyTile": 4,
+   "tilesWithAnyCrossing": 13083,
+   "at": {
+    "x": 1292,
+    "y": 298
+   },
+   "tilesByWorst1sWindow": {
+    "0": 36344,
+    "1": 2782,
+    "2": 10205,
+    "3": 48,
+    "4": 48
+   },
+   "tilesAtOrOver3PerSecond": 96,
+   "blocksWithTilesOver3": [
+    {
+     "block64pxAt": "1344,256",
+     "tiles": 25,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1280,256",
+     "tiles": 16,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1408,256",
+     "tiles": 16,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1344,320",
+     "tiles": 10,
+     "worst": 3
+    },
+    {
+     "block64pxAt": "1280,320",
+     "tiles": 9,
+     "worst": 3
+    },
+    {
+     "block64pxAt": "1600,704",
+     "tiles": 8,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1856,576",
+     "tiles": 5,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1792,512",
+     "tiles": 2,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1856,512",
+     "tiles": 2,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1344,512",
+     "tiles": 1,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1344,384",
+     "tiles": 1,
+     "worst": 4
+    },
+    {
+     "block64pxAt": "1664,768",
+     "tiles": 1,
+     "worst": 4
+    }
+   ]
+  },
+  "0.84": {
+   "worst1sWindowAnyTile": 3,
+   "tilesWithAnyCrossing": 8310,
+   "at": {
+    "x": 1314,
+    "y": 836
+   },
+   "tilesByWorst1sWindow": {
+    "0": 41117,
+    "1": 1558,
+    "2": 6750,
+    "3": 2
+   },
+   "tilesAtOrOver3PerSecond": 2,
+   "blocksWithTilesOver3": [
+    {
+     "block64pxAt": "1280,832",
+     "tiles": 1,
+     "worst": 3
+    },
+    {
+     "block64pxAt": "1344,320",
+     "tiles": 1,
+     "worst": 3
+    }
+   ]
+  },
+  "0.94": {
+   "worst1sWindowAnyTile": 2,
+   "tilesWithAnyCrossing": 3638,
+   "at": {
+    "x": 1258,
+    "y": 188
+   },
+   "tilesByWorst1sWindow": {
+    "0": 45789,
+    "1": 703,
+    "2": 2935
+   },
+   "tilesAtOrOver3PerSecond": 0,
+   "blocksWithTilesOver3": []
+  }
+ }
+}

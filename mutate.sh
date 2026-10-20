@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
-# usage: mutate.sh  (run from repo root, clean tree at the PR head)
-F=src/snowflake/segment-geometry.ts
-OUT=/tmp/fb441v2/proof/mutations.txt
+# usage: mutate.sh  (run from the repo root, clean tracked tree, at the PR head). Output: $OUT
+OUT=${OUT:-/tmp/fb442/mutations.txt}
 HEAD=$(git rev-parse HEAD)
-: > $OUT
-log(){ echo "$@" | tee -a $OUT; }
-run(){ npx vitest run tests/unit 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E "^ +(×|✗|FAIL)| FAIL |Test Files|Tests  " | sed 's/ ([0-9]*ms)//' | tee -a $OUT; }
-log "# Mutation runs on HEAD=$HEAD  ($(date -Is))"
-log "# each: apply with sed, show diff, run 'npx vitest run tests/unit', restore with 'git checkout -- $F', confirm clean"
-mut(){ name="$1"; expr="$2"
-  log ""; log "## $name"; log "\$ sed -i '$expr' $F"
-  sed -i "$expr" $F
-  git diff -U0 -- $F | tail -n +5 | tee -a $OUT
-  [ -z "$(git diff -- $F)" ] && { log "MUTATION DID NOT APPLY"; return; }
-  log "\$ npx vitest run tests/unit"; run
-  git checkout -- $F; log "restored: git status --porcelain -> '$(git status --porcelain)'"
+: > "$OUT"
+log(){ echo "$@" | tee -a "$OUT"; }
+run(){ npx vitest run "$@" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E "^ +(×|✗)| FAIL |Test Files|Tests  " | sed 's/ [0-9]*ms$//' | sort -u | tee -a "$OUT"; }
+log "# Mutation runs on HEAD=$HEAD ($(date -Is))"
+log "# each: apply with sed, show the diff, run vitest, restore with git checkout, confirm clean"
+mut(){ file="$1"; name="$2"; expr="$3"; shift 3
+  log ""; log "## $name"; log "\$ sed -i '$expr' $file"
+  sed -i "$expr" "$file"
+  [ -z "$(git diff -- "$file")" ] && { log "MUTATION DID NOT APPLY"; return; }
+  git diff -U0 -- "$file" | tail -n +5 | tee -a "$OUT"
+  log "\$ npx vitest run $*"; run "$@"
+  git checkout -q -- "$file"; log "restored: git status --porcelain (tracked) -> '$(git status --porcelain | grep -v '^??')'"
 }
-mut "1. face removal (drop the far end cap)" 's/for (const end of \[rings\[0\], rings\[rings.length - 1\]\])/for (const end of [rings[0]])/'
-mut "2. core rotation (CORE_EULER_ORDER back to three's default XYZ)" 's/export const CORE_EULER_ORDER: THREE.EulerOrder = "ZXY";/export const CORE_EULER_ORDER: THREE.EulerOrder = "XYZ";/'
-mut "3. segment not flat (SEGMENT_SPEC ridge/shoulder 0.2/0.05 -> 0.5/0.5)" '/^const SEGMENT_SPEC/,/^};/{s/  ridge: 0.2,/  ridge: 0.5,/;s/  shoulder: 0.05,/  shoulder: 0.5,/}'
-mut "4. winding flip disabled (buildPrism no longer reverses inward faces)" 's/    if (n.dot(centre) < 0) {/    if (false \&\& n.dot(centre) < 0) {/'
-log ""; log "## restored tip"; log "\$ npx vitest run tests/unit"; run
+G=src/snowflake/glint.ts; S=src/snowflake/scene.ts
+mut $G "1. glint update runs under reduced motion (configure ignores prefersReducedMotion)" 's/const next: GlintMode = tier === "rich" \&\& !prefersReducedMotion ? "view" : "static";/const next: GlintMode = tier === "rich" ? "view" : "static";/' tests/unit/glint.spec.ts
+mut $G "2. LITE incurs per-frame glint work (update no longer gated on the view mode)" 's/    if (!this.active) return false;/    if (false) return false;/' tests/unit/glint.spec.ts
+mut $S "3. LITE incurs per-frame glint work in the frame loop (scene calls the update unconditionally)" 's/    if (glint.active) {/    if (true) {/' tests/unit/scene-glint.spec.ts
+mut $G "4. LITE static glint grows a texture fetch (extra sampler on LITE)" 's/smoothstep( \${GLINT_SHADER_CONSTANTS.staticFrom.toFixed(3)}, \${GLINT_SHADER_CONSTANTS.staticTo.toFixed(3)}, texelRoughness.r )/smoothstep( ${GLINT_SHADER_CONSTANTS.staticFrom.toFixed(3)}, ${GLINT_SHADER_CONSTANTS.staticTo.toFixed(3)}, texture2D( roughnessMap, vRoughnessMapUv ).r )/' tests/unit/glint.spec.ts
+mut src/snowflake/frost-data.ts "5. frost tiling back to the old (6, 10) repeat" 's/export const FROST_REPEAT: readonly \[number, number\] = \[0.5, 3\];/export const FROST_REPEAT: readonly [number, number] = [6, 10];/' tests/unit/frost.spec.ts
+log ""; log "## restored head"; log "\$ npx vitest run tests/unit/glint.spec.ts tests/unit/scene-glint.spec.ts tests/unit/frost.spec.ts"; run tests/unit/glint.spec.ts tests/unit/scene-glint.spec.ts tests/unit/frost.spec.ts

@@ -1,0 +1,11 @@
+CHANGED rich-plate: 9.636% of 41461 flake px
+CHANGED rich-sector_plate: 27.087% of 42803 flake px
+CHANGED rich-stellar_dendrite: 46.175% of 77806 flake px
+CHANGED rich-fernlike_dendrite: 20.272% of 53035 flake px
+CHANGED rich-capped_column: 21.516% of 74531 flake px
+CHANGED lite-plate: 2.738% of 40761 flake px
+CHANGED lite-sector_plate: 2.931% of 42241 flake px
+SAME    lite-stellar_dendrite: 0.088% of 68967 flake px
+SAME    lite-fernlike_dendrite: 0.066% of 45291 flake px
+CHANGED lite-capped_column: 9.004% of 71989 flake px
+RESULT: FAIL (2 unchanged)

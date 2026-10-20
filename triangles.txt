@@ -1,9 +1,0 @@
-# render triangles, HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0
-per-segment open tube 12 verts 14 -> prism 44 verts 84 core 44
-| habit | seed | segments (instances) | before tris | after tris | ratio |
-|---|---|---|---|---|---|
-| plate | fox | 6 + core | 84 | 308 | 3.67x |
-| sector_plate | nov | 6 + core | 84 | 308 | 3.67x |
-| stellar_dendrite | charlie | 336 + core | 4044 | 14828 | 3.67x |
-| fernlike_dendrite | alpha | 240 + core | 2892 | 10604 | 3.67x |
-| capped_column | whisky | 84 + core | 1020 | 3740 | 3.67x |

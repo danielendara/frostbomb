@@ -1,82 +1,53 @@
-# Proof bundle for PR #446 (issue #441)
-PR_HEAD=627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0
-BASE=bcf27403667d9bac1511f312af4531c006989911 (origin/main)
-generated: 2026-10-19T02:32:27-04:00 (America/New_York)
+# Proof bundle for PR #448 (issue #442, Rendering A3: ice glints)
+PR_HEAD=d821ec7cf6f7681ef6e18888e70b8fdd0f744e85
+BASE=e3539bd283bf8351e8231b583af18985097e6480 (origin/main)
+generated: 2026-10-20T01:06:22-04:00 (America/New_York)
 
-## Freshness check
-fresh clone of the PR head at 627bf7396bb4ecfc24bc8193a6bc6b863c50ffb0, npm ci, npm run build -> build-after.txt
-working-tree build of the same commit produced identical asset names: YES
-served after-build (port 8788) index chunk: assets/index-C2SFAPc2.js  (expected index-C2SFAPc2.js, mesh-export-CEvikDZ_.js)
-served before-build (port 8787) index chunk: assets/index-CTCgk7PO.js
-all screenshots, videos, perf, verify, e2e and mutation runs were produced from these two builds / this commit.
-update (proof commit after 7f0c209): the four STL/GLB viewer shots were re-exported and re-rendered from the PR head in one run
-(see viewer-render.txt) and now carry an on-image PR-head stamp; viewer-control-pretweak-*.png are a 0.16/0.07 control.
-identity check: proof-identity-check.sh vs 612c789 -> proof-identity-check.txt (RESULT: PASS, exit 0).
+## Freshness
+fresh clones of BASE and PR_HEAD, npm ci, npm run build -> build-before.txt / build-after.txt
+before served on :8797 (index chunk index-C2SFAPc2.js), after on :8798 (index chunk index-H56uBGFO.js)
+screenshots: look.mjs, 1000x700 DSF1, ?seed=<s>&rotate=0&quality=<tier>, 6 s settle for frost bake; seeds fox/nov/charlie/alpha/whisky (one per habit, from scripts/shots.mjs)
+full e2e: fresh clone at PR_HEAD, npm run test:e2e:full -> e2e-full.txt (154 passed, 7.2m, exit 0)
 
+## Identity checks
+direct-diff.py (before vs after, same capture method) -> direct-diff.txt: RESULT: FAIL (2 unchanged)
+  FINDING: LITE stellar_dendrite (charlie) and fernlike_dendrite (alpha) are visually unchanged at rotate=0 although data-glint=static.
+proof-identity-check.sh vs 29889e9 (#441 proof) -> proof-identity-check.txt: FAIL, expected/not meaningful: #441 shots used shots.mjs with no bake settle, so 'before' no longer matches them. Byte check: no file byte-identical to #441.
 
 ## sha256 (first 16) of every file
-2c338768f50fc457  after-lite-capped_column.png
-19f20c6a9c82fe14  after-lite-fernlike_dendrite.png
-92f1b7e463332e5c  after-lite-grid.png
-18c40b90453f515b  after-lite-plate.png
-7b92625fa3f58dd3  after-lite-sector_plate.png
-b6cee4ce25f8b31c  after-lite-stellar_dendrite.png
-457b1a25b53c6e5b  after-rich-capped_column.png
-a3a31ef436e156d5  after-rich-fernlike_dendrite.png
-2aeda83dfd012ae7  after-rich-grid.png
-48dbe4d10fd6e950  after-rich-plate.png
-a6ca1855834aa7c4  after-rich-sector_plate.png
-28a5789e8c054c79  after-rich-stellar_dendrite.png
-b27b956a0b7e7b9c  before-lite-capped_column.png
-4ec22c40ad105517  before-lite-fernlike_dendrite.png
-111ac345acfab10a  before-lite-grid.png
-1ae7a9c1025c738e  before-lite-plate.png
-4bd75ab60d11457c  before-lite-sector_plate.png
-c8f4bfa5735cbb10  before-lite-stellar_dendrite.png
-28da6d371fd9f6a8  before-rich-capped_column.png
-430121c3f17371b1  before-rich-fernlike_dendrite.png
-efc32d9723ed6440  before-rich-grid.png
-306cf6d812d19c3c  before-rich-plate.png
-e6e640c8aeeb50bd  before-rich-sector_plate.png
-6dc0d6cceada1b9f  before-rich-stellar_dendrite.png
-57f8b5df5862c0f6  build-after.txt
-f4356841b4a05960  build-before.txt
-01645e0348ab463e  core-tilt.txt
-7d0990b5c274cc65  e2e-full.txt
-0a1f99ae0b18d211  export-size.spec.ts
-6d3537db4d677ac9  golden.txt
-a03c2260bcdd029c  modes-after-default-lite.png
-dc28394d62e0014f  modes-after-default-rich.png
-d9404a2511108e74  modes-after-pink-lite.png
-ed222c1914213300  modes-after-pink-rich.png
-386c25c4f50b35a2  modes-after-prism-lite.png
-cc82c1f86d29f22e  modes-after-prism-rich.png
-443860053a242e5f  modes.mjs
-d0e76fdeff94710c  modes.txt
-971352efdc0e1b83  mutate.sh
-77ba9489f353dda2  mutations.txt
-1877a4b3d7bfda7a  orbit-lite.webm
-0b48d4a92cb7dcb3  orbit-rich.webm
-3e0d9186706c218a  orbit-videos.txt
-30284ad17782af7b  perf-driver.mjs
-601b2cf0b4df7484  perf-driver.txt
-47a3385184dfe228  perf-interleaved.json
-df6c5e89a0f69894  proof-identity-check.sh
-8e7d9210aaeb4253  proof-identity-check.txt
+f7101163734329b0  after-lite-capped_column.png
+7a67d326dcc78c0e  after-lite-fernlike_dendrite.png
+8591838de158272e  after-lite-plate.png
+cd6594e0d0a50748  after-lite-sector_plate.png
+91d6e39b4a246ef2  after-lite-stellar_dendrite.png
+c027c5ca8e6c5d48  after-rich-capped_column.png
+fed28d0d03975751  after-rich-fernlike_dendrite.png
+c447880dda357c77  after-rich-plate.png
+495c958df8737fef  after-rich-sector_plate.png
+f00a09f51b3d40b5  after-rich-stellar_dendrite.png
+63c6b4ab30568794  before-lite-capped_column.png
+6409592b1b03b05f  before-lite-fernlike_dendrite.png
+efe350b5ecbd5431  before-lite-plate.png
+625762a5e2b0da6c  before-lite-sector_plate.png
+4b42f1e759cbe5b9  before-lite-stellar_dendrite.png
+9b09da42f745a01e  before-rich-capped_column.png
+e97df13be684bed0  before-rich-fernlike_dendrite.png
+c524e32d02992a83  before-rich-plate.png
+f149394966ec786c  before-rich-sector_plate.png
+feb9853dbd8a19cf  before-rich-stellar_dendrite.png
+b1580a19c0d57154  build-after.txt
+2e8105ed36832a8f  build-before.txt
+3fea0cd5cc8bdf9d  direct-diff.py
+3e09bd7f6eb63888  direct-diff.txt
+8df2f19ebcc71577  e2e-full.txt
+d48676fd230fb111  flash.log
+bdf0d1a205b218ff  look.mjs
+eec6b300c4369e4c  mutate.sh
+f341ced7c0fe5238  mutations.txt
+999183fb19f24ff4  perf-supplement-table.md
+7cf78f0acf65e3d8  perf-table.md
+32da8c8ed539384c  proof-identity-check.sh
+7e4015ec51bea25e  proof-identity-check.txt
 371efcb500c43f59  serve.mjs
-cfe615d8ea2ab015  sizes.txt
-4a532eb686c88714  triangles.txt
-37a477b2e1e31105  verify.txt
-66664d7d02992ec4  video.mjs
-5c90abe6f98d1bfa  viewer-control-pretweak-glb-charlie.png
-428812bab3e69e26  viewer-control-pretweak-glb-whisky-core.png
-c9ea9b103fedc0f4  viewer-control-pretweak-stl-charlie.png
-3986309d01d0ae44  viewer-control-pretweak-stl-whisky-core.png
-318f12842c10fc7d  viewer-export.spec.ts
-24d6ae9d63c06c84  viewer-glb-charlie.png
-d1d210a873ae576e  viewer-glb-whisky-core.png
-d6ea96907c9e5f31  viewer-index.html
-0c7db7017973e3d8  viewer-render.txt
-773857fa9beb71c8  viewer-shots.mjs
-8c3cdcf056c24036  viewer-stl-charlie.png
-3d06d021c25f5219  viewer-stl-whisky-core.png
+e5b3cf4019134dea  shots.mjs
+8c13f99012eaea40  verify-full.txt
