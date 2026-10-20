@@ -1,13 +1,12 @@
 import * as THREE from "three";
-import { FROST_SIZE, generateFrostBuffers, type FrostBuffers } from "./frost-data";
+import { FROST_REPEAT, FROST_SIZE, generateFrostBuffers, type FrostBuffers } from "./frost-data";
 import { reportClientError } from "../ui/client-error";
 
 function configureMap(texture: THREE.DataTexture): THREE.DataTexture {
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  // Hex-cylinder faces are thin in U and long in V; denser tiling keeps
-  // frost as grain instead of a dashed ridge along each arm.
-  texture.repeat.set(6, 10);
+  // Square grain on the faceted plate segments (see FROST_REPEAT).
+  texture.repeat.set(FROST_REPEAT[0], FROST_REPEAT[1]);
   texture.anisotropy = 8;
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -17,10 +16,12 @@ function configureMap(texture: THREE.DataTexture): THREE.DataTexture {
   return texture;
 }
 
-function buffersToTextures(buffers: FrostBuffers): {
+export interface FrostMaps {
   roughnessMap: THREE.DataTexture;
   normalMap: THREE.DataTexture;
-} {
+}
+
+function buffersToTextures(buffers: FrostBuffers): FrostMaps {
   const roughnessMap = configureMap(
     new THREE.DataTexture(buffers.roughnessData, FROST_SIZE, FROST_SIZE, THREE.RGBAFormat),
   );
@@ -30,12 +31,9 @@ function buffersToTextures(buffers: FrostBuffers): {
   return { roughnessMap, normalMap };
 }
 
-/** Flat 1×1 stand-in until the async bake lands (base roughness, up-facing normal). */
-export function createFrostPlaceholders(): {
-  roughnessMap: THREE.DataTexture;
-  normalMap: THREE.DataTexture;
-} {
-  const roughness = new Uint8Array([89, 89, 89, 255]);
+/** Flat 1×1 stand-in until the async bake lands (base roughness, up-facing normal, no glint facets). */
+export function createFrostPlaceholders(): FrostMaps {
+  const roughness = new Uint8Array([128, 89, 128, 0]);
   const normal = new Uint8Array([128, 128, 255, 255]);
   const roughnessMap = new THREE.DataTexture(roughness, 1, 1, THREE.RGBAFormat);
   const normalMap = new THREE.DataTexture(normal, 1, 1, THREE.RGBAFormat);
@@ -51,20 +49,14 @@ export function createFrostPlaceholders(): {
  * Roughness (green) and iridescence thickness share one texture;
  * normals are derived from the same height field.
  */
-function createFrostMaps(): {
-  roughnessMap: THREE.DataTexture;
-  normalMap: THREE.DataTexture;
-} {
+function createFrostMaps(): FrostMaps {
   return buffersToTextures(generateFrostBuffers());
 }
 
 let frostWorker: Worker | null = null;
 
 /** Bake frost maps off the main thread; falls back to sync when Workers are unavailable. */
-export function loadFrostMaps(): Promise<{
-  roughnessMap: THREE.DataTexture;
-  normalMap: THREE.DataTexture;
-}> {
+export function loadFrostMaps(): Promise<FrostMaps> {
   if (typeof Worker === "undefined") {
     return Promise.resolve(createFrostMaps());
   }
