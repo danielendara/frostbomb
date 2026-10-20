@@ -8,6 +8,11 @@ import {
 import { MARK_FIRST_FRAME_RENDERED, markOnce } from "./perf-marks";
 import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
+import {
+  CORE_EULER_ORDER,
+  createCorePlateGeometry,
+  createSegmentGeometry,
+} from "./segment-geometry";
 import { createFrostPlaceholders, loadFrostMaps } from "./frost";
 import { preventSilentContextLoss } from "./context-loss";
 import { advanceAutoRotate, INITIAL_AUTO_ROTATE } from "./auto-rotate";
@@ -158,9 +163,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       console.error("Failed to load frost maps:", err);
     });
 
-  const branchGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, true);
-  branchGeom.computeTangents();
-  const coreMesh = new THREE.Mesh(branchGeom, material);
+  const branchGeom = createSegmentGeometry();
+  const coreGeom = createCorePlateGeometry();
+  const coreMesh = new THREE.Mesh(coreGeom, material);
+  coreMesh.rotation.order = CORE_EULER_ORDER;
   let branchMesh: THREE.InstancedMesh | null = null;
   let currentFlakeData: BuildResult | null = null;
 
@@ -332,6 +338,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       pipeline.dispose();
       branchMesh?.dispose();
       branchGeom.dispose();
+      coreGeom.dispose();
       material.dispose();
       frost.roughnessMap.dispose();
       frost.normalMap.dispose();
