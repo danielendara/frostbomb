@@ -1,0 +1,34 @@
+{
+ "page": {
+  "tier": "lite",
+  "autoRotatePressed": "true"
+ },
+ "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+ "top5": [],
+ "worstAny": {
+  "0.74": {
+   "worst1sWindowAnyTile": 0,
+   "tilesWithAnyCrossing": 0,
+   "at": null,
+   "tilesByWorst1sWindow": {},
+   "tilesAtOrOver3PerSecond": 0,
+   "blocksWithTilesOver3": []
+  },
+  "0.84": {
+   "worst1sWindowAnyTile": 0,
+   "tilesWithAnyCrossing": 0,
+   "at": null,
+   "tilesByWorst1sWindow": {},
+   "tilesAtOrOver3PerSecond": 0,
+   "blocksWithTilesOver3": []
+  },
+  "0.94": {
+   "worst1sWindowAnyTile": 0,
+   "tilesWithAnyCrossing": 0,
+   "at": null,
+   "tilesByWorst1sWindow": {},
+   "tilesAtOrOver3PerSecond": 0,
+   "blocksWithTilesOver3": []
+  }
+ }
+}

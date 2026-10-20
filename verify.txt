@@ -1,4 +1,4 @@
-HEAD=12227a26796f1e36d7ee2479bc6d37ded5413250 (fresh clone, $ npm run verify)
+HEAD=eb6e29e0d49e3f964232640ecd1d311d1489997a (fresh clone, $ npm run verify)
 
 > frostbomb@0.1.0 verify
 > bash scripts/verify.sh
@@ -23,11 +23,11 @@ HEAD=12227a26796f1e36d7ee2479bc6d37ded5413250 (fresh clone, $ npm run verify)
 
  Test Files  44 passed (44)
       Tests  524 passed (524)
-   Start at  01:22:18
-   Duration  2.57s (tests 41%, environment 40%, transform 9%, import 8%, worker 2%)
+   Start at  03:02:09
+   Duration  2.59s (tests 40%, environment 40%, transform 10%, import 9%, worker 2%)
 
-    Isolate  44 workers spawned · ~183ms startup each (spawn + environment, per file)
-             at least ~968ms faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  44 workers spawned · ~193ms startup each (spawn + environment, per file)
+             at least ~1.02s faster with isolate: false — reuses workers across files instead of one per file
 
 
 === verify: build ===
@@ -40,23 +40,23 @@ dist/frostbombsite/.vite/manifest.json  0.15 kB │ gzip: 0.11 kB
 dist/frostbombsite/wrangler.json        1.37 kB │ gzip: 0.70 kB
 dist/frostbombsite/index.js             3.58 kB │ gzip: 1.55 kB
 
-✓ built in 23ms
+✓ built in 22ms
 vite v8.3.4 building client environment for production...
 transforming...
 ✓ 53 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/client/.assetsignore                      0.02 kB
-dist/client/assets/frost.worker-DbDmYSsh.js    4.19 kB
+dist/client/assets/frost.worker-Du8qbJWT.js    4.19 kB
 dist/client/index.html                        18.60 kB │ gzip:   4.10 kB
 dist/client/assets/index-CTlR4lNU.css         22.26 kB │ gzip:   5.07 kB
-dist/client/assets/mesh-export-dIKHlq6R.js     2.01 kB │ gzip:   1.01 kB
-dist/client/assets/index-CalZZPBb.js          89.85 kB │ gzip:  31.37 kB
+dist/client/assets/mesh-export-BpJDBp89.js     2.01 kB │ gzip:   1.01 kB
+dist/client/assets/index-O9TxHhU_.js          89.85 kB │ gzip:  31.38 kB
 dist/client/assets/tweakpane-CuKAiaYZ.js     148.24 kB │ gzip:  30.38 kB
 dist/client/assets/build-Bfam__fW.js         166.43 kB │ gzip:  74.72 kB
 dist/client/assets/three-CbVnbFxe.js         578.80 kB │ gzip: 144.90 kB
 
-✓ built in 233ms
+✓ built in 223ms
 
 === verify: e2e smoke ===
 
@@ -66,31 +66,31 @@ dist/client/assets/three-CbVnbFxe.js         578.80 kB │ gzip: 144.90 kB
 
 Running 18 tests using 1 worker
 
-(node:1059955) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:1146054) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
   ✓   1 [sequential-smoke] › tests/canvas-marks.smoke.spec.ts:11:1 › startup marks fire and the canvas is not blank after grow (3.5s)
-  ✓   2 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:38:1 › Copy Link of a sampled crystal reopens the same geometry (9.2s)
-  ✓   3 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:55:1 › Back and Forward restore sampled geometry, not the rounded Lab point (11.9s)
-  ✓   4 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:80:1 › an explicit Lab link and a later seed edit round-trip at URL precision (22.3s)
-  ✓   5 [sequential-smoke] › tests/export-identity.smoke.spec.ts:46:1 › Save 3D filenames stay on the crystal captured before the exporter loads (20.2s)
-  ✓   6 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:11:1 › chips are hidden until Lab Mode is on (2.9s)
-  ✓   7 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:20:1 › a chip jumps to its habit, and one Back step returns to the previous crystal (8.5s)
-  ✓   8 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:49:1 › the active chip follows the Nakaya diagram keyboard, and only one is pressed (10.0s)
-  ✓   9 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:70:1 › chips wrap inside the 360px panel without horizontal overflow (2.9s)
-  ✓  10 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:44:1 › 360×640 keeps masthead, field notes, and actions from overlapping (5.1s)
+  ✓   2 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:38:1 › Copy Link of a sampled crystal reopens the same geometry (8.1s)
+  ✓   3 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:55:1 › Back and Forward restore sampled geometry, not the rounded Lab point (13.0s)
+  ✓   4 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:80:1 › an explicit Lab link and a later seed edit round-trip at URL precision (23.8s)
+  ✓   5 [sequential-smoke] › tests/export-identity.smoke.spec.ts:46:1 › Save 3D filenames stay on the crystal captured before the exporter loads (25.7s)
+  ✓   6 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:11:1 › chips are hidden until Lab Mode is on (3.9s)
+  ✓   7 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:20:1 › a chip jumps to its habit, and one Back step returns to the previous crystal (7.3s)
+  ✓   8 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:49:1 › the active chip follows the Nakaya diagram keyboard, and only one is pressed (8.0s)
+  ✓   9 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:70:1 › chips wrap inside the 360px panel without horizontal overflow (3.9s)
+  ✓  10 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:44:1 › 360×640 keeps masthead, field notes, and actions from overlapping (7.0s)
   ✓  11 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:10:1 › Share is hidden where the browser cannot share files (1.9s)
-  ✓  12 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:54:1 › Share appears with a file-capable navigator and shares one PNG plus the link (9.2s)
-  ✓  13 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:79:1 › cancelling the share sheet is silent (6.4s)
-[WebServer] 1:24:24 AM [vite] (client) [console.error] Failed to share snowflake NotAllowedError: no activation
+  ✓  12 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:54:1 › Share appears with a file-capable navigator and shares one PNG plus the link (8.7s)
+  ✓  13 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:79:1 › cancelling the share sheet is silent (6.1s)
+[WebServer] 3:04:22 AM [vite] (client) [console.error] Failed to share snowflake NotAllowedError: no activation
 [WebServer] {"event":"client_error","kind":"export","message":"no activation","build":"client-error","ua":"chrome"}
-  ✓  14 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:92:1 › a non-abort failure falls back to Copy link and keeps Copy link visible (6.0s)
-  ✓  15 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:31:1 › W downloads a screen-sized opaque wallpaper PNG and restores the live canvas (7.4s)
-  ✓  16 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:65:1 › the Save as wallpaper button works too, and the shortcut is documented (8.4s)
+  ✓  14 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:92:1 › a non-abort failure falls back to Copy link and keeps Copy link visible (6.3s)
+  ✓  15 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:31:1 › W downloads a screen-sized opaque wallpaper PNG and restores the live canvas (7.6s)
+  ✓  16 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:65:1 › the Save as wallpaper button works too, and the shortcut is documented (7.7s)
   ✓  17 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:79:1 › W still works in Photo Mode, where the action bar is hidden (6.2s)
 [WebServer] {"event":"client_error","kind":"error","message":"smoke","build":"smoke","ua":"chrome"}
-  ✓  18 [sequential-smoke] › tests/worker-assets.smoke.spec.ts:6:3 › worker entry keeps assets unchanged › serves the app shell and SPA fallback, and handles /api/client-error (124ms)
+  ✓  18 [sequential-smoke] › tests/worker-assets.smoke.spec.ts:6:3 › worker entry keeps assets unchanged › serves the app shell and SPA fallback, and handles /api/client-error (102ms)
 
-  18 passed (2.4m)
+  18 passed (2.5m)
 
 === verify: ALL PASSED ===
 verify_exit=0

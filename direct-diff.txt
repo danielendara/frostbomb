@@ -1,11 +1,11 @@
-CHANGED rich-plate: 27.525% of 41995 flake px
-CHANGED rich-sector_plate: 9.565% of 42939 flake px
-CHANGED rich-stellar_dendrite: 20.462% of 77060 flake px
-CHANGED rich-fernlike_dendrite: 59.846% of 53467 flake px
-CHANGED rich-capped_column: 24.454% of 74635 flake px
-CHANGED lite-plate: 28.357% of 40769 flake px
-CHANGED lite-sector_plate: 29.106% of 42253 flake px
-CHANGED lite-stellar_dendrite: 56.824% of 68966 flake px
-CHANGED lite-fernlike_dendrite: 49.373% of 45292 flake px
-CHANGED lite-capped_column: 25.970% of 71905 flake px
+OK      rich-plate: 6.784% of 41437 flake px
+OK      rich-sector_plate: 6.712% of 42925 flake px
+OK      rich-stellar_dendrite: 18.284% of 77046 flake px
+OK      rich-fernlike_dendrite: 22.339% of 53517 flake px
+OK      rich-capped_column: 11.951% of 74530 flake px
+OK      lite-plate: 2.868% of 40765 flake px
+OK      lite-sector_plate: 3.019% of 42229 flake px
+OK      lite-stellar_dendrite: 2.131% of 68971 flake px
+OK      lite-fernlike_dendrite: 2.333% of 45300 flake px
+OK      lite-capped_column: 4.523% of 71893 flake px
 RESULT: PASS

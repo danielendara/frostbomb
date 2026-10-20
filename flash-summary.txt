@@ -1,0 +1,7 @@
+# flash harness (flash.mjs) at PR head eb6e29e0d49e3f964232640ecd1d311d1489997a, 1440x900 DPR2, auto-rotate on, 600 frames @ virtual 60 fps; control = base e3539bd
+PASS control-base-lite-fox        tier=lite glint=None top5 worst/1s=0  per-tile (worst/1s, tiles>=3/s, tiles crossing) T0.74:(0, 0, 0)  T0.84:(0, 0, 0)  T0.94:(0, 0, 0)
+PASS lite-charlie                 tier=lite glint=static top5 worst/1s=0  per-tile (worst/1s, tiles>=3/s, tiles crossing) T0.74:(2, 0, 814)  T0.84:(0, 0, 0)  T0.94:(0, 0, 0)
+PASS lite-fox                     tier=lite glint=static top5 worst/1s=1  per-tile (worst/1s, tiles>=3/s, tiles crossing) T0.74:(2, 0, 6970)  T0.84:(2, 0, 3129)  T0.94:(0, 0, 0)
+PASS rich-charlie                 tier=rich glint=view top5 worst/1s=1  per-tile (worst/1s, tiles>=3/s, tiles crossing) T0.74:(4, 62, 5351)  T0.84:(2, 0, 151)  T0.94:(0, 0, 0)
+PASS rich-fox                     tier=rich glint=view top5 worst/1s=1  per-tile (worst/1s, tiles>=3/s, tiles crossing) T0.74:(4, 100, 13058)  T0.84:(3, 4, 8253)  T0.94:(2, 0, 3601)
+RESULT: PASS (every glint area < 3 flashes/s)

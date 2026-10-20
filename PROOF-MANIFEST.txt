@@ -1,55 +1,69 @@
-# Proof bundle for PR #448 (issue #442, Rendering A3: ice glints), HOLD fix
-PR_HEAD=12227a26796f1e36d7ee2479bc6d37ded5413250
+# Proof bundle for PR #448 (issue #442, Rendering A3: ice glints), HOLD 2 fix
+PR_HEAD=eb6e29e0d49e3f964232640ecd1d311d1489997a
 BASE=e3539bd283bf8351e8231b583af18985097e6480 (origin/main)
-generated: 2026-10-20T02:01:49-04:00 (America/New_York)
+generated: 2026-10-20T04:08:55-04:00 (America/New_York)
 
 ## Method
-fresh clones of BASE and PR_HEAD, npm ci, npm run build -> build-before.txt / build-after.txt
-shots: look.mjs, 1000x700 DSF1, ?seed=<s>&rotate=0&quality=<tier>, 6 s settle; seeds plate:fox sector_plate:nov stellar_dendrite:charlie fernlike_dendrite:alpha capped_column:whisky
-direct-diff.py: per-seed x per-tier gate, every one of 10 must have >= 1.5% of flake px changed -> direct-diff.txt
-videos: video.mjs (deterministic clock, 4 s @ 12 fps, seed charlie, 800x520 DPR2): orbit-rich.webm (RICH, glint=view, animated), orbit-lite.webm (LITE, glint=static), orbit-reduced.webm (prefers-reduced-motion, LITE, glint=static, no auto-rotate; idle frame diff 0.138 vs 1.6-2.0 for the others)
-perf: perf-driver.mjs over scripts/perf-orbit.mjs, 5 interleaved rounds -> perf-table.md / perf-interleaved.json
-verify.txt, e2e-full.txt (fresh clone at PR_HEAD), mutations.txt (mutate.sh at PR_HEAD), generator-diff.txt, bundle-table.md
-proof-manifest-check.sh: checks the tree against the issue #442 proof list -> proof-manifest-check.txt
+fresh-clone builds of BASE and PR_HEAD -> build-before.txt / build-after.txt
+shots: look.mjs, 1000x700 DSF1, ?seed=<s>&rotate=0&quality=<tier>; settle RICH 6 s / LITE 15 s (RICH demotes to LITE after ~10 s on the software renderer; look.mjs exits 3 on a tier mismatch)
+direct-diff.py: every seed x tier >= 1.5% of flake px brightened by >10, and LITE <= 15%; brightening-only (glint is additive; repeated loads can differ by a darker misregistered patch)
+videos: video.mjs, seed charlie, 4 s @ 12 fps: orbit-rich (glint=view), orbit-lite (glint=static), orbit-reduced (reduced motion: LITE, static, no auto-rotate)
+flash: flash.mjs (QUALITY/SEED env) at PR_HEAD for lite+rich x fox+charlie, plus a base LITE control -> flash-*.log/json, flash-summary.txt
+perf: perf-driver.mjs, 5 interleaved rounds + 3 flipped-order rounds -> perf-table.md (pooled), perf-interleaved.json, perf-extra.json
+verify.txt, e2e-full.txt, mutations.txt (mutate.sh), generator-diff.txt, bundle-table.md, proof-manifest-check.sh -> proof-manifest-check.txt
 
 ## sha256 (first 16) of every file
-96d71263f1e18d46  after-lite-capped_column.png
-d93f400483baf779  after-lite-fernlike_dendrite.png
-4048b96646a405b5  after-lite-plate.png
-2cc6139e43e26198  after-lite-sector_plate.png
-ceab1e3001e0d37e  after-lite-stellar_dendrite.png
-98a0ac3df01bee24  after-rich-capped_column.png
-8ee6931f11b81aff  after-rich-fernlike_dendrite.png
-c34abb69196607bb  after-rich-plate.png
-2419611deb0b9a44  after-rich-sector_plate.png
-894428202d44c92f  after-rich-stellar_dendrite.png
-fa2d369c272e8632  before-lite-capped_column.png
-809444ed1297035e  before-lite-fernlike_dendrite.png
-9ef880661099c602  before-lite-plate.png
-06debed2981e5091  before-lite-sector_plate.png
-598027acf798560a  before-lite-stellar_dendrite.png
-2417ed737a754d8e  before-rich-capped_column.png
-019079e77b230ef0  before-rich-fernlike_dendrite.png
-8eb2fe2acb271990  before-rich-plate.png
-c75b29c6c089fd3f  before-rich-sector_plate.png
-848c8b4b0c256268  before-rich-stellar_dendrite.png
-eed32b4acf8c4c50  build-after.txt
+210c2f772deac3f7  after-lite-capped_column.png
+0d291043f5f333b7  after-lite-fernlike_dendrite.png
+8d618c1df5f99d4c  after-lite-plate.png
+ae9f9ca3cfec7d46  after-lite-sector_plate.png
+cff7f4b344f74e35  after-lite-stellar_dendrite.png
+264cc384defed0db  after-rich-capped_column.png
+b15c496ca339faa7  after-rich-fernlike_dendrite.png
+c36fe1f646ebf77f  after-rich-plate.png
+ae057229f6f82b2e  after-rich-sector_plate.png
+7d28c7faf205120d  after-rich-stellar_dendrite.png
+91693f44501f897f  before-lite-capped_column.png
+137352ecab4cc10c  before-lite-fernlike_dendrite.png
+3b21d673b277d9b2  before-lite-plate.png
+da15c17ec5017fbb  before-lite-sector_plate.png
+5db070ffed5719ff  before-lite-stellar_dendrite.png
+406aa083da18569a  before-rich-capped_column.png
+28e1679498f50803  before-rich-fernlike_dendrite.png
+8097c61debc55172  before-rich-plate.png
+da5f5af3f1d5e271  before-rich-sector_plate.png
+e676e40f8b286bcd  before-rich-stellar_dendrite.png
+ed2c1aba9ab765bd  build-after.txt
 2e8105ed36832a8f  build-before.txt
-01ba41e4c2bb1269  bundle-table.md
-5c1387f21653a591  direct-diff.py
-a372894ddf16b6b3  direct-diff.txt
-d83e7f9cf0c5b7cd  e2e-full.txt
-cfe994242a0dd2a2  generator-diff.txt
-d3315efe401768a2  look.mjs
+4aaf041521e713ba  bundle-table.md
+6ffc573203bc910d  direct-diff.py
+5f3508caa32f8503  direct-diff.txt
+0afcd407f91b5ee4  e2e-full.txt
+ec9d1fd72e44aefa  flash-control-base-lite-fox.json
+d58fd537b105a870  flash-control-base-lite-fox.log
+9c67d1897302a4cc  flash-lite-charlie.json
+16d096a2ecea083d  flash-lite-charlie.log
+94982232a06d88cb  flash-lite-fox.json
+20d74c70edc713bc  flash-lite-fox.log
+cc517f69b0b62025  flash-rich-charlie.json
+1b078b0608348b4c  flash-rich-charlie.log
+d96ec6338726fada  flash-rich-fox.json
+bdbfb9aa8bb87f35  flash-rich-fox.log
+843d245f77891de2  flash-summary.py
+c1ae8e855c78f187  flash-summary.txt
+e8baef5ab3532e78  flash.mjs
+02d164f1ee5e7537  generator-diff.txt
+2bd05c7a4eb87c1a  look.mjs
 8e2ed4dd3904202e  mutate.sh
-83762c9c3a4f1515  mutations.txt
-a85a10c8f0e08010  orbit-lite.webm
-76ac55aca415b1e2  orbit-reduced.webm
-01dac7fbde5521b1  orbit-rich.webm
+f898325815354fd5  mutations.txt
+6beb165fd65a27bf  orbit-lite.webm
+1fc04e84103d57e8  orbit-reduced.webm
+15e6ada4db1c6bb3  orbit-rich.webm
 913489a3e84ec14b  perf-driver.mjs
-b09eab7763fc6f4d  perf-interleaved.json
-c6bffe0c728e3ef8  perf-table.md
-a7f63b5161501102  proof-manifest-check.sh
+2a188196718dd3f9  perf-extra.json
+ce99f368821a9c6b  perf-interleaved.json
+27cb2bfb5321bed3  perf-table.md
+c9ea23637d480dca  proof-manifest-check.sh
 371efcb500c43f59  serve.mjs
-c55d850a76bc01d6  verify.txt
+508c2142388ce4f6  verify.txt
 676edf9fa0f95029  video.mjs

@@ -12,6 +12,8 @@ chk "bundle size table (gzip KiB before->after)" bundle-table.md build-before.tx
 grep -q "ALL PASSED" verify.txt 2>/dev/null && ok "npm run verify tail (ALL PASSED)" || no "npm run verify tail"
 grep -q "(empty output above = PASS)" generator-diff.txt && [ "$(grep -vc '^\$\|^(empty' generator-diff.txt)" = 0 ] && ok "no-generator-diff check prints nothing" || no "no-generator-diff check"
 grep -A8 "^## 1\." mutations.txt | grep -q "failed" && ok "mutation proof: reduced-motion glint mutation fails its test" || no "mutation proof (reduced motion)"
+for q in lite rich; do for sd in fox charlie; do grep -q "\"tier\": \"$q\"" flash-$q-$sd.log 2>/dev/null && ok "flash harness at PR head: $q $sd" || no "flash harness at PR head: $q $sd"; done; done
+grep -q "^RESULT: PASS" flash-summary.txt && ok "flash: every glint area < 3 flashes/s (both tiers)" || no "flash summary"
 grep -q "exit=0" e2e-full.txt && ok "full e2e (exit 0)" || no "full e2e"
 H=$(sed -n 's/^PR_HEAD=//p' PROOF-MANIFEST.txt); for f in mutations.txt verify.txt e2e-full.txt generator-diff.txt; do grep -q "${H:0:7}" $f || no "$f names PR_HEAD $H"; done
 [ $miss = 0 ] && echo "RESULT: PASS (every item on the issue #442 proof list is present)" || { echo "RESULT: FAIL"; exit 1; }

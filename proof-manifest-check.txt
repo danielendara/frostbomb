@@ -7,5 +7,10 @@ OK    bundle size table (gzip KiB before->after)
 OK    npm run verify tail (ALL PASSED)
 OK    no-generator-diff check prints nothing
 OK    mutation proof: reduced-motion glint mutation fails its test
+OK    flash harness at PR head: lite fox
+OK    flash harness at PR head: lite charlie
+OK    flash harness at PR head: rich fox
+OK    flash harness at PR head: rich charlie
+OK    flash: every glint area < 3 flashes/s (both tiers)
 OK    full e2e (exit 0)
 RESULT: PASS (every item on the issue #442 proof list is present)

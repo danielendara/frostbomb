@@ -1,4 +1,4 @@
-# Mutation runs on HEAD=12227a26796f1e36d7ee2479bc6d37ded5413250 (2026-10-20T01:36:18-04:00)
+# Mutation runs on HEAD=eb6e29e0d49e3f964232640ecd1d311d1489997a (2026-10-20T03:02:02-04:00)
 # each: apply with sed, show the diff, run vitest, restore with git checkout, confirm clean
 
 ## 1. glint update runs under reduced motion (configure ignores prefersReducedMotion)
@@ -51,9 +51,13 @@ $ sed -i 's/	glintStaticMask = glintNormalTexel.a;/	glintStaticMask = texture2D(
 -	glintStaticMask = glintNormalTexel.a;
 +	glintStaticMask = texture2D( roughnessMap, vRoughnessMapUv ).a;
 $ npx vitest run tests/unit/glint.spec.ts
-      Tests  1 failed | 15 passed (16)
+      Tests  3 failed | 13 passed (16)
+     × evaluates the shader on mip levels 4-6 (thin arms): still sparkles, but stays sparse
      × reads the static mask from the normal texel already fetched: no extra sampler on LITE
+     × still has lit texels at mip levels 1 to 3 (the 128, 64 and 32 texel tile)
  FAIL  tests/unit/glint.spec.ts > patchGlintShader > reads the static mask from the normal texel already fetched: no extra sampler on LITE
+ FAIL  tests/unit/glint.spec.ts > static glint mask under mip minification > evaluates the shader on mip levels 4-6 (thin arms): still sparkles, but stays sparse
+ FAIL  tests/unit/glint.spec.ts > static glint mask under mip minification > still has lit texels at mip levels 1 to 3 (the 128, 64 and 32 texel tile)
  Test Files  1 failed (1)
 restored: git status --porcelain (tracked) -> ''
 
@@ -63,9 +67,13 @@ $ sed -i 's/	glintStaticMask = glintNormalTexel.a;/	glintStaticMask = step( 0.72
 -	glintStaticMask = glintNormalTexel.a;
 +	glintStaticMask = step( 0.72, glintNormalTexel.a );
 $ npx vitest run tests/unit/glint.spec.ts
-      Tests  1 failed | 15 passed (16)
+      Tests  3 failed | 13 passed (16)
+     × evaluates the shader on mip levels 4-6 (thin arms): still sparkles, but stays sparse
      × reads the static mask from the normal texel already fetched: no extra sampler on LITE
+     × still has lit texels at mip levels 1 to 3 (the 128, 64 and 32 texel tile)
  FAIL  tests/unit/glint.spec.ts > patchGlintShader > reads the static mask from the normal texel already fetched: no extra sampler on LITE
+ FAIL  tests/unit/glint.spec.ts > static glint mask under mip minification > evaluates the shader on mip levels 4-6 (thin arms): still sparkles, but stays sparse
+ FAIL  tests/unit/glint.spec.ts > static glint mask under mip minification > still has lit texels at mip levels 1 to 3 (the 128, 64 and 32 texel tile)
  Test Files  1 failed (1)
 restored: git status --porcelain (tracked) -> ''
 
@@ -114,4 +122,4 @@ $ npx vitest run tests/unit/glint.spec.ts tests/unit/scene-glint.spec.ts tests/u
       Tests  37 passed (37)
  Test Files  3 passed (3)
 
-# NOTE: mutation 7 survives by design: a hard 0/1 mask still box-filters to coverage, so it is not a regression of the mip fix. Mutation 6 (the actual HOLD regression, shader thresholding the filtered mask) is caught by the shader-string test, not by the CPU mip test.
+# NOTE: 7 survives at gain 0.6: a hard 0/1 mask still box-filters to coverage, so the HOLD bug does not return (accepted in review of 12227a2). 6, the actual HOLD regression, fails the shader-evaluating mip tests.
