@@ -1,4 +1,4 @@
-# Direct before vs after on the flake (same capture method: look.mjs, 6 s settle). PASS when >= 1.5% of flake px differ.
+# Direct before vs after on the flake (same capture method: look.mjs, 6 s settle). Per-seed x per-tier gate: EVERY one of the 10 must have >= 1.5% of flake px changed; any failure exits 1.
 import numpy as np,sys;from PIL import Image
 bad=0
 for t in ("rich","lite"):

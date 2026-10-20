@@ -1,53 +1,55 @@
-# Proof bundle for PR #448 (issue #442, Rendering A3: ice glints)
-PR_HEAD=d821ec7cf6f7681ef6e18888e70b8fdd0f744e85
+# Proof bundle for PR #448 (issue #442, Rendering A3: ice glints), HOLD fix
+PR_HEAD=12227a26796f1e36d7ee2479bc6d37ded5413250
 BASE=e3539bd283bf8351e8231b583af18985097e6480 (origin/main)
-generated: 2026-10-20T01:06:22-04:00 (America/New_York)
+generated: 2026-10-20T02:01:49-04:00 (America/New_York)
 
-## Freshness
+## Method
 fresh clones of BASE and PR_HEAD, npm ci, npm run build -> build-before.txt / build-after.txt
-before served on :8797 (index chunk index-C2SFAPc2.js), after on :8798 (index chunk index-H56uBGFO.js)
-screenshots: look.mjs, 1000x700 DSF1, ?seed=<s>&rotate=0&quality=<tier>, 6 s settle for frost bake; seeds fox/nov/charlie/alpha/whisky (one per habit, from scripts/shots.mjs)
-full e2e: fresh clone at PR_HEAD, npm run test:e2e:full -> e2e-full.txt (154 passed, 7.2m, exit 0)
-
-## Identity checks
-direct-diff.py (before vs after, same capture method) -> direct-diff.txt: RESULT: FAIL (2 unchanged)
-  FINDING: LITE stellar_dendrite (charlie) and fernlike_dendrite (alpha) are visually unchanged at rotate=0 although data-glint=static.
-proof-identity-check.sh vs 29889e9 (#441 proof) -> proof-identity-check.txt: FAIL, expected/not meaningful: #441 shots used shots.mjs with no bake settle, so 'before' no longer matches them. Byte check: no file byte-identical to #441.
+shots: look.mjs, 1000x700 DSF1, ?seed=<s>&rotate=0&quality=<tier>, 6 s settle; seeds plate:fox sector_plate:nov stellar_dendrite:charlie fernlike_dendrite:alpha capped_column:whisky
+direct-diff.py: per-seed x per-tier gate, every one of 10 must have >= 1.5% of flake px changed -> direct-diff.txt
+videos: video.mjs (deterministic clock, 4 s @ 12 fps, seed charlie, 800x520 DPR2): orbit-rich.webm (RICH, glint=view, animated), orbit-lite.webm (LITE, glint=static), orbit-reduced.webm (prefers-reduced-motion, LITE, glint=static, no auto-rotate; idle frame diff 0.138 vs 1.6-2.0 for the others)
+perf: perf-driver.mjs over scripts/perf-orbit.mjs, 5 interleaved rounds -> perf-table.md / perf-interleaved.json
+verify.txt, e2e-full.txt (fresh clone at PR_HEAD), mutations.txt (mutate.sh at PR_HEAD), generator-diff.txt, bundle-table.md
+proof-manifest-check.sh: checks the tree against the issue #442 proof list -> proof-manifest-check.txt
 
 ## sha256 (first 16) of every file
-f7101163734329b0  after-lite-capped_column.png
-7a67d326dcc78c0e  after-lite-fernlike_dendrite.png
-8591838de158272e  after-lite-plate.png
-cd6594e0d0a50748  after-lite-sector_plate.png
-91d6e39b4a246ef2  after-lite-stellar_dendrite.png
-c027c5ca8e6c5d48  after-rich-capped_column.png
-fed28d0d03975751  after-rich-fernlike_dendrite.png
-c447880dda357c77  after-rich-plate.png
-495c958df8737fef  after-rich-sector_plate.png
-f00a09f51b3d40b5  after-rich-stellar_dendrite.png
-63c6b4ab30568794  before-lite-capped_column.png
-6409592b1b03b05f  before-lite-fernlike_dendrite.png
-efe350b5ecbd5431  before-lite-plate.png
-625762a5e2b0da6c  before-lite-sector_plate.png
-4b42f1e759cbe5b9  before-lite-stellar_dendrite.png
-9b09da42f745a01e  before-rich-capped_column.png
-e97df13be684bed0  before-rich-fernlike_dendrite.png
-c524e32d02992a83  before-rich-plate.png
-f149394966ec786c  before-rich-sector_plate.png
-feb9853dbd8a19cf  before-rich-stellar_dendrite.png
-b1580a19c0d57154  build-after.txt
+96d71263f1e18d46  after-lite-capped_column.png
+d93f400483baf779  after-lite-fernlike_dendrite.png
+4048b96646a405b5  after-lite-plate.png
+2cc6139e43e26198  after-lite-sector_plate.png
+ceab1e3001e0d37e  after-lite-stellar_dendrite.png
+98a0ac3df01bee24  after-rich-capped_column.png
+8ee6931f11b81aff  after-rich-fernlike_dendrite.png
+c34abb69196607bb  after-rich-plate.png
+2419611deb0b9a44  after-rich-sector_plate.png
+894428202d44c92f  after-rich-stellar_dendrite.png
+fa2d369c272e8632  before-lite-capped_column.png
+809444ed1297035e  before-lite-fernlike_dendrite.png
+9ef880661099c602  before-lite-plate.png
+06debed2981e5091  before-lite-sector_plate.png
+598027acf798560a  before-lite-stellar_dendrite.png
+2417ed737a754d8e  before-rich-capped_column.png
+019079e77b230ef0  before-rich-fernlike_dendrite.png
+8eb2fe2acb271990  before-rich-plate.png
+c75b29c6c089fd3f  before-rich-sector_plate.png
+848c8b4b0c256268  before-rich-stellar_dendrite.png
+eed32b4acf8c4c50  build-after.txt
 2e8105ed36832a8f  build-before.txt
-3fea0cd5cc8bdf9d  direct-diff.py
-3e09bd7f6eb63888  direct-diff.txt
-8df2f19ebcc71577  e2e-full.txt
-d48676fd230fb111  flash.log
-bdf0d1a205b218ff  look.mjs
-eec6b300c4369e4c  mutate.sh
-f341ced7c0fe5238  mutations.txt
-999183fb19f24ff4  perf-supplement-table.md
-7cf78f0acf65e3d8  perf-table.md
-32da8c8ed539384c  proof-identity-check.sh
-7e4015ec51bea25e  proof-identity-check.txt
+01ba41e4c2bb1269  bundle-table.md
+5c1387f21653a591  direct-diff.py
+a372894ddf16b6b3  direct-diff.txt
+d83e7f9cf0c5b7cd  e2e-full.txt
+cfe994242a0dd2a2  generator-diff.txt
+d3315efe401768a2  look.mjs
+8e2ed4dd3904202e  mutate.sh
+83762c9c3a4f1515  mutations.txt
+a85a10c8f0e08010  orbit-lite.webm
+76ac55aca415b1e2  orbit-reduced.webm
+01dac7fbde5521b1  orbit-rich.webm
+913489a3e84ec14b  perf-driver.mjs
+b09eab7763fc6f4d  perf-interleaved.json
+c6bffe0c728e3ef8  perf-table.md
+a7f63b5161501102  proof-manifest-check.sh
 371efcb500c43f59  serve.mjs
-e5b3cf4019134dea  shots.mjs
-8c13f99012eaea40  verify-full.txt
+c55d850a76bc01d6  verify.txt
+676edf9fa0f95029  video.mjs

@@ -1,5 +1,5 @@
 // usage: node look.mjs <base> <seed> <quality> <out.png> [drag=0]
-import { chromium } from "/workspace/fb442-proof/after/node_modules/@playwright/test/index.mjs";
+import { chromium } from "/workspace/fb442-proof/after2/node_modules/@playwright/test/index.mjs";
 const [base, seed, quality, out, drag = "0"] = process.argv.slice(2);
 const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 1000, height: 700 }, deviceScaleFactor: Number(process.env.DSF ?? 1) });

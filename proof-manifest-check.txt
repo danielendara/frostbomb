@@ -1,0 +1,11 @@
+OK    before/after shots: 5 A0 seeds x {RICH, LITE}
+OK    per-seed x tier diff gate (direct-diff.txt RESULT: PASS)
+OK    video per tier: RICH animated, LITE static, reduced-motion static
+OK    perf p95 / fps before->after table, desktop + throttled low-end mobile
+OK    perf table covers both profiles
+OK    bundle size table (gzip KiB before->after)
+OK    npm run verify tail (ALL PASSED)
+OK    no-generator-diff check prints nothing
+OK    mutation proof: reduced-motion glint mutation fails its test
+OK    full e2e (exit 0)
+RESULT: PASS (every item on the issue #442 proof list is present)
