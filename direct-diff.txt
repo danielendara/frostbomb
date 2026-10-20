@@ -1,11 +1,13 @@
-OK      rich-plate: 6.784% of 41437 flake px
-OK      rich-sector_plate: 6.712% of 42925 flake px
-OK      rich-stellar_dendrite: 18.284% of 77046 flake px
-OK      rich-fernlike_dendrite: 22.339% of 53517 flake px
-OK      rich-capped_column: 11.951% of 74530 flake px
-OK      lite-plate: 2.868% of 40765 flake px
-OK      lite-sector_plate: 3.019% of 42229 flake px
-OK      lite-stellar_dendrite: 2.131% of 68971 flake px
-OK      lite-fernlike_dendrite: 2.333% of 45300 flake px
-OK      lite-capped_column: 4.523% of 71893 flake px
+gates: brightened >= 1.5%, LITE brightened <= 15.0%, darkened <= 5.0%, repeat variance <= 1.0% (before and after)
+status     shot                      bright%   dark%  rep-bef%  rep-aft%
+OK         rich-plate                  6.776   2.882     0.217     0.012
+OK         rich-sector_plate           6.716   2.794     0.075     0.002
+OK         rich-stellar_dendrite      18.256   2.254     0.132     0.079
+OK         rich-fernlike_dendrite     16.751   3.416     0.109     0.006
+OK         rich-capped_column         11.942   2.011     0.085     0.016
+OK         lite-plate                  3.099   0.167     0.034     0.025
+OK         lite-sector_plate           3.019   0.182     0.028     0.000
+OK         lite-stellar_dendrite       2.130   0.022     0.007     0.004
+OK         lite-fernlike_dendrite      2.347   0.031     0.623     0.013
+OK         lite-capped_column          4.523   0.093     0.008     0.000
 RESULT: PASS

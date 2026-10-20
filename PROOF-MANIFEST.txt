@@ -1,43 +1,64 @@
-# Proof bundle for PR #448 (issue #442, Rendering A3: ice glints), HOLD 2 fix
+# Proof bundle for PR #448 (issue #442, Rendering A3: ice glints), HOLD 3 (proof only; code unchanged at PR_HEAD)
 PR_HEAD=eb6e29e0d49e3f964232640ecd1d311d1489997a
 BASE=e3539bd283bf8351e8231b583af18985097e6480 (origin/main)
-generated: 2026-10-20T04:08:55-04:00 (America/New_York)
+generated: 2026-10-20T04:45:25-04:00 (America/New_York)
 
 ## Method
 fresh-clone builds of BASE and PR_HEAD -> build-before.txt / build-after.txt
 shots: look.mjs, 1000x700 DSF1, ?seed=<s>&rotate=0&quality=<tier>; settle RICH 6 s / LITE 15 s (RICH demotes to LITE after ~10 s on the software renderer; look.mjs exits 3 on a tier mismatch)
-direct-diff.py: every seed x tier >= 1.5% of flake px brightened by >10, and LITE <= 15%; brightening-only (glint is additive; repeated loads can differ by a darker misregistered patch)
+direct-diff.py: every shot captured twice (<name>.png, <name>-r2.png); per seed x tier: brightened >= 1.5%, LITE brightened <= 15%, darkened <= 5% (glint is additive), repeat variance <= 1% for before and after. shoot3.sh re-captured any DARKER/UNSTABLE seed x tier (capture-log.txt: 4 flagged on pass 1, then 1, 1, then PASS).
 videos: video.mjs, seed charlie, 4 s @ 12 fps: orbit-rich (glint=view), orbit-lite (glint=static), orbit-reduced (reduced motion: LITE, static, no auto-rotate)
 flash: flash.mjs (QUALITY/SEED env) at PR_HEAD for lite+rich x fox+charlie, plus a base LITE control -> flash-*.log/json, flash-summary.txt
 perf: perf-driver.mjs, 5 interleaved rounds + 3 flipped-order rounds -> perf-table.md (pooled), perf-interleaved.json, perf-extra.json
 verify.txt, e2e-full.txt, mutations.txt (mutate.sh), generator-diff.txt, bundle-table.md, proof-manifest-check.sh -> proof-manifest-check.txt
 
 ## sha256 (first 16) of every file
-210c2f772deac3f7  after-lite-capped_column.png
-0d291043f5f333b7  after-lite-fernlike_dendrite.png
-8d618c1df5f99d4c  after-lite-plate.png
-ae9f9ca3cfec7d46  after-lite-sector_plate.png
-cff7f4b344f74e35  after-lite-stellar_dendrite.png
-264cc384defed0db  after-rich-capped_column.png
-b15c496ca339faa7  after-rich-fernlike_dendrite.png
-c36fe1f646ebf77f  after-rich-plate.png
-ae057229f6f82b2e  after-rich-sector_plate.png
-7d28c7faf205120d  after-rich-stellar_dendrite.png
-91693f44501f897f  before-lite-capped_column.png
-137352ecab4cc10c  before-lite-fernlike_dendrite.png
-3b21d673b277d9b2  before-lite-plate.png
-da15c17ec5017fbb  before-lite-sector_plate.png
-5db070ffed5719ff  before-lite-stellar_dendrite.png
-406aa083da18569a  before-rich-capped_column.png
-28e1679498f50803  before-rich-fernlike_dendrite.png
-8097c61debc55172  before-rich-plate.png
-da5f5af3f1d5e271  before-rich-sector_plate.png
-e676e40f8b286bcd  before-rich-stellar_dendrite.png
+a5c6fc276b38821a  after-lite-capped_column-r2.png
+a64d8fdaef9f43e0  after-lite-capped_column.png
+b5bbf495302d261d  after-lite-fernlike_dendrite-r2.png
+4440b81ae95e6724  after-lite-fernlike_dendrite.png
+a4d60d5808c7b1be  after-lite-plate-r2.png
+d16c66cbe884b814  after-lite-plate.png
+369b58463cdd8ac4  after-lite-sector_plate-r2.png
+671245566d0780d9  after-lite-sector_plate.png
+14d82e38870cf38c  after-lite-stellar_dendrite-r2.png
+9e1d9712d148ed44  after-lite-stellar_dendrite.png
+898d38a0a95703d9  after-rich-capped_column-r2.png
+14ffcd52204f074f  after-rich-capped_column.png
+c18eee8cdd52e4b2  after-rich-fernlike_dendrite-r2.png
+de4b22d48fe68e5d  after-rich-fernlike_dendrite.png
+363aa0a195a0d466  after-rich-plate-r2.png
+26745eb51d035ceb  after-rich-plate.png
+d54ab024a95c8e6d  after-rich-sector_plate-r2.png
+89845d71ad3ed5d8  after-rich-sector_plate.png
+ebefb5b1c110a5df  after-rich-stellar_dendrite-r2.png
+aa13edc1d5d3ec43  after-rich-stellar_dendrite.png
+fe11fb85b14d3202  before-lite-capped_column-r2.png
+c13150389412dec3  before-lite-capped_column.png
+df4de542557f3f09  before-lite-fernlike_dendrite-r2.png
+4eb08c733cb0cd65  before-lite-fernlike_dendrite.png
+4604927df4688ed6  before-lite-plate-r2.png
+f13a104b074abfe3  before-lite-plate.png
+9908d39529dfeac1  before-lite-sector_plate-r2.png
+db4decaf59de38a0  before-lite-sector_plate.png
+0f8a5735366f84e0  before-lite-stellar_dendrite-r2.png
+fa26be7404a0c599  before-lite-stellar_dendrite.png
+8e699395a84e43f8  before-rich-capped_column-r2.png
+359ff48d55c598ab  before-rich-capped_column.png
+3bed99c668a83896  before-rich-fernlike_dendrite-r2.png
+67682ced3a9c4373  before-rich-fernlike_dendrite.png
+06c213a1d668db35  before-rich-plate-r2.png
+6173ad434a5caf2d  before-rich-plate.png
+90c0e067d223f636  before-rich-sector_plate-r2.png
+2429589b1230ac94  before-rich-sector_plate.png
+45bc3b1b13bfaa84  before-rich-stellar_dendrite-r2.png
+551573252b52ee31  before-rich-stellar_dendrite.png
 ed2c1aba9ab765bd  build-after.txt
 2e8105ed36832a8f  build-before.txt
 4aaf041521e713ba  bundle-table.md
-6ffc573203bc910d  direct-diff.py
-5f3508caa32f8503  direct-diff.txt
+c6a57033791ca534  capture-log.txt
+a50284804cf6fbcb  direct-diff.py
+15d01471e5246db4  direct-diff.txt
 0afcd407f91b5ee4  e2e-full.txt
 ec9d1fd72e44aefa  flash-control-base-lite-fox.json
 d58fd537b105a870  flash-control-base-lite-fox.log
@@ -65,5 +86,6 @@ ce99f368821a9c6b  perf-interleaved.json
 27cb2bfb5321bed3  perf-table.md
 c9ea23637d480dca  proof-manifest-check.sh
 371efcb500c43f59  serve.mjs
+022afeb3ea07ddbc  shoot3.sh
 508c2142388ce4f6  verify.txt
 676edf9fa0f95029  video.mjs
