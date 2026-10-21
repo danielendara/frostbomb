@@ -13,6 +13,7 @@ export const CLIENT_ERROR_KINDS = [
   "error",
   "unhandledrejection",
   "webgl-context-lost",
+  "webgl-unavailable",
   "frost-worker",
   "chunk-reload",
   "chunk-load",
