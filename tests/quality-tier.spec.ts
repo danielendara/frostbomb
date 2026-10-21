@@ -17,6 +17,35 @@ test("reduced motion forces LITE, even over ?quality=rich", async ({ page }) => 
   await expect(quality(page)).toHaveAttribute("data-quality", "lite");
 });
 
+test("ice glints: RICH animates them by view, LITE and reduced motion get the static bake", async ({ page }) => {
+  await page.goto("/?seed=abcde&quality=rich");
+  await expect(quality(page)).toHaveAttribute("data-glint", "view");
+
+  await page.goto("/?seed=abcde&quality=lite");
+  await expect(quality(page)).toHaveAttribute("data-glint", "static");
+
+  // Reduced motion forces LITE, so it freezes on the static bake even over ?quality=rich.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/?seed=abcde&quality=rich");
+  await expect(quality(page)).toHaveAttribute("data-quality", "lite");
+  await expect(quality(page)).toHaveAttribute("data-glint", "static");
+});
+
+test("Lab Mode switching RICH to LITE swaps the glint to the static bake", async ({ page }) => {
+  await page.goto("/?seed=abcde&quality=rich");
+  await expect(quality(page)).toHaveAttribute("data-glint", "view");
+
+  await page.click("#lab-toggle");
+  await expect(page.locator("#lab-status")).toHaveText("ON");
+  const select = page.locator(".tp-lblv", { hasText: "Quality" }).locator("select");
+  await select.selectOption({ label: "LITE" });
+  await expect(quality(page)).toHaveAttribute("data-quality", "lite");
+  await expect(quality(page)).toHaveAttribute("data-glint", "static");
+
+  await select.selectOption({ label: "RICH" });
+  await expect(quality(page)).toHaveAttribute("data-glint", "view");
+});
+
 test("a copied share link never contains quality", async ({ page }) => {
   await stubClipboard(page);
   await page.goto("/?seed=abcde&quality=lite");

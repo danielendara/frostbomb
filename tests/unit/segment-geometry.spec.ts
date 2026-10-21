@@ -61,12 +61,13 @@ function signedVolume(geom: THREE.BufferGeometry): number {
   return v;
 }
 
+/** Largest UV: the segment's are in [0, 1]; the core's planar cap UVs are scaled for the frost tiling. */
 const MESHES = [
-  { name: "segment", make: createSegmentGeometry },
-  { name: "core plate", make: createCorePlateGeometry },
+  { name: "segment", make: createSegmentGeometry, maxUv: [1, 1] },
+  { name: "core plate", make: createCorePlateGeometry, maxUv: [1.9, 1] },
 ] as const;
 
-describe.each(MESHES)("$name geometry", ({ make }) => {
+describe.each(MESHES)("$name geometry", ({ make, maxUv }) => {
   it("is closed: every edge is shared by exactly 2 faces", () => {
     const edges = edgeUseCounts(make());
     expect(edges.size).toBeGreaterThan(0);
@@ -118,7 +119,7 @@ describe.each(MESHES)("$name geometry", ({ make }) => {
     expect(inward).toEqual([]);
   });
 
-  it("has unit tangents perpendicular to the normals, and UVs in [0, 1]", () => {
+  it("has unit tangents perpendicular to the normals, and bounded UVs", () => {
     const geom = make();
     const nrm = geom.getAttribute("normal") as THREE.BufferAttribute;
     const tan = geom.getAttribute("tangent") as THREE.BufferAttribute;
@@ -131,9 +132,9 @@ describe.each(MESHES)("$name geometry", ({ make }) => {
       expect(Math.abs(t.dot(new THREE.Vector3().fromBufferAttribute(nrm, i)))).toBeLessThan(1e-4);
       expect(Math.abs(tan.getW(i))).toBe(1);
       expect(uv.getX(i)).toBeGreaterThanOrEqual(-1e-6);
-      expect(uv.getX(i)).toBeLessThanOrEqual(1 + 1e-6);
+      expect(uv.getX(i)).toBeLessThanOrEqual(maxUv[0] + 1e-6);
       expect(uv.getY(i)).toBeGreaterThanOrEqual(-1e-6);
-      expect(uv.getY(i)).toBeLessThanOrEqual(1 + 1e-6);
+      expect(uv.getY(i)).toBeLessThanOrEqual(maxUv[1] + 1e-6);
     }
   });
 });

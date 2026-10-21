@@ -14,6 +14,7 @@ import {
   createSegmentGeometry,
 } from "./segment-geometry";
 import { createFrostPlaceholders, loadFrostMaps } from "./frost";
+import { GlintController, type GlintMode } from "./glint";
 import { preventSilentContextLoss } from "./context-loss";
 import { advanceAutoRotate, INITIAL_AUTO_ROTATE } from "./auto-rotate";
 import {
@@ -41,6 +42,8 @@ export interface Scene {
   isPrismModeEnabled: boolean;
   /** Active quality tier; also on `canvas[data-quality]`. */
   qualityTier: QualityTier;
+  /** `view` (RICH, animated by view) or `static` (LITE, frozen under reduced motion); also on `canvas[data-glint]`. */
+  glintMode: GlintMode;
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
   setPrismMode: (enabled: boolean) => void;
@@ -147,6 +150,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     emissiveIntensity: 0.25,
   });
 
+  const glint = new GlintController();
+  glint.attach(material);
+
   void loadFrostMaps()
     .then((maps) => {
       material.roughnessMap = maps.roughnessMap;
@@ -185,6 +191,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     const profile = TIER_PROFILES[tier];
     canvas.setAttribute("data-quality", tier);
     sceneInterface.qualityTier = tier;
+    glint.configure(tier, prefersReducedMotion);
+    glint.syncDefines(material);
+    canvas.setAttribute("data-glint", glint.mode);
+    sceneInterface.glintMode = glint.mode;
     material.transmission = profile.transmission ?? RICH_TRANSMISSION;
     material.needsUpdate = true;
     particles.setCount(profile.particleCount);
@@ -313,6 +323,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     isPinkModeEnabled: false,
     isPrismModeEnabled: false,
     qualityTier: tierController.tier,
+    glintMode: glint.mode,
     start: () => {
       if (!isRunning && !document.hidden && !contextLost) {
         isRunning = true;
@@ -610,6 +621,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     flakeHolder.rotation.z = autoRotateState.z;
     flakeHolder.rotation.y = rotation.y + mouse.x * 0.4 + autoRotateState.y;
     flakeHolder.rotation.x = rotation.x - mouse.y * 0.3 + autoRotateState.x;
+
+    if (glint.active) {
+      glint.update(flakeHolder.rotation.x, flakeHolder.rotation.y, flakeHolder.rotation.z);
+    }
 
     if (wasEntryActive || animator.entryActive || animator.needsMatrixUpdate) {
       if (branchMesh && currentFlakeData) {

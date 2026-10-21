@@ -23,6 +23,8 @@ interface PrismSpec {
   bevelLength: number;
   /** Cross-section scale at the very end of the prism (1 = no chamfer). */
   bevelScale: number;
+  /** Multiplier on the planar end-cap UVs (x + 0.5, z + 0.5), see `FROST_REPEAT`. */
+  capUvScale: [number, number];
 }
 
 const SEGMENT_SPEC: PrismSpec = {
@@ -31,6 +33,7 @@ const SEGMENT_SPEC: PrismSpec = {
   shoulder: 0.05,
   bevelLength: 0.06,
   bevelScale: 0.8,
+  capUvScale: [1, 1],
 };
 
 /** Regular hexagon (corners at X = 0, Z = ±0.5), the thin axis being local Y. */
@@ -40,6 +43,9 @@ const CORE_SPEC: PrismSpec = {
   shoulder: 0.25,
   bevelLength: 0.12,
   bevelScale: 0.88,
+  // `core.scale` makes a cap ~1.4 world units across (fox, nov). With FROST_REPEAT (0.5, 3) these
+  // multipliers give it square grain (~0.7 tiles per world unit both ways).
+  capUvScale: [1.9, 0.32],
 };
 
 /**
@@ -70,7 +76,7 @@ function ring(spec: PrismSpec, y: number, scale: number): Vec3[] {
 }
 
 function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
-  const { bevelLength, bevelScale } = spec;
+  const { bevelLength, bevelScale, capUvScale } = spec;
   const rings = [
     ring(spec, -0.5, bevelScale),
     ring(spec, -0.5 + bevelLength, 1),
@@ -121,7 +127,12 @@ function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
 
   // End caps: planar UVs.
   for (const end of [rings[0], rings[rings.length - 1]]) {
-    face(end.map((p) => ({ p, uv: [p[0] + 0.5, p[2] + 0.5] as [number, number] })));
+    face(
+      end.map((p) => ({
+        p,
+        uv: [(p[0] + 0.5) * capUvScale[0], (p[2] + 0.5) * capUvScale[1]] as [number, number],
+      })),
+    );
   }
 
   const geom = new THREE.BufferGeometry();
