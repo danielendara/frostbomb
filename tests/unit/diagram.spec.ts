@@ -57,6 +57,21 @@ describe('initNakayaDiagram HiDPI', () => {
     expect(blits()).toBe(2);
   });
 
+  it('defers morphology background work until ensureBackground is called', () => {
+    const cache = fakeCanvas(0, 0);
+    vi.stubGlobal('document', { createElement: () => cache, fonts: undefined });
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+
+    const canvas = fakeCanvas(300, 200);
+    const diagram = initNakayaDiagram(canvas, { deferBackground: true })!;
+    expect(diagram.hasBackground()).toBe(false);
+    expect(cache.calls.filter(([name]) => name === 'fillRect').length).toBe(0);
+
+    diagram.ensureBackground();
+    expect(diagram.hasBackground()).toBe(true);
+    expect(cache.calls.some(([name]) => name === 'fillRect')).toBe(true);
+  });
+
   it('caps the scale at 3 and defaults to 1', () => {
     vi.stubGlobal('document', { createElement: () => fakeCanvas(0, 0) });
 

@@ -634,7 +634,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
     pipeline.render(delta);
 
-    if (!firstFrameMarked) {
+    const isFirstPaintFrame = !firstFrameMarked;
+    if (isFirstPaintFrame) {
       firstFrameMarked = true;
       markOnce(MARK_FIRST_FRAME_RENDERED);
     }
@@ -646,7 +647,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       }
     }
 
-    pipeline.requestLoad(skipPostprocessingFromEnvironment(prefersReducedMotion));
+    // Defer the first postprocessing import until after the first painted frame.
+    if (!isFirstPaintFrame) {
+      pipeline.requestLoad(skipPostprocessingFromEnvironment(prefersReducedMotion));
+    }
   }
 
   applyTier();

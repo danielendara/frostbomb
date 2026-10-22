@@ -93,6 +93,18 @@ export interface PostprocessingPipelineOptions {
 const RETRY_BACKOFF_MS = [2_000, 5_000];
 const MAX_LOAD_ATTEMPTS = RETRY_BACKOFF_MS.length + 1;
 
+/** Max wait before idle work runs even when the main thread stays busy. */
+export const POSTPROCESSING_IDLE_TIMEOUT_MS = 2_000;
+
+/** Schedules low-priority work; falls back to `setTimeout(0)` when idle is unavailable. */
+export function scheduleIdleTask(task: () => void, timeout = POSTPROCESSING_IDLE_TIMEOUT_MS): void {
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(() => task(), { timeout });
+  } else {
+    window.setTimeout(() => task(), 0);
+  }
+}
+
 export class PostprocessingPipeline implements RenderPipeline {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
@@ -179,14 +191,14 @@ export class PostprocessingPipeline implements RenderPipeline {
     if (this.gaveUp || this.isRequested || this.isLoading) return;
     if (this.now() < this.nextAttemptAt) return;
     this.isRequested = true;
-    window.setTimeout(() => {
+    scheduleIdleTask(() => {
       void this.loadEffects().finally(() => {
         // Let a later frame schedule the next attempt once its backoff has
         // elapsed. Harmless once `isLoaded` is true or after giving up, since
         // `requestLoad()` bails out early in both cases.
         this.isRequested = false;
       });
-    }, 0);
+    });
   }
 
   /**
