@@ -20,5 +20,6 @@ test-results/.last-run.json
 
 # local perf harness output
 .perf-lighthouse/
+.perf-pixel-diff.json
 .perf-lighthouse-main/
 .perf-lighthouse-pr/

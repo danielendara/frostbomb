@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const gate = vi.hoisted(() => ({ failPane: false }));
 
 vi.mock("../../src/snowflake/scene", () => ({
-  createScene: async () => ({
+  warmSceneModule: vi.fn(async () => {}),
+  createScene: vi.fn(async () => ({
     start: vi.fn(),
-    prepareForFirstFrame: async () => {},
     dispose: vi.fn(),
     isAutoRotateEnabled: false,
     isPinkModeEnabled: false,
@@ -15,11 +15,16 @@ vi.mock("../../src/snowflake/scene", () => ({
     setPinkMode: vi.fn(),
     setPrismMode: vi.fn(),
     setPhotoMode: vi.fn(),
+    setQualityTier: vi.fn(() => "rich"),
     updateFlake: vi.fn(),
     updateFlakeAsync: vi.fn(async () => {}),
+    prepareForFirstFrame: vi.fn(async () => {}),
     resetView: vi.fn(),
     rotateView: vi.fn(),
-  }),
+    resize: vi.fn(),
+    composer: { render: vi.fn() },
+    renderer: { capabilities: { maxTextureSize: 4096 } },
+  })),
 }));
 
 // happy-dom has no WebGL2; this suite exercises the mocked-scene path.
@@ -103,9 +108,11 @@ async function boot() {
   document.body.innerHTML = FIXTURE;
   const announcer = await import("../../src/ui/announcer");
   const announce = vi.spyOn(announcer, "announce");
-  const { installFrostbomb, runDeferredBoot } = await import("../../src/app.ts");
-  installFrostbomb();
-  await runDeferredBoot();
+  await import("../../src/main.ts");
+  await vi.waitFor(
+    () => document.documentElement.getAttribute("data-boot") === "ready",
+    { timeout: 5000 },
+  );
   return { announce, ...transport };
 }
 

@@ -16,7 +16,7 @@ describe("yield-to-main", () => {
 
   it("exports the startup long-task goal and CI regression budget", () => {
     expect(STARTUP_LONG_TASK_GOAL_MS).toBe(200);
-    expect(STARTUP_LONG_TASK_BUDGET_MS).toBeGreaterThan(STARTUP_LONG_TASK_GOAL_MS);
+    expect(STARTUP_LONG_TASK_BUDGET_MS).toBe(STARTUP_LONG_TASK_GOAL_MS);
     expect(MAIN_THREAD_SLICE_MS).toBeLessThan(STARTUP_LONG_TASK_BUDGET_MS);
   });
 

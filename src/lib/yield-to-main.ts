@@ -8,7 +8,7 @@ export const STARTUP_LONG_TASK_GOAL_MS = 200;
  * CI regression ceiling (headless SwiftShader + emulated basic phone). Stricter than
  * production devices but catches reintroduced multi-second main-thread blocks.
  */
-export const STARTUP_LONG_TASK_BUDGET_MS = 270;
+export const STARTUP_LONG_TASK_BUDGET_MS = STARTUP_LONG_TASK_GOAL_MS;
 
 type SchedulerLike = { yield: () => Promise<void> };
 
@@ -21,6 +21,12 @@ export async function yieldToMain(): Promise<void> {
   await new Promise<void>((resolve) => {
     setTimeout(resolve, 0);
   });
+}
+
+/** Hard macrotask boundary for breaking SwiftShader long tasks during scene boot. */
+export async function yieldSceneBootSlice(): Promise<void> {
+  await yieldToMain();
+  await yieldToMain();
 }
 
 /** Returns the next deadline after yielding when the current slice is exhausted. */

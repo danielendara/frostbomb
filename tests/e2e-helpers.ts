@@ -1,15 +1,10 @@
 import { createHash } from "node:crypto";
 import type { Download, Page } from "@playwright/test";
 
-/** Async boot (deferred scene + grow) finished and the 3D path is ready when applicable. */
-export async function waitForFrostbombReady(page: Page): Promise<void> {
+/** Deferred boot finished and WebGL scene is ready when applicable. */
+export async function waitForGpuScene(page: Page): Promise<void> {
   await page.waitForSelector('[data-boot="ready"]', { timeout: 60_000 });
-  await page.waitForFunction(
-    () =>
-      document.querySelector('canvas[data-scene-gpu="true"]') !== null ||
-      document.getElementById("webgl-fallback") !== null,
-    { timeout: 60_000 },
-  );
+  await page.waitForSelector('canvas[data-scene-gpu="true"]', { timeout: 60_000 });
 }
 
 // Captures whatever copyLink() writes to the clipboard without depending on

@@ -1,12 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { readDownload, stubClipboard, waitForFrostbombReady } from "./e2e-helpers";
+import { readDownload, stubClipboard } from "./e2e-helpers";
 
 /** A copied or history-restored crystal is the same geometry, not just the same
  * seed label. Sampled links omit t/ss; explicit Lab links keep them. */
-
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.clear());
-});
 
 function normalizedPolygons(svg: string): string[] {
   return [...svg.matchAll(/points="([^"]*)"/g)]
@@ -42,9 +38,8 @@ async function copiedUrl(page: Page): Promise<URL> {
 test("Copy Link of a sampled crystal reopens the same geometry", async ({ page }) => {
   await stubClipboard(page);
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
   await expect(page.locator("#seed-display")).toHaveText("abcde");
-  const abcdeBranches = await page.locator("#stat-branches").innerText();
+  await expect(page.locator("#stat-branches")).toHaveText("301");
 
   const before = await downloadPolygons(page);
   const url = await copiedUrl(page);
@@ -53,19 +48,16 @@ test("Copy Link of a sampled crystal reopens the same geometry", async ({ page }
   expect(url.searchParams.get("ss")).toBeNull();
 
   await page.goto(`${url.pathname}${url.search}`);
-  await waitForFrostbombReady(page);
-  await expect(page.locator("#stat-branches")).toHaveText(abcdeBranches);
+  await expect(page.locator("#stat-branches")).toHaveText("301");
   expect(await downloadPolygons(page)).toEqual(before);
 });
 
 test("Back and Forward restore sampled geometry, not the rounded Lab point", async ({ page }) => {
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
-  const abcdeBranches = await page.locator("#stat-branches").innerText();
+  await expect(page.locator("#stat-branches")).toHaveText("301");
   const first = await downloadPolygons(page);
 
   await page.locator("#refresh").click();
-  await waitForFrostbombReady(page);
   await expect(page.locator("#seed-display")).not.toHaveText("abcde", { ignoreCase: true });
   expect(new URL(page.url()).searchParams.get("t")).toBeNull();
   expect(new URL(page.url()).searchParams.get("ss")).toBeNull();
@@ -75,13 +67,11 @@ test("Back and Forward restore sampled geometry, not the rounded Lab point", asy
   expect(second).not.toEqual(first);
 
   await page.goBack();
-  await waitForFrostbombReady(page);
   await expect(page.locator("#seed-display")).toHaveText("abcde");
-  await expect(page.locator("#stat-branches")).toHaveText(abcdeBranches);
+  await expect(page.locator("#stat-branches")).toHaveText("301");
   expect(await downloadPolygons(page)).toEqual(first);
 
   await page.goForward();
-  await waitForFrostbombReady(page);
   await expect(page.locator("#seed-display")).toHaveText(secondSeed.toUpperCase(), { ignoreCase: true });
   await expect(page.locator("#stat-branches")).toHaveText(secondBranches);
   expect(await downloadPolygons(page)).toEqual(second);
@@ -126,10 +116,6 @@ test("an explicit Lab link and a later seed edit round-trip at URL precision", a
   expect(await downloadPolygons(page)).toEqual(edited);
 
   // The old explicit point still means the manual crystal, not a resample.
-  await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
-  const sampledBranches = await page.locator("#stat-branches").innerText();
   await page.goto("/?seed=abcde&t=-12.9&ss=92");
-  await waitForFrostbombReady(page);
-  await expect(page.locator("#stat-branches")).not.toHaveText(sampledBranches);
+  await expect(page.locator("#stat-branches")).not.toHaveText("301");
 });

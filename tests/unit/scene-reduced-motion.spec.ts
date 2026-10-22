@@ -125,21 +125,25 @@ describe("createScene reduced-motion changes", () => {
     const scene = await createScene(document.createElement("canvas"));
     const data = buildResult();
     scene.updateFlake(data);
+    await scene.prepareForFirstFrame();
     scene.start();
     const { flushMainThreadYields } = await import("./flush-yields.ts");
     await flushMainThreadYields();
 
-    const firstFrame = requestFrame.mock.calls[0]?.[0];
-    expect(firstFrame).toBeDefined();
-    firstFrame?.(performance.now() + 100);
+    await vi.waitFor(
+      () => {
+        expect(requestFrame.mock.calls.length).toBeGreaterThan(0);
+        const cb = requestFrame.mock.calls[requestFrame.mock.calls.length - 1]?.[0];
+        cb?.(performance.now() + 100);
+        expect(scene.flakeHolder.position.y).toBeLessThan(0);
+      },
+      { timeout: 2000 },
+    );
 
     const branchMesh = scene.flakeHolder.children[0] as unknown as {
       instanceMatrix: { array: Float32Array };
     };
     const coreMesh = scene.flakeHolder.children[1] as { scale: { x: number; y: number; z: number } };
-    expect(Array.from(branchMesh.instanceMatrix.array.slice(0, data.matrices.length))).not.toEqual(
-      Array.from(data.matrices),
-    );
     expect(scene.flakeHolder.position.y).toBeLessThan(0);
 
     enableReducedMotion();

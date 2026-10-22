@@ -1,15 +1,19 @@
 import { buildSnowflake } from "./geometry";
 import type { GrowthConditions } from "./nakaya";
+import { sampleConditions } from "./nakaya";
 import { mulberry32, Rand } from "./random";
 
 export interface GeometryWorkerRequest {
-  conditions: GrowthConditions;
   seed: number;
+  manualConditions?: GrowthConditions;
 }
 
 self.onmessage = (event: MessageEvent<GeometryWorkerRequest>) => {
-  const { conditions, seed } = event.data;
-  const result = buildSnowflake(conditions, new Rand(mulberry32(seed)));
+  const { seed, manualConditions } = event.data;
+  const rng = mulberry32(seed);
+  const rand = new Rand(rng);
+  const conditions = manualConditions ?? sampleConditions(rand);
+  const result = buildSnowflake(conditions, rand);
   self.postMessage(
     {
       armCount: result.armCount,

@@ -49,6 +49,8 @@ test("Save 3D filenames stay on the crystal captured before the exporter loads",
   test.setTimeout(120_000);
 
   await page.goto("/?seed=abcde");
+  const { waitForGpuScene } = await import("./e2e-helpers");
+  await waitForGpuScene(page);
   await expect(page.locator("#seed-display")).toHaveText("abcde");
   await expect(page.locator("#stat-habit")).toHaveText("Fernlike dendrite");
   const original = await save3d(page);
@@ -59,6 +61,8 @@ test("Save 3D filenames stay on the crystal captured before the exporter loads",
   let regrownSeed = "";
   await withHeldMeshExport(delayed, async ({ releaseExport, requested }) => {
     await delayed.goto("/?seed=abcde");
+    const { waitForGpuScene: waitGpu } = await import("./e2e-helpers");
+    await waitGpu(delayed);
     await expect(delayed.locator("#seed-display")).toHaveText("abcde");
     await armObjectUrlTestHooks(delayed);
     await waitSave3dIdle(delayed);

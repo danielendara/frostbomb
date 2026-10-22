@@ -1,7 +1,7 @@
 import { createNoise2D } from "simplex-noise";
 import { yieldToMain } from "../lib/yield-to-main";
 import { mulberry32, Rand } from "./random";
-import { getHabit, GrowthConditions, Habit } from "./nakaya";
+import { getHabit, GrowthConditions, Habit, sampleConditions } from "./nakaya";
 
 /**
  * Generates a single arm of the snowflake (a 2D branching pattern in the
@@ -754,25 +754,36 @@ function paramsFor(temp: number, ss: number): Params {
  * Offloads `buildSnowflake` to a module worker when available, with a yield so
  * the main thread can paint before the worker script is fetched.
  */
+/** Same sampling + RNG consumption order as `grow()` on the main thread. */
 export async function buildSnowflakeAsync(
-  conditions: GrowthConditions,
   seed: number,
+  manualConditions?: GrowthConditions,
 ): Promise<BuildResult> {
   await yieldToMain();
   if (typeof Worker === "undefined") {
-    return buildSnowflake(conditions, new Rand(mulberry32(seed)));
+    const rng = mulberry32(seed);
+    const rand = new Rand(rng);
+    const conditions = manualConditions ?? sampleConditions(rand);
+    return buildSnowflake(conditions, rand);
   }
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("./geometry.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (event: MessageEvent<BuildResult>) => {
       worker.terminate();
-      resolve(event.data);
+      const data = event.data;
+      resolve({
+        armCount: data.armCount,
+        branchCount: data.branchCount,
+        core: data.core,
+        delays: new Float32Array(data.delays),
+        matrices: new Float32Array(data.matrices),
+      });
     };
     worker.onerror = (event) => {
       worker.terminate();
       reject(event.error ?? new Error(event.message));
     };
-    worker.postMessage({ conditions, seed });
+    worker.postMessage({ seed, manualConditions });
   });
 }

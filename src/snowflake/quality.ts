@@ -1,4 +1,4 @@
-import { shouldSkipPostprocessing, type PostprocessingSkipHints } from "./postprocessing";
+import { shouldSkipPostprocessing, type PostprocessingSkipHints } from "./postprocessing-env";
 
 /**
  * RICH targets decent laptops and desktops; LITE targets basic phones.

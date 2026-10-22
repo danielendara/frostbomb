@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { waitForFrostbombReady } from "./e2e-helpers";
+import { waitForGpuScene } from "./e2e-helpers";
 
 /**
  * Share button: image + link through the Web Share sheet. Default Desktop Chrome
@@ -55,7 +55,7 @@ async function stubShare(page: import("@playwright/test").Page, behaviour: "reso
 test("Share appears with a file-capable navigator and shares one PNG plus the link", async ({ page }) => {
   await stubShare(page, "resolve");
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
+  await waitForGpuScene(page);
   await expect(page.locator("#seed-display")).toHaveText("abcde");
   const share = page.locator("#btn-share");
   await expect(share).toBeVisible();
@@ -81,7 +81,7 @@ test("Share appears with a file-capable navigator and shares one PNG plus the li
 test("cancelling the share sheet is silent", async ({ page }) => {
   await stubShare(page, "abort");
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
+  await waitForGpuScene(page);
   const share = page.locator("#btn-share");
   await expect(share).toBeVisible();
   await share.click();
@@ -95,7 +95,7 @@ test("cancelling the share sheet is silent", async ({ page }) => {
 test("a non-abort failure falls back to Copy link and keeps Copy link visible", async ({ page }) => {
   await stubShare(page, "notallowed");
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
+  await waitForGpuScene(page);
   await expect(page.locator("#btn-share")).toBeVisible();
   await page.locator("#btn-share").click();
   await expect(page.locator("#a11y-announcer")).toContainText("Link copied", { timeout: 15_000 });

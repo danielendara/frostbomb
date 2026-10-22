@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { waitForFrostbombReady } from "./e2e-helpers";
+import { waitForGpuScene } from "./e2e-helpers";
 
 /**
  * W / Save as wallpaper downloads a screen-sized, opaque PNG and leaves the live
@@ -31,7 +31,7 @@ async function decodePng(page: Page, base64: string) {
 
 test("W downloads a screen-sized opaque wallpaper PNG and restores the live canvas", async ({ page }) => {
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
+  await waitForGpuScene(page);
   await expect(page.locator("#seed-display")).toHaveText("abcde");
   await expect(page.locator("#btn-save-wallpaper")).toBeVisible();
   const before = await liveCanvasState(page);
@@ -66,7 +66,6 @@ test("W downloads a screen-sized opaque wallpaper PNG and restores the live canv
 
 test("the Save as wallpaper button works too, and the shortcut is documented", async ({ page }) => {
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
   await expect(page.locator("#seed-display")).toHaveText("abcde");
 
   const btn = page.locator("#btn-save-wallpaper");
@@ -81,7 +80,6 @@ test("the Save as wallpaper button works too, and the shortcut is documented", a
 
 test("W still works in Photo Mode, where the action bar is hidden", async ({ page }) => {
   await page.goto("/?seed=abcde");
-  await waitForFrostbombReady(page);
   await expect(page.locator("#seed-display")).toHaveText("abcde");
   await page.keyboard.press("h");
   const downloadPromise = page.waitForEvent("download");

@@ -2,6 +2,8 @@
 export const MARK_FIRST_FLAKE_BUILT = "frostbomb:first-flake-built";
 export const MARK_FIRST_FRAME_RENDERED = "frostbomb:first-frame-rendered";
 export const MARK_POSTPROCESSING_READY = "frostbomb:postprocessing-ready";
+export const MARK_WEBGL_SCENE_CREATE_BEGIN = "frostbomb:webgl-scene-create-begin";
+export const MARK_WEBGL_SCENE_CREATE_END = "frostbomb:webgl-scene-create-end";
 
 const marked = new Set<string>();
 

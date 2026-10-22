@@ -66,13 +66,15 @@ describe("scheduleDeferredSceneInit", () => {
   });
 });
 
-describe("app scene bootstrap contract", () => {
-  const app = readFileSync("src/app.ts", "utf8");
+describe("main.ts scene bootstrap contract", () => {
   const main = readFileSync("src/main.ts", "utf8");
 
   it("does not construct the WebGL scene during module evaluation", () => {
-    expect(app).not.toMatch(/import\s*\{[^}]*\bcreateScene\b/);
-    expect(app).toMatch(/const \{ createScene \} = await import\("\.\/snowflake\/scene"\)/);
+    expect(main).not.toMatch(/import\s*\{[^}]*\bcreateScene\b/);
+    expect(main).toMatch(
+      /const \{ warmSceneModule, createScene \} = await import\("\.\/snowflake\/scene"\)/,
+    );
+    expect(main).toMatch(/await warmSceneModule\(\)/);
     expect(main).toMatch(/scheduleDeferredSceneInit/);
     expect(main).toMatch(/markMainModuleFinished\(\)/);
   });
