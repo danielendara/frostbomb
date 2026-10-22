@@ -1,5 +1,9 @@
 import "./style.css";
-import { createScene, type Scene } from "./snowflake/scene";
+import type { Scene } from "./snowflake/scene";
+import {
+  markMainModuleFinished,
+  scheduleDeferredSceneInit,
+} from "./snowflake/schedule-scene-init";
 import {
   WEBGL_UNAVAILABLE_ANNOUNCEMENT,
   createInertScene,
@@ -87,28 +91,84 @@ installClientErrorReporting();
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 // No WebGL2 (or the renderer fails to build): static flake, no 3D actions.
 let webglFallback = !hasWebGL2();
-function createSceneOrInert(): Scene {
-  if (!webglFallback) {
-    try {
-      return createScene(canvas, {
-        onContextLost: () => {
-          // No in-place restore: the user must reload the crystal.
-          reportClientError("webgl-context-lost", "WebGL context lost");
-          announce(WEBGL_CONTEXT_LOST_ANNOUNCEMENT);
-          showReloadCrystalAffordance();
-        },
-      });
-    } catch (error) {
-      webglFallback = true;
-      reportClientError("webgl-unavailable", error);
-    }
-  } else {
-    reportClientError("webgl-unavailable", "WebGL2 unavailable");
-  }
-  return createInertScene();
+let sceneGpuReady = false;
+let scene: Scene = createInertScene();
+
+function canUseGpuScene(): boolean {
+  return !webglFallback && sceneGpuReady;
 }
-const scene = createSceneOrInert();
+
+/** Resolves when the deferred WebGL scene is ready (or false when unavailable). */
+function waitForGpuScene(maxMs = 15_000): Promise<boolean> {
+  if (webglFallback) return Promise.resolve(false);
+  if (sceneGpuReady) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const started = performance.now();
+    const tick = () => {
+      if (sceneGpuReady) {
+        resolve(true);
+        return;
+      }
+      if (performance.now() - started >= maxMs) {
+        resolve(false);
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+function captureSceneVisualState() {
+  return {
+    pink: scene.isPinkModeEnabled,
+    prism: scene.isPrismModeEnabled,
+    rotate: scene.isAutoRotateEnabled,
+  };
+}
+
+function applySceneVisualState(
+  target: Scene,
+  state: ReturnType<typeof captureSceneVisualState>,
+): void {
+  target.setPinkMode(state.pink);
+  target.setPrismMode(state.prism);
+  target.setAutoRotate(state.rotate);
+}
+
+async function initGpuScene(): Promise<void> {
+  if (webglFallback) return;
+  const visual = captureSceneVisualState();
+  try {
+    const { createScene } = await import("./snowflake/scene");
+    scene = createScene(canvas, {
+      onContextLost: () => {
+        reportClientError("webgl-context-lost", "WebGL context lost");
+        announce(WEBGL_CONTEXT_LOST_ANNOUNCEMENT);
+        showReloadCrystalAffordance();
+      },
+    });
+    sceneGpuReady = true;
+    canvas.setAttribute("data-scene-gpu", "true");
+    applySceneVisualState(scene, visual);
+    if (lastFlake) {
+      scene.updateFlake(lastFlake, true);
+    }
+    scene.start();
+    updateRotateButtonUI();
+  } catch (error) {
+    webglFallback = true;
+    sceneGpuReady = false;
+    reportClientError("webgl-unavailable", error);
+    scene = createInertScene();
+    showWebglFallback(canvas);
+    announce(WEBGL_UNAVAILABLE_ANNOUNCEMENT);
+    updateRotateButtonUI();
+  }
+}
+
 if (webglFallback) {
+  reportClientError("webgl-unavailable", "WebGL2 unavailable");
   showWebglFallback(canvas);
   announce(WEBGL_UNAVAILABLE_ANNOUNCEMENT);
 }
@@ -807,6 +867,7 @@ const shareBtn = document.getElementById("btn-share") as HTMLButtonElement | nul
 let shareInFlight = false;
 
 async function shareCurrentSnowflake() {
+  if (webglFallback || !(await waitForGpuScene())) return;
   if (shareInFlight) return;
   shareInFlight = true;
   if (shareBtn) {
@@ -873,7 +934,7 @@ function currentExportIdentity() {
 }
 
 async function saveSnowflake() {
-  if (webglFallback) return;
+  if (webglFallback || !(await waitForGpuScene())) return;
   await runExportAction(
     "btn-save",
     {
@@ -896,7 +957,7 @@ async function saveSnowflake() {
 }
 
 async function saveWallpaper() {
-  if (webglFallback) return;
+  if (webglFallback || !(await waitForGpuScene())) return;
   // Identity is fixed at click time; the capture below is one synchronous block.
   const identity = currentExportIdentity();
   await runExportAction(
@@ -1300,7 +1361,9 @@ btnRotate?.addEventListener("click", toggleAutoRotate);
 const photoMode = createPhotoMode({
   canvas,
   button: document.getElementById("btn-ui"),
-  scene,
+  scene: {
+    setPhotoMode: (enabled) => scene.setPhotoMode(enabled),
+  },
   announce,
   reducedMotion: () => motionQuery.matches,
 });
@@ -1328,7 +1391,7 @@ canvas.addEventListener("click", (e: MouseEvent) => {
 canvas.addEventListener("dblclick", resetView);
 
 function resetView() {
-  if (webglFallback) return;
+  if (!canUseGpuScene()) return;
   scene.resetView();
   visualPress("btn-reset");
   setTemporaryLabel("btn-reset", "Reset!", "⌂", false, true);
@@ -1424,4 +1487,9 @@ if (bootLabConditions) {
 }
 applyModes("boot");
 void boot;
-scene.start();
+if (!webglFallback) {
+  scheduleDeferredSceneInit(() => {
+    void initGpuScene();
+  });
+}
+markMainModuleFinished();

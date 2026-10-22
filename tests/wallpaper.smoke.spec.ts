@@ -31,6 +31,7 @@ async function decodePng(page: Page, base64: string) {
 test("W downloads a screen-sized opaque wallpaper PNG and restores the live canvas", async ({ page }) => {
   await page.goto("/?seed=abcde");
   await expect(page.locator("#seed-display")).toHaveText("abcde");
+  await expect(page.locator("#scene[data-scene-gpu='true']")).toBeVisible();
   await expect(page.locator("#btn-save-wallpaper")).toBeVisible();
   const before = await liveCanvasState(page);
 
