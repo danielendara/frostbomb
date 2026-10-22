@@ -51,22 +51,18 @@ describe("scheduleDeferredSceneInit", () => {
     expect(sceneInitRanBeforeMainModuleFinished).toBe(true);
   });
 
-  it("uses requestIdleCallback with a timeout when available", () => {
+  it("does not schedule scene work on requestIdleCallback", () => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(0);
       return 0;
     });
-    const idle = vi.fn((cb: IdleRequestCallback, opts?: IdleRequestOptions) => {
-      expect(opts?.timeout).toBe(2000);
-      cb({ didTimeout: false, timeRemaining: () => 0 });
-      return 1;
-    });
+    const idle = vi.fn();
     vi.stubGlobal("requestIdleCallback", idle);
 
     markMainModuleFinished();
     scheduleDeferredSceneInit(() => {});
 
-    expect(idle).toHaveBeenCalledTimes(1);
+    expect(idle).not.toHaveBeenCalled();
   });
 });
 

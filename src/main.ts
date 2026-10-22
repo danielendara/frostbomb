@@ -3,6 +3,7 @@ import type { Scene } from "./snowflake/scene";
 import {
   markMainModuleFinished,
   scheduleDeferredSceneInit,
+  yieldToNextFrame,
 } from "./snowflake/schedule-scene-init";
 import {
   WEBGL_UNAVAILABLE_ANNOUNCEMENT,
@@ -141,6 +142,7 @@ async function initGpuScene(): Promise<void> {
   const visual = captureSceneVisualState();
   try {
     const { createScene } = await import("./snowflake/scene");
+    await yieldToNextFrame();
     scene = createScene(canvas, {
       onContextLost: () => {
         reportClientError("webgl-context-lost", "WebGL context lost");
@@ -1468,28 +1470,25 @@ initKeyboardShortcuts({
   },
 });
 
-const bootLabConditions = readBootLabConditionsFromUrl();
-let boot: { conditions: GrowthConditions; label: string };
-if (bootLabConditions) {
-  // Same path manual Lab edits use (commitNakayaConditions derives habit +
-  // path from the fixed point) so the shared flake's habit matches exactly,
-  // rather than sampleConditions()'s random roll.
-  const { conditions } = commitNakayaConditions({
-    temperatureC: bootLabConditions.temperatureC,
-    supersaturation: bootLabConditions.supersaturation,
-    isGuideOpen,
-    lastHabit,
-    announce,
-  });
-  boot = grow(conditions, true, true);
-} else {
-  boot = grow();
-}
-applyModes("boot");
-void boot;
-if (!webglFallback) {
-  scheduleDeferredSceneInit(() => {
+function runAppBoot(): void {
+  const bootLabConditions = readBootLabConditionsFromUrl();
+  if (bootLabConditions) {
+    const { conditions } = commitNakayaConditions({
+      temperatureC: bootLabConditions.temperatureC,
+      supersaturation: bootLabConditions.supersaturation,
+      isGuideOpen,
+      lastHabit,
+      announce,
+    });
+    grow(conditions, true, true);
+  } else {
+    grow();
+  }
+  applyModes("boot");
+  if (!webglFallback) {
     void initGpuScene();
-  });
+  }
 }
+
+scheduleDeferredSceneInit(runAppBoot);
 markMainModuleFinished();
