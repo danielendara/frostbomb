@@ -1,4 +1,4 @@
-import type { Group, InstancedMesh, Mesh } from "three";
+import * as THREE from "three";
 import { BuildResult } from "./geometry";
 
 const EASING_LUT_SIZE = 1024;
@@ -76,9 +76,9 @@ export class GrowthAnimator {
   }
 
   public updateMatrices(
-    branchMesh: InstancedMesh,
-    coreMesh: Mesh,
-    flakeHolder: Group,
+    branchMesh: THREE.InstancedMesh,
+    coreMesh: THREE.Mesh,
+    flakeHolder: THREE.Group,
     flakeData: BuildResult
   ): void {
     const eased = this.entryState.progress;

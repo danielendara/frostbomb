@@ -1,20 +1,4 @@
-import {
-  ACESFilmicToneMapping,
-  AmbientLight,
-  Color,
-  DirectionalLight,
-  FogExp2,
-  Group,
-  InstancedMesh,
-  Mesh,
-  MeshPhysicalMaterial,
-  PerspectiveCamera,
-  PointLight,
-  Scene as ThreeScene,
-  Timer,
-  Vector2,
-  WebGLRenderer,
-} from "three";
+import * as THREE from "three";
 import { BuildResult } from "./geometry";
 import {
   PostprocessingPipeline,
@@ -46,11 +30,11 @@ import {
 const RICH_TRANSMISSION = 0.85;
 
 export interface Scene {
-  scene: ThreeScene;
-  camera: PerspectiveCamera;
-  renderer: WebGLRenderer;
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
   composer: RenderPipeline;
-  flakeHolder: Group;
+  flakeHolder: THREE.Group;
   start: () => void;
   dispose: () => void;
   isAutoRotateEnabled: boolean;
@@ -84,13 +68,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     selectStartingTier(readTierHints(prefersReducedMotion)),
   );
 
-  const scene = new ThreeScene();
-  scene.fog = new FogExp2(0x050912, 0.06);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x050912, 0.06);
 
-  const camera = new PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0, 0, 10);
 
-  const renderer = new WebGLRenderer({
+  const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: false,
     alpha: true,
@@ -109,37 +93,37 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
   applyPixelRatio();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.toneMapping = ACESFilmicToneMapping;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
   renderer.setClearColor(0x000000, 0);
 
   // Lighting
-  const ambient = new AmbientLight(0x1a2a4a, 0.5);
+  const ambient = new THREE.AmbientLight(0x1a2a4a, 0.5);
   scene.add(ambient);
 
-  const keyLight = new DirectionalLight(0xffffff, 3.0);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
   keyLight.position.set(5, 8, 10);
   scene.add(keyLight);
 
-  const rimLight = new DirectionalLight(0xb0d5ff, 2.5);
+  const rimLight = new THREE.DirectionalLight(0xb0d5ff, 2.5);
   rimLight.position.set(-8, -5, 2);
   scene.add(rimLight);
 
-  const glint1 = new PointLight(0xffffff, 1.5, 15);
+  const glint1 = new THREE.PointLight(0xffffff, 1.5, 15);
   glint1.position.set(-2, 3, 4);
   scene.add(glint1);
 
-  const glint2 = new PointLight(0x9ec9ff, 1.2, 15);
+  const glint2 = new THREE.PointLight(0x9ec9ff, 1.2, 15);
   glint2.position.set(4, -2, 3);
   scene.add(glint2);
 
-  const flakeHolder = new Group();
+  const flakeHolder = new THREE.Group();
   scene.add(flakeHolder);
 
   let frost = createFrostPlaceholders();
 
-  const material = new MeshPhysicalMaterial({
-    color: new Color("#ffffff"),
+  const material = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color("#ffffff"),
     metalness: 0,
     // Multiplied by the frost roughness map (green). Peaks frost over, facets stay glossier.
     roughness: 0.28,
@@ -156,13 +140,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     iridescenceThicknessRange: [150, 380],
     iridescenceThicknessMap: frost.roughnessMap,
     normalMap: frost.normalMap,
-    normalScale: new Vector2(0.18, 0.18),
+    normalScale: new THREE.Vector2(0.18, 0.18),
     sheen: 0.18,
-    sheenColor: new Color("#e4f1ff"),
+    sheenColor: new THREE.Color("#e4f1ff"),
     sheenRoughness: 0.6,
     transparent: true,
     opacity: 0.9,
-    emissive: new Color("#e0f0ff"),
+    emissive: new THREE.Color("#e0f0ff"),
     emissiveIntensity: 0.25,
   });
 
@@ -187,9 +171,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
   const branchGeom = createSegmentGeometry();
   const coreGeom = createCorePlateGeometry();
-  const coreMesh = new Mesh(coreGeom, material);
+  const coreMesh = new THREE.Mesh(coreGeom, material);
   coreMesh.rotation.order = CORE_EULER_ORDER;
-  let branchMesh: InstancedMesh | null = null;
+  let branchMesh: THREE.InstancedMesh | null = null;
   let currentFlakeData: BuildResult | null = null;
 
   // Domain subsystems
@@ -327,7 +311,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   let firstFrameMarked = false;
   let sceneNonblank = false;
 
-  const tempColor = new Color();
+  const tempColor = new THREE.Color();
 
   const sceneInterface: Scene = {
     scene,
@@ -385,13 +369,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
         if (enabled) {
           material.color.set("#ffb2d1");
           material.emissive.set("#ff80bf");
-          if (scene.fog instanceof FogExp2) {
+          if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x0c0512);
           }
         } else {
           material.color.set("#ffffff");
           material.emissive.set("#e0f0ff");
-          if (scene.fog instanceof FogExp2) {
+          if (scene.fog instanceof THREE.FogExp2) {
             scene.fog.color.set(0x050912);
           }
         }
@@ -447,7 +431,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
         }
 
         const capacity = Math.ceil(requiredCount * 1.25);
-        branchMesh = new InstancedMesh(branchGeom, material, capacity);
+        branchMesh = new THREE.InstancedMesh(branchGeom, material, capacity);
         flakeHolder.add(branchMesh);
       }
 
@@ -506,7 +490,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     },
   };
 
-  function noteNonblankFrame(glRenderer: WebGLRenderer, target: HTMLCanvasElement): void {
+  function noteNonblankFrame(glRenderer: THREE.WebGLRenderer, target: HTMLCanvasElement): void {
     try {
       const gl = glRenderer.getContext();
       const w = target.width;
@@ -532,7 +516,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     }
   }
 
-  const timer = new Timer();
+  const timer = new THREE.Timer();
   timer.connect(document);
 
   function handleContextLost(event: Event) {
@@ -616,7 +600,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       const hue = (now * 0.0001) % 1;
       material.color.setHSL(hue, 0.6, 0.8);
       material.emissive.setHSL(hue, 0.8, 0.6);
-      if (scene.fog instanceof FogExp2) {
+      if (scene.fog instanceof THREE.FogExp2) {
         tempColor.setHSL(hue, 0.4, 0.05);
         scene.fog.color.copy(tempColor);
       }

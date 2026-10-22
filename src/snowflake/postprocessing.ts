@@ -1,9 +1,4 @@
-import {
-  PerspectiveCamera,
-  Scene,
-  Vector3,
-  WebGLRenderer,
-} from "three";
+import * as THREE from "three";
 import { MARK_POSTPROCESSING_READY, markOnce } from "./perf-marks";
 import { reportClientError } from "../ui/client-error";
 import type { QualityTier } from "./quality";
@@ -99,9 +94,9 @@ const RETRY_BACKOFF_MS = [2_000, 5_000];
 const MAX_LOAD_ATTEMPTS = RETRY_BACKOFF_MS.length + 1;
 
 export class PostprocessingPipeline implements RenderPipeline {
-  private renderer: WebGLRenderer;
-  private scene: Scene;
-  private camera: PerspectiveCamera;
+  private renderer: THREE.WebGLRenderer;
+  private scene: THREE.Scene;
+  private camera: THREE.PerspectiveCamera;
   private currentComposer: RenderPipeline;
   private isLoaded = false;
   private isLoading = false;
@@ -112,14 +107,14 @@ export class PostprocessingPipeline implements RenderPipeline {
   private photoMode = false;
   private lite = false;
   private dofPass: { enabled: boolean } | null = null;
-  private readonly focusTarget = new Vector3(0, 0, 0);
+  private readonly focusTarget = new THREE.Vector3(0, 0, 0);
   private readonly importer: () => Promise<PostprocessingModule>;
   private readonly now: () => number;
 
   constructor(
-    renderer: WebGLRenderer,
-    scene: Scene,
-    camera: PerspectiveCamera,
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
     options: PostprocessingPipelineOptions = {},
   ) {
     this.renderer = renderer;
