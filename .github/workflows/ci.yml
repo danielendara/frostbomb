@@ -122,6 +122,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: AGENTS.md policy
+        run: node scripts/check-agents-md.mjs
+
+      - name: Three.js chunk budget
+        run: node scripts/check-three-chunk-budget.mjs
+
       - name: Typecheck tests
         run: npm run typecheck:tests
 

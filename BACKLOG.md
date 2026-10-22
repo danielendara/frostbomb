@@ -18,7 +18,9 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 
 ### Tune postprocessing loading
 - Goal: preserve visual polish while minimizing startup cost.
-- Ideas: load bloom only after first interaction, disable postprocessing on low-power devices, compare before/after screenshots.
+- Status: the `postprocessing` package is already behind a dynamic `import()` in `src/snowflake/postprocessing.ts`; RICH tier schedules the fetch from `requestLoad()` (plain renderer first). Low-power / reduced-motion / Save-Data clients skip the chunk via `shouldSkipPostprocessing`.
+- Remaining: defer the dynamic import until the main thread is idle (e.g. `requestIdleCallback`) instead of `setTimeout(0)` on the first eligible frame, so parse/compile of the postprocessing chunk does not compete with first-frame work.
+- Ideas: compare before/after `frostbomb:first-frame-rendered` and `frostbomb:postprocessing-ready` marks; optional load bloom only after first interaction.
 - Done means: first render stays fast and visual difference is intentional.
 
 ---

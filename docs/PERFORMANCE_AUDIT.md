@@ -1,16 +1,22 @@
 # Performance audit
 
-Date: 2026-04-26
-Target: `https://frostbomb.com/`
+The April 2026 Lighthouse audit below is **superseded** for lab scoring. Use the Oct 2026 mobile lab baseline instead: Performance **57**, LCP **3.3 s**, TBT **2.8 s** (throttled mobile). Ongoing guidance: `docs/performance/rendering-baseline.md`, custom marks in `src/snowflake/perf-marks.ts`, and the backlog item “Measure first-load experience on real devices.”
+
+---
+
+## Archived: April 2026 snapshot (historical)
+
+Date: 2026-04-26  
+Target: `https://frostbomb.com/`  
 Tooling: Lighthouse 13.1.0 plus live browser/resource inspection
 
-## Summary
+### Summary
 
-The live site is healthy from a network and server perspective. The HTML response is fast, static assets are cacheable, and total transferred bytes are modest for a Three.js experience.
+The live site was healthy from a network and server perspective. The HTML response was fast, static assets were cacheable, and total transferred bytes were modest for a Three.js experience.
 
-The main performance risk is client-side rendering work: the app is intentionally WebGL/canvas-heavy, so startup cost is dominated by Three.js initialization, snowflake geometry setup, and first-frame rendering. Lighthouse could not compute a normal Performance score because it did not detect an LCP candidate for this canvas-first page.
+The main performance risk was client-side rendering work: the app is intentionally WebGL/canvas-heavy, so startup cost was dominated by Three.js initialization, snowflake geometry setup, and first-frame rendering. Lighthouse could not compute a normal Performance score because it did not detect an LCP candidate for this canvas-first page.
 
-## Lighthouse results
+### Lighthouse results (April 2026)
 
 Lighthouse category scores:
 
@@ -33,7 +39,7 @@ Key metrics:
 
 Lighthouse reported `NO_LCP`, so LCP, TBT, and TTI were not available. That is common for pages whose primary experience is a canvas and whose visible content does not behave like a normal document/image hero.
 
-## Network findings
+### Network findings (April 2026)
 
 Largest transferred resources:
 
@@ -48,22 +54,7 @@ Largest transferred resources:
 | Cloudflare challenge script | 11 KiB |
 | app entry chunk | 9 KiB |
 
-Good signs:
-
-- Static assets are immutable and long-cacheable.
-- Total payload is reasonable for a 3D visual app.
-- CLS is `0`, so layout is stable.
-- The document response is fast.
-
-Watch-outs:
-
-- Font files are a meaningful part of the initial payload.
-- Cloudflare-injected scripts add work and bytes outside the app bundle.
-- The postprocessing chunk is deferred by app logic, but still needs live verification after each deploy because Vite preload behavior can change with chunking.
-
-## Main-thread findings
-
-Lighthouse attributed most startup work to script execution:
+### Main-thread findings (April 2026)
 
 | Area | Result |
 |---|---:|
@@ -72,28 +63,15 @@ Lighthouse attributed most startup work to script execution:
 | App entry script bootup | 7.8 s |
 | Cloudflare challenge script bootup | 5.1 s |
 
-These numbers are from Lighthouse's throttled environment and should be treated as directional rather than exact. The important signal is that startup cost is CPU-bound more than network-bound.
+These numbers were from Lighthouse's throttled environment and should be treated as directional rather than exact.
 
-## Recommendations
+### Recommendations (still relevant)
 
-### P1: Add a real user monitoring baseline
+- **Field data:** Cloudflare Web Analytics or similar RUM plus trending the existing marks on real devices.
+- **Postprocessing after deploys:** confirm initial HTML does not `modulepreload` the postprocessing chunk (`docs/RELEASE.md`).
 
-Use Cloudflare Web Analytics or another lightweight RUM source to collect real FCP/LCP-ish field signals. Lab tools struggle with canvas-first pages, so real-device data matters here.
-
-Done means: we can answer whether mobile users are seeing a fast first render without manually running Lighthouse.
-
-### P2: Re-check postprocessing after deploys
-
-The intended behavior is: render first with the lightweight pipeline, then load postprocessing afterward for polish. Keep checking production HTML and network traces to ensure `postprocessing` is not preloaded on initial HTML.
-
-Done means: initial HTML does not include a `modulepreload` for the postprocessing chunk.
-
-## Done
+### Done
 
 - **Custom first-flake-ready marks** — `src/snowflake/perf-marks.ts` (`frostbomb:first-flake-built`, `frostbomb:first-frame-rendered`, `frostbomb:postprocessing-ready`); smoke coverage in `tests/canvas-marks.smoke.spec.ts`.
 - **Canvas smoke/performance checks in CI** — `tests/canvas-marks.smoke.spec.ts` (smoke project) checks a nonblank canvas and that the custom performance marks fire.
 - **Self-hosted fonts** — fonts under `public/fonts/` (`tests/unit/self-hosted-fonts.spec.ts`, `tests/self-hosted-fonts.spec.ts`). Optional follow-up: subset or drop unused weights to shrink initial transfer.
-
-## Current priority
-
-The best next performance improvement is **field data**: Cloudflare Web Analytics or similar RUM plus trending the existing marks on real devices. Lab Lighthouse runs remain useful but are not the primary metric for this canvas-first app.
