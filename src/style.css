@@ -107,6 +107,49 @@ body.pink-mode {
   touch-action: pinch-zoom;
 }
 
+#scene[hidden] {
+  display: none;
+}
+
+/* Static fallback when WebGL is unavailable. Sits where the canvas would. */
+#webgl-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.6rem;
+  margin: 0;
+  pointer-events: none;
+}
+
+#webgl-fallback img {
+  width: min(70vmin, 32rem);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+#webgl-fallback figcaption {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  color: var(--ink-dim);
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  /* The panels cover the view on a phone: keep the note legible in the bottom margin. */
+  #webgl-fallback figcaption {
+    position: fixed;
+    bottom: 0.2rem;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    font-size: 0.75rem;
+  }
+}
+
 /* --- masthead --- */
 .masthead {
   position: fixed;

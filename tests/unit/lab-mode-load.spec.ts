@@ -20,6 +20,12 @@ vi.mock("../../src/snowflake/scene", () => ({
   }),
 }));
 
+// happy-dom has no WebGL2; this suite exercises the mocked-scene path.
+vi.mock("../../src/snowflake/webgl-fallback", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/snowflake/webgl-fallback")>()),
+  hasWebGL2: () => true,
+}));
+
 vi.mock("tweakpane", () => ({
   Pane: class {
     constructor() {

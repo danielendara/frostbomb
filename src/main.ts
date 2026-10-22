@@ -1,5 +1,11 @@
 import "./style.css";
-import { createScene } from "./snowflake/scene";
+import { createScene, type Scene } from "./snowflake/scene";
+import {
+  WEBGL_UNAVAILABLE_ANNOUNCEMENT,
+  createInertScene,
+  hasWebGL2,
+  showWebglFallback,
+} from "./snowflake/webgl-fallback";
 import {
   WEBGL_CONTEXT_LOST_ANNOUNCEMENT,
   showReloadCrystalAffordance,
@@ -79,14 +85,33 @@ function announce(message: string): void {
 installClientErrorReporting();
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
-const scene = createScene(canvas, {
-  onContextLost: () => {
-    // No in-place restore: the user must reload the crystal.
-    reportClientError("webgl-context-lost", "WebGL context lost");
-    announce(WEBGL_CONTEXT_LOST_ANNOUNCEMENT);
-    showReloadCrystalAffordance();
-  },
-});
+// No WebGL2 (or the renderer fails to build): static flake, no 3D actions.
+let webglFallback = !hasWebGL2();
+function createSceneOrInert(): Scene {
+  if (!webglFallback) {
+    try {
+      return createScene(canvas, {
+        onContextLost: () => {
+          // No in-place restore: the user must reload the crystal.
+          reportClientError("webgl-context-lost", "WebGL context lost");
+          announce(WEBGL_CONTEXT_LOST_ANNOUNCEMENT);
+          showReloadCrystalAffordance();
+        },
+      });
+    } catch (error) {
+      webglFallback = true;
+      reportClientError("webgl-unavailable", error);
+    }
+  } else {
+    reportClientError("webgl-unavailable", "WebGL2 unavailable");
+  }
+  return createInertScene();
+}
+const scene = createSceneOrInert();
+if (webglFallback) {
+  showWebglFallback(canvas);
+  announce(WEBGL_UNAVAILABLE_ANNOUNCEMENT);
+}
 
 document.getElementById("btn-reload-crystal")?.addEventListener("click", () => {
   window.location.reload();
@@ -848,6 +873,7 @@ function currentExportIdentity() {
 }
 
 async function saveSnowflake() {
+  if (webglFallback) return;
   await runExportAction(
     "btn-save",
     {
@@ -870,6 +896,7 @@ async function saveSnowflake() {
 }
 
 async function saveWallpaper() {
+  if (webglFallback) return;
   // Identity is fixed at click time; the capture below is one synchronous block.
   const identity = currentExportIdentity();
   await runExportAction(
@@ -906,6 +933,7 @@ async function saveWallpaper() {
 }
 
 async function saveSnowflakeSvg() {
+  if (webglFallback) return;
   await runExportAction(
     "btn-save-svg",
     {
@@ -931,6 +959,7 @@ async function saveSnowflakeSvg() {
 }
 
 async function saveSnowflake3d() {
+  if (webglFallback) return;
   await runExportAction(
     "btn-save-3d",
     {
@@ -1219,6 +1248,12 @@ const btnRotate = document.getElementById("btn-rotate") as HTMLButtonElement | n
 
 function updateRotateButtonUI() {
   if (!btnRotate) return;
+  if (webglFallback) {
+    btnRotate.disabled = true;
+    btnRotate.setAttribute("aria-pressed", "false");
+    btnRotate.classList.remove("active");
+    return;
+  }
   const isReduced = motionQuery.matches;
 
   if (isReduced && scene.isAutoRotateEnabled) {
@@ -1249,7 +1284,7 @@ updateRotateButtonUI();
 motionQuery.addEventListener("change", updateRotateButtonUI);
 
 function toggleAutoRotate() {
-  if (motionQuery.matches) return;
+  if (motionQuery.matches || webglFallback) return;
   const enabled = !(rotatePref ?? scene.isAutoRotateEnabled);
   rotatePref = enabled;
   visualPress("btn-rotate");
@@ -1293,6 +1328,7 @@ canvas.addEventListener("click", (e: MouseEvent) => {
 canvas.addEventListener("dblclick", resetView);
 
 function resetView() {
+  if (webglFallback) return;
   scene.resetView();
   visualPress("btn-reset");
   setTemporaryLabel("btn-reset", "Reset!", "⌂", false, true);

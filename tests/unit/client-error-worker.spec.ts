@@ -73,6 +73,12 @@ describe("POST /api/client-error", () => {
     expect(parseClientErrorReport({ ...valid, source: "external" })).not.toBeNull();
   });
 
+  it("accepts the webgl-unavailable kind", () => {
+    expect(
+      parseClientErrorReport({ ...valid, kind: "webgl-unavailable", message: "WebGL2 unavailable" }),
+    ).not.toBeNull();
+  });
+
   it("routes only /api/client-error in the Worker entry", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect((await worker.fetch(post(JSON.stringify(valid)))).status).toBe(204);
