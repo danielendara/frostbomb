@@ -17,3 +17,8 @@ test-results/
 playwright-report/
 blob-report/
 test-results/.last-run.json
+
+# local perf harness output
+.perf-lighthouse/
+.perf-lighthouse-main/
+.perf-lighthouse-pr/
