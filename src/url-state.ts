@@ -28,7 +28,7 @@ export interface LabConditionsState {
 export type GenerationProvenance = "sampled" | "manual";
 
 /** `null` = the param was absent, so the stored preference decides. */
-export interface ModeState {
+interface ModeState {
   pink: boolean | null;
   prism: boolean | null;
   lab: boolean | null;

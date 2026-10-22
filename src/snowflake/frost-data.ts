@@ -21,7 +21,7 @@ export const FROST_REPEAT: readonly [number, number] = [0.5, 3];
 // Glint facets: GLINT_COUNT flat discs of radius GLINT_RADIUS texels scattered over the tile
 // (wrapping, so it tiles seamlessly). Big enough to survive mip-mapping.
 export const GLINT_COUNT = 480;
-export const GLINT_RADIUS = 2.4;
+const GLINT_RADIUS = 2.4;
 // Tangent-space tilt of a facet normal: |xy| in [GLINT_TILT_MIN, GLINT_TILT_MAX] of a unit normal.
 const GLINT_TILT_MIN = 0.7;
 const GLINT_TILT_MAX = 0.97;

@@ -9,7 +9,7 @@ import { drawOnOpaqueCanvas } from "./share-image";
 /** Hard ceiling on the long edge, whatever the GPU allows. */
 export const MAX_WALLPAPER_EDGE = 4096;
 /** Pixel-ratio ceiling: a 4× phone still yields a 3× image. */
-export const MAX_WALLPAPER_DPR = 3;
+const MAX_WALLPAPER_DPR = 3;
 
 export interface WallpaperSizeInput {
   /** `screen.width` / `screen.height`, in CSS pixels (either order). */
