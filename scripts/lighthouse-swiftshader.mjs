@@ -96,7 +96,18 @@ async function measureLongTasks() {
     const page = await context.newPage();
     if (i > 0) await page.reload({ waitUntil: "load", timeout: 120_000 });
     else await page.goto(url, { waitUntil: "load", timeout: 120_000 });
-    await page.waitForSelector('[data-boot="ready"]', { timeout: 60_000 });
+    await page
+      .waitForSelector('[data-boot="ready"]', { timeout: 8_000 })
+      .catch(() =>
+        page.waitForFunction(
+          () => {
+            const el = document.getElementById("seed-display");
+            return Boolean(el?.textContent && el.textContent !== "·····");
+          },
+          undefined,
+          { timeout: 120_000 },
+        ),
+      );
     await page.waitForTimeout(400);
     const stats = await page.evaluate(() => {
       const tasks = window.__longTasks;

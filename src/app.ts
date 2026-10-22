@@ -11,7 +11,7 @@ import {
   WEBGL_CONTEXT_LOST_ANNOUNCEMENT,
   showReloadCrystalAffordance,
 } from "./snowflake/context-loss";
-import { buildSnowflake, buildSnowflakeAsync, type BuildResult } from "./snowflake/geometry";
+import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
 import { buildSnowflakeSvg } from "./snowflake/svg-export";
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snowflake/nakaya";
 import { initNakayaDiagram } from "./snowflake/diagram";
@@ -1498,15 +1498,11 @@ export function installFrostbomb(): void {
         lastHabit,
         announce,
       });
-      currentSeed = resolveSeed();
-      const flake = await buildSnowflakeAsync(conditions, currentSeed.seed);
-      boot = grow(conditions, true, true, undefined, undefined, flake, "skip");
+      boot = grow(conditions, true, true);
     } else {
-      const seedInfo = resolveSeed();
-      const conditions = sampleConditions(new Rand(mulberry32(seedInfo.seed)));
-      const flake = await buildSnowflakeAsync(conditions, seedInfo.seed);
-      boot = grow(conditions, false, true, undefined, seedInfo, flake, "skip");
+      boot = grow();
     }
+    await yieldToMain();
     applyModes("boot");
     nakayaDiagram?.update(boot.conditions.path);
     updateNakayaStatus(boot.conditions.temperatureC, boot.conditions.supersaturation, false);
