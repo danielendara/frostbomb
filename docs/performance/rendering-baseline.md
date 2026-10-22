@@ -39,26 +39,17 @@ node scripts/shots.mjs --label=<before|after|...>   # -> docs/pr-shots/rendering
 | RICH initial JS | ≤ +15 KiB gz total across slices (A-slice #440 may use ≤ +12) |
 | Postprocessing chunk | never fetched on LITE |
 
-## Today's numbers (main @ 9930ddf)
-
-Renderer: `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)` (software), Chrome 156.0.8078.4 headless, seed `fox`, median of 3 runs. The absolute budgets are therefore not evaluated here; these rows are the "before" for relative gating.
-
-| profile | quality | fps | p50 ms | p95 ms | first-frame ms |
-|---|---|---|---|---|---|
-| desktop | default | 1.2 | 816.6 | 899.9 | 1014 |
-| low-end-mobile | default | 5.2 | 183.4 | 216.7 | 283 |
-
-## Bundle (`npm run build`, client chunks)
+## Bundle (`npm run build`, client chunks; main @ 07e8008)
 
 | chunk | gzip KiB |
 |---|---|
-| `three-*.js` | 145.52 |
-| `build-*.js` (contains postprocessing) | 74.70 |
+| `three-*.js` | 144.90 |
+| `build-*.js` (contains postprocessing) | 74.72 |
 | `tweakpane-*.js` | 30.38 |
-| `index-*.js` | 28.46 |
-| `index-*.css` | 5.06 |
+| `index-*.js` | 31.91 |
+| `index-*.css` | 5.19 |
 | `index.html` | 4.10 |
-| `mesh-export-*.js` | 0.97 |
-| `frost.worker-*.js` | not reported by vite (3.22 kB raw) |
+| `mesh-export-*.js` | 1.01 |
+| `frost.worker-*.js` | not reported by vite (4.19 kB raw) |
 
 (`gzip KiB` here is vite's "kB" figure, 1 kB = 1000 B.)
