@@ -9,7 +9,7 @@ import {
   createSegmentGeometry,
 } from "../../src/snowflake/segment-geometry.ts";
 
-/** Segment-level triangle budget from issue #441 (today's open tube is 12). */
+/** Segment-level triangle budget (open tube is 12). */
 const MAX_TRIANGLES_PER_SEGMENT = 64;
 
 /** Position-welded edge -> number of faces using it. */

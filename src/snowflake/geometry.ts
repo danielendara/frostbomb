@@ -32,17 +32,12 @@ export interface BuildResult {
 const INV_MAX_DIST = 1 / 3.5;
 const INV_SIDE_BRANCH_STEP = 1 / 0.35;
 
-// Performance Optimization: Pre-calculated inverse steps to avoid division in the recursion loop.
-// Pre-calculating up to size 32 covers all possible branching steps for the maximum arm length.
 const INV_STEPS_LUT = new Float32Array(32);
 for (let i = 1; i < 32; i++) {
   INV_STEPS_LUT[i] = 1 / i;
 }
 const INV_STEPS_LUT_04 = INV_STEPS_LUT.map((v) => v * 0.4);
 
-// Performance Optimization: Shared buffers to eliminate thousands of O(N) object allocations
-// per snowflake generation. This drastically reduces GC pressure and improves memory locality.
-// Using Uint16Array for indices (max 65535) saves memory as MAX_SEGMENTS_PER_ARM is only 10000.
 const MAX_SEGMENTS_PER_ARM = 10000;
 const SEGMENT_STRIDE = 8;
 const SEGMENT_BUFFER = new Float32Array(MAX_SEGMENTS_PER_ARM * SEGMENT_STRIDE);
@@ -67,10 +62,6 @@ for (let i = 0; i < MAX_SEGMENTS_PER_ARM; i++) {
 
 let currentSegmentCount = 0;
 
-/**
- * Performance Optimization: In-place Insertion Sort helper for small subarrays.
- * Reduces recursion overhead and call stack pressure in the sorting hot path.
- */
 function insertionsort(arr: Uint16Array, left: number, right: number) {
   for (let i = left + 1; i <= right; i++) {
     const keyIdx = arr[i];
@@ -88,11 +79,6 @@ function insertionsort(arr: Uint16Array, left: number, right: number) {
   }
 }
 
-/**
- * Performance Optimization: Non-allocating hybrid Quick Sort / Insertion Sort to replace native .sort() on subarray.
- * Avoids any wrapper object allocations, reducing garbage collection pressure and speeding up sorting by ~3.5x.
- * Delegates to insertionsort for small partitions to bypass recursion and branching overhead.
- */
 function quicksort(arr: Uint16Array, left: number, right: number) {
   if (right - left < 12) {
     insertionsort(arr, left, right);
@@ -117,9 +103,7 @@ function quicksort(arr: Uint16Array, left: number, right: number) {
   if (i < right) quicksort(arr, i, right);
 }
 
-// Performance Optimization: Global noise instance avoids building a permutation table every time.
-// We use a fixed seed for the internal permutation table to ensure that nOffset-based
-// variation remains deterministic across different sessions.
+// Fixed seed for the noise permutation table so nOffset-based variation stays deterministic.
 const noise2D = createNoise2D(() => 0.5);
 
 // Pre-calculate symmetry constants.
@@ -137,7 +121,6 @@ export function buildSnowflake(
 
   // Pre-calculate parameters for the entire atmospheric path to avoid thousands
   // of redundant getHabit() and switch-case executions during recursion.
-  // Performance Optimization: Use a shared buffer to avoid re-allocating the pathParams array.
   // Gated with a simple change-detection cache to avoid redundant paramsFor lookup calls.
   const pathLen = Math.min(conditions.path.length, MAX_PATH_LEN);
   const pathParams = SHARED_PATH_PARAMS;
@@ -155,13 +138,9 @@ export function buildSnowflake(
     }
   }
 
-  // Optimization: Pre-calculate path sampling scale to save multiplications in recursion.
   const pathScale = INV_MAX_DIST * pathLen;
   const maxPathIdx = pathLen - 1;
 
-  // Performance Optimization: Capture invariant parameters and the RNG via closure in a local
-  // recursive function. This reduces the number of arguments passed in recursion from 12 to 7,
-  // minimizing stack frame overhead and property lookups on every call.
   const rng = rand.rng;
 
   function buildArmInternal(
@@ -177,8 +156,6 @@ export function buildSnowflake(
   ) {
     if (currentSegmentCount >= MAX_SEGMENTS_PER_ARM) return;
 
-    // Performance Optimization: Destructure params as-needed to minimize property lookups
-    // for leaf segments and non-branching nodes.
     const { primaryThickness, thickness015 } = params;
 
     const halfLen = length * 0.5;
@@ -189,10 +166,6 @@ export function buildSnowflake(
     const vVarRaw = noise2D(nx, ny);
     const sx = primaryThickness + vVarRaw * thickness015;
 
-    // Performance Optimization: Algebraic reduction and breaking of dependency chains.
-    // Instead of sequentially deriving sax -> sax2 -> cax -> vJitter, we calculate cax and vJitter
-    // directly from vVarRaw. This reduces instruction count and enables parallel execution of
-    // independent trigonometric approximations in CPU execution pipelines.
     const sax = vVarRaw * 0.015; // sin(ax) approx: 0.1 * 0.15
 
     const bIdx = currentSegmentCount << 3; // STRIDE 8
@@ -226,8 +199,6 @@ export function buildSnowflake(
     let pointX = startX;
     let pointY = startY;
 
-    // Performance Optimization: Use additive/multiplicative tracking for atmospheric path sampling and delays to avoid
-    // multiplications and divisions in the hot loop.
     const pIdxStep = stepDist * pathScale;
     const delayStep = stepDist * 0.15;
 
@@ -239,8 +210,6 @@ export function buildSnowflake(
 
     const nextDepth = depth + 1;
 
-    // Performance Optimization: Pre-calculate the maximum loop limit where sideLenMax remains >= 0.08.
-    // This completely avoids the comparison check and subtraction branch/overhead inside the hot loop.
     let loopLimit = numSteps;
     if (sideLenMaxStep > 0) {
       // Adding a tiny epsilon (1e-9) to handle potential floating-point inaccuracies
@@ -256,27 +225,21 @@ export function buildSnowflake(
       pointY += stepY;
 
       // Side branches get less likely near the tip
-      // Optimization: Inline rand.chance/range calls to avoid property lookups and method overhead.
       if (rng() < currentLocalProb) {
-        // Performance Optimization: On-demand sideLenMax calculation avoids performing subtraction
-        // on every iteration when a branch is not spawned.
         const sideLenMax = sideLenBase - i * sideLenMaxStep;
         const sideLen = sideLenMax * (0.4 + 0.6 * rng());
 
-        // Optimization: Prune side branches early before performing lookups and recursive calls.
         if (sideLen >= 0.08) {
           // Real snowflakes: side branches grow at 60° (hexagonal lattice)
           const noiseVal = noise2D(pointX * 2, pointY * 2);
 
           const angleVariation = noiseVal * 0.1;
-          // Optimization: 2nd-order Taylor expansion for side branch angle perturbations.
-          // Small angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a)
+          // Small-angle approx: cos(a+v) ≈ cos(a) - v*sin(a) - 0.5*v^2*cos(a);
           //                     sin(a+v) ≈ sin(a) + v*cos(a) - 0.5*v^2*sin(a)
           const v = angleVariation + (-0.04 + 0.08 * rng());
           const v05 = 0.5 * v;
           const cosA = cosAngle - v * (sinAngle + v05 * cosAngle);
           const sinA = sinAngle + v * (cosAngle - v05 * sinAngle);
-          // Optimization: Pre-sample parameters for the side branch only when it's created.
           const sidePIdxFloat = pIdxFloat + i * pIdxStep;
           const pIdx = sidePIdxFloat | 0;
           const pathIdx = pIdx > maxPathIdx ? maxPathIdx : pIdx;
@@ -288,8 +251,6 @@ export function buildSnowflake(
             const dxsa = dirX * sinA;
             const dyca = dirY * cosA;
 
-            // Performance Optimization: Pre-calculate the next side-branch delay once instead of
-            // evaluating the addition twice per branch pair.
             const nextDelay = delay + i * delayStep + 0.1;
 
             // Right side branch (sign = 1)
@@ -353,24 +314,14 @@ export function buildSnowflake(
     currentSegmentCount++;
   }
 
-  // Optimization: Sort segment indices by pre-calculated growth delay. This allows the
-  // render loop to break early once it reaches segments that haven't started growing yet.
+  // Sort by growth delay so the render loop can stop once later segments have not started growing.
   const armLen = currentSegmentCount;
-  // Performance Optimization: Initialize the indices using bulk set of a pre-allocated IDENTITY_INDICES subarray.
   SEGMENT_INDICES.set(IDENTITY_INDICES.subarray(0, armLen));
-  // Performance Optimization: Sort indices in-place using our highly optimized, non-allocating Quicksort.
   if (armLen > 1) {
     quicksort(SEGMENT_INDICES, 0, armLen - 1);
   }
 
-  // Performance Optimization: Use shared scratchpad buffers during calculation to avoid O(N)
-  // intermediate allocations. In this single-threaded, synchronous context, subarray() avoids
-  // multi-megabyte allocations and copies, as the data is consumed or copied by the caller
-  // (scene.updateFlake) immediately.
   const delays = DELAYS_RESULT_BUFFER.subarray(0, armLen);
-  // Performance Optimization: Use a shared scratchpad buffer and subarray() to return the result.
-  // In this single-threaded, synchronous context, subarray() avoids a multi-megabyte allocation
-  // and copy, as the data is consumed or copied by the caller (scene.updateFlake) immediately.
   const matrices = MATRICES_BUFFER.subarray(0, armLen * 96);
 
   let offset = 0;
@@ -379,9 +330,6 @@ export function buildSnowflake(
     const delay = DELAY_BUFFER[idx];
     delays[j] = delay;
 
-    // Performance Optimization: All matrix components and jitter are derived on-the-fly from the
-    // 8 raw parameters stored in SEGMENT_BUFFER. This reduces memory footprint and improves cache locality
-    // by changing the segment stride from 16 to 8.
     const bIdx = idx << 3; // STRIDE 8
     const dirX = SEGMENT_BUFFER[bIdx];
     const dirY = SEGMENT_BUFFER[bIdx + 1];
@@ -409,12 +357,7 @@ export function buildSnowflake(
     const m8 = m1 * sax;
     const m9 = -m0 * sax;
 
-    // Apply rotation for each of the 6 symmetry instances
-    // Optimization: Use interleaved layout [seg0_arm0, seg0_arm1, ..., seg0_arm5, seg1_arm0, ...]
-    // to improve cache locality and consolidate GPU update ranges.
-    // Performance Optimization: Use hexagonal symmetry identities to unroll the loop
-    // and eliminate multiplications.
-
+    // Interleaved layout: [seg0_arm0 … seg0_arm5, seg1_arm0, …] for six-fold symmetry.
     // Arm 1 (60°)
     const m0_1 = 0.5 * m0 - SIN60 * m1;
     const m1_1 = SIN60 * m0 + 0.5 * m1;
@@ -435,8 +378,6 @@ export function buildSnowflake(
     const m12_2 = m12_1 - m12;
     const m13_2 = m13_1 - m13;
 
-    // Performance Optimization: Hoist invariant components m6, m10, m14 assignments.
-    // Setting all 6 arm instances of m6, m10, and m14 together improves register reuse and write efficiency.
     matrices[offset + 6] = m6;
     matrices[offset + 22] = m6;
     matrices[offset + 38] = m6;
@@ -572,14 +513,11 @@ interface Params {
   decay05: number;
 }
 
-// Performance Optimization: Cache for static Params to avoid repeated allocations.
 const PARAMS_CACHE: Partial<Record<Habit, Params>> = {};
 
-// Performance Optimization: Object pooling for stellar_dendrite Params.
 // These depend on supersaturation and are thus not strictly static.
 const MAX_PATH_LEN = 1024;
 
-// Performance Optimization: Shared buffer for atmospheric path parameters.
 const SHARED_PATH_PARAMS = new Array<Params>(MAX_PATH_LEN);
 
 const STELLAR_PARAMS_POOL = Array.from({ length: MAX_PATH_LEN }, () => ({

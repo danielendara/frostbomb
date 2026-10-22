@@ -30,7 +30,7 @@ function reporterWithBeacon(result = true) {
   return { reporter, sendBeacon, fetch };
 }
 
-describe("client error report payload (#356)", () => {
+describe("client error report payload", () => {
   it("contains only allowlisted fields", () => {
     const error = new Error("boom");
     error.stack = `Error: boom\n    at run (${origin}/assets/index-abc123.js?v=2#frag:12:34)`;
