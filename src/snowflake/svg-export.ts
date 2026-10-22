@@ -1,10 +1,6 @@
 import type { BuildResult, InstanceData } from "./geometry";
 
-/**
- * Hexagonal cylinder local vertices matching scene.ts:
- * `new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1, true)`
- * Axis along Y, radius 0.5, height 1, 6 radial segments.
- */
+/** Local hex prism vertices (Y axis, radius 0.5, height 1). */
 const LOCAL_CYLINDER_VERTS: readonly (readonly [number, number, number])[] =
   (() => {
     const verts: [number, number, number][] = [];
@@ -43,10 +39,7 @@ function transformXY(
   ];
 }
 
-/**
- * Column-major 4x4 for the hexagonal core: T * Rz(π/6) * Rx(π/2) * S.
- * Matches Three.js default Euler 'XYZ' used in scene.ts.
- */
+/** Column-major 4×4 core instance matrix for SVG projection. */
 function coreMatrix(core: InstanceData): Float32Array {
   const sx = core.scale[0];
   const sy = core.scale[1];

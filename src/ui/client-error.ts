@@ -1,5 +1,5 @@
 /**
- * Browser error reporting (#356). Sends one small, allowlisted report per
+ * Browser error reporting. Sends one small, allowlisted report per
  * event to `POST /api/client-error`, which the Worker writes to Workers Logs.
  *
  * Privacy: the payload is a fixed allowlist — kind, a truncated message with

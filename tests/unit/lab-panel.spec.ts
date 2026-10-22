@@ -85,7 +85,7 @@ describe("normalizeSeedInput", () => {
   });
 });
 
-describe("Lab seed validation (#350)", () => {
+describe("Lab seed validation", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.restoreAllMocks();
