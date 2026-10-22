@@ -14,6 +14,12 @@ Frostbomb: Vite + three.js snowflake app on a Cloudflare Worker. Node >= 22.12, 
 
 How to launch and drive the app: `.cursor/skills/verify-frostbomb/SKILL.md`.
 
+## Modern web platform
+
+**Baseline target:** Baseline widely available (no narrower browser support policy is documented elsewhere in this repo).
+
+**Modern Web Guidance:** Project skill at `.agents/skills/modern-web-guidance/SKILL.md` (installed via `npx skills add GoogleChrome/modern-web-guidance`). For HTML, CSS, and client-side JavaScript work, read that skill first, then use its CLI to search and retrieve guides—for example `npx -y modern-web-guidance@latest search "<query>"` and `npx -y modern-web-guidance@latest retrieve "<id>"`—before implementing UI or platform APIs from memory.
+
 ## Proof required in PRs
 - Verify output (tail with pass/fail counts).
 - UI changes: before/after screenshots. Logic changes: test output.
