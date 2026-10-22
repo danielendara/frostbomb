@@ -37,7 +37,7 @@ describe('initNakayaDiagram HiDPI', () => {
     vi.stubGlobal('document', { createElement: () => cache, fonts: { ready } });
 
     const canvas = fakeCanvas(300, 200);
-    const diagram = initNakayaDiagram(canvas)!;
+    const diagram = (await initNakayaDiagram(canvas))!;
 
     expect(canvas.width).toBe(600);
     expect(canvas.height).toBe(400);
@@ -53,21 +53,22 @@ describe('initNakayaDiagram HiDPI', () => {
 
     resolveFonts();
     await ready;
-    await Promise.resolve();
+    const { flushMainThreadYields } = await import("./flush-yields.ts");
+    await flushMainThreadYields();
     expect(blits()).toBe(2);
   });
 
-  it('caps the scale at 3 and defaults to 1', () => {
+  it('caps the scale at 3 and defaults to 1', async () => {
     vi.stubGlobal('document', { createElement: () => fakeCanvas(0, 0) });
 
     vi.stubGlobal('window', { devicePixelRatio: 5 });
     const hi = fakeCanvas(300, 200);
-    initNakayaDiagram(hi);
+    await initNakayaDiagram(hi);
     expect([hi.width, hi.height]).toEqual([900, 600]);
 
     vi.stubGlobal('window', {});
     const lo = fakeCanvas(300, 200);
-    initNakayaDiagram(lo);
+    await initNakayaDiagram(lo);
     expect([lo.width, lo.height]).toEqual([300, 200]);
   });
 });

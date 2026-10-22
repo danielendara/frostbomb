@@ -30,7 +30,7 @@ describe("createScene pointer buttons", () => {
 
   async function makeScene() {
     const { createScene } = await import("../../src/snowflake/scene.ts");
-    return createScene(canvas);
+    return await createScene(canvas);
   }
 
   beforeEach(() => {

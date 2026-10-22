@@ -71,7 +71,7 @@ describe("createScene context-loss path", () => {
     const { createScene } = await import("../../src/snowflake/scene.ts");
     const canvas = document.createElement("canvas");
     const onContextLost = vi.fn();
-    const scene = createScene(canvas, { onContextLost });
+    const scene = await createScene(canvas, { onContextLost });
 
     scene.start();
     const event = new Event("webglcontextlost", { cancelable: true });

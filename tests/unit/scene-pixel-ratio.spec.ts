@@ -25,7 +25,7 @@ describe("createScene pixel ratio", () => {
 
   async function makeScene() {
     const { createScene } = await import("../../src/snowflake/scene.ts");
-    return createScene(document.createElement("canvas"));
+    return await createScene(document.createElement("canvas"));
   }
 
   beforeEach(() => {
@@ -151,7 +151,7 @@ describe("createScene pixel ratio", () => {
   it("reflects the tier on canvas[data-quality] and lets reduced motion keep LITE", async () => {
     const { createScene } = await import("../../src/snowflake/scene.ts");
     const canvas = document.createElement("canvas");
-    const scene = createScene(canvas);
+    const scene = await createScene(canvas);
     expect(canvas.getAttribute("data-quality")).toBe("rich");
     scene.setQualityTier("lite");
     expect(canvas.getAttribute("data-quality")).toBe("lite");
@@ -161,7 +161,7 @@ describe("createScene pixel ratio", () => {
     reducedMotion = true;
     const again = await import("../../src/snowflake/scene.ts");
     const canvas2 = document.createElement("canvas");
-    const scene2 = again.createScene(canvas2);
+    const scene2 = await again.createScene(canvas2);
     expect(canvas2.getAttribute("data-quality")).toBe("lite");
     expect(scene2.setQualityTier("rich")).toBe("lite");
     expect(canvas2.getAttribute("data-quality")).toBe("lite");

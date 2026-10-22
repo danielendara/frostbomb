@@ -1,5 +1,14 @@
 /** @vitest-environment happy-dom */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+
+vi.mock("../../src/lib/yield-to-main.ts", () => ({
+  yieldToMain: vi.fn(async () => {}),
+  yieldIfOverBudget: vi.fn(async (deadline: number) => deadline + 50),
+  newYieldDeadline: () => 0,
+  MAIN_THREAD_SLICE_MS: 50,
+  STARTUP_LONG_TASK_GOAL_MS: 200,
+  STARTUP_LONG_TASK_BUDGET_MS: 270,
+}));
 import {
   PostprocessingPipeline,
   shouldSkipPostprocessing,

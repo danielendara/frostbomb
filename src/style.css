@@ -107,6 +107,12 @@ body.pink-mode {
   touch-action: pinch-zoom;
 }
 
+/* Keep the masthead wordmark as LCP until WebGL has painted the crystal. */
+#scene:not([data-scene-gpu="true"]) {
+  opacity: 0;
+  pointer-events: none;
+}
+
 #scene[hidden] {
   display: none;
 }

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { yieldToMain } from "../lib/yield-to-main";
 import { MARK_POSTPROCESSING_READY, markOnce } from "./perf-marks";
 import { reportClientError } from "../ui/client-error";
 import type { QualityTier } from "./quality";
@@ -224,8 +225,11 @@ export class PostprocessingPipeline implements RenderPipeline {
       // Demoted to LITE while the chunk was in flight: don't build the composer.
       if (this.lite) return;
 
+      await yieldToMain();
+
       const nextComposer = new EffectComposer(this.renderer);
       nextComposer.addPass(new RenderPass(this.scene, this.camera));
+      await yieldToMain();
 
       const bloomEffect = new BloomEffect({
         intensity: 1.1,
@@ -249,8 +253,10 @@ export class PostprocessingPipeline implements RenderPipeline {
       const smaaEffect = new SMAAEffect({ preset: SMAAPreset.HIGH });
 
       nextComposer.addPass(new EffectPass(this.camera, bloomEffect));
+      await yieldToMain();
       nextComposer.addPass(dofPass);
       nextComposer.addPass(new EffectPass(this.camera, smaaEffect));
+      await yieldToMain();
       nextComposer.setSize(window.innerWidth, window.innerHeight);
 
       this.currentComposer.dispose();

@@ -1,5 +1,6 @@
 import { createNoise2D } from "simplex-noise";
-import { Rand } from "./random";
+import { yieldToMain } from "../lib/yield-to-main";
+import { mulberry32, Rand } from "./random";
 import { getHabit, GrowthConditions, Habit } from "./nakaya";
 
 /**
@@ -747,4 +748,31 @@ function paramsFor(temp: number, ss: number): Params {
   };
   PARAMS_CACHE[habit] = result;
   return result;
+}
+
+/**
+ * Offloads `buildSnowflake` to a module worker when available, with a yield so
+ * the main thread can paint before the worker script is fetched.
+ */
+export async function buildSnowflakeAsync(
+  conditions: GrowthConditions,
+  seed: number,
+): Promise<BuildResult> {
+  await yieldToMain();
+  if (typeof Worker === "undefined") {
+    return buildSnowflake(conditions, new Rand(mulberry32(seed)));
+  }
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("./geometry.worker.ts", import.meta.url), { type: "module" });
+    worker.onmessage = (event: MessageEvent<BuildResult>) => {
+      worker.terminate();
+      resolve(event.data);
+    };
+    worker.onerror = (event) => {
+      worker.terminate();
+      reject(event.error ?? new Error(event.message));
+    };
+    worker.postMessage({ conditions, seed });
+  });
 }

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { BuildResult } from "./geometry";
+import { yieldToMain } from "../lib/yield-to-main";
 import {
   PostprocessingPipeline,
   RenderPipeline,
@@ -51,22 +52,28 @@ export interface Scene {
   /** Explicit tier choice (Lab Mode). Reduced motion keeps LITE. Returns the tier applied. */
   setQualityTier: (tier: QualityTier) => QualityTier;
   updateFlake: (data: BuildResult, animate?: boolean) => void;
+  /** Same as {@link updateFlake} but yields while uploading instance matrices (cold boot). */
+  updateFlakeAsync: (data: BuildResult, animate?: boolean) => Promise<void>;
   resetView: () => void;
   rotateView: (dx: number, dy: number) => void;
   /** Re-fit camera, pixel ratio, renderer and composer to the window (the `resize` handler). */
   resize: () => void;
+  /** Shader compile / GPU warm-up before the animation loop starts (yields between steps). */
+  prepareForFirstFrame: () => Promise<void>;
 }
 
 export interface SceneOptions {
   onContextLost?: () => void;
 }
 
-export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {}): Scene {
+export async function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {}): Promise<Scene> {
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   let prefersReducedMotion = reducedMotionQuery.matches;
   const tierController = new TierController(
     selectStartingTier(readTierHints(prefersReducedMotion)),
   );
+
+  await yieldToMain();
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x050912, 0.06);
@@ -82,6 +89,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     stencil: false,
     depth: true,
   });
+
+  await yieldToMain();
 
   function applyPixelRatio() {
     const cap = Math.min(
@@ -152,6 +161,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
   const glint = new GlintController();
   glint.attach(material);
+  await yieldToMain();
 
   void loadFrostMaps()
     .then((maps) => {
@@ -170,7 +180,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     });
 
   const branchGeom = createSegmentGeometry();
+  await yieldToMain();
   const coreGeom = createCorePlateGeometry();
+  await yieldToMain();
   const coreMesh = new THREE.Mesh(coreGeom, material);
   coreMesh.rotation.order = CORE_EULER_ORDER;
   let branchMesh: THREE.InstancedMesh | null = null;
@@ -182,6 +194,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     TIER_PROFILES.rich.particleCount,
   );
   scene.add(particles.particles);
+  await yieldToMain();
 
   const pipeline = new PostprocessingPipeline(renderer, scene, camera);
 
@@ -327,7 +340,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     start: () => {
       if (!isRunning && !document.hidden && !contextLost) {
         isRunning = true;
-        frameId = requestAnimationFrame(animate);
+        void yieldToMain().then(() => {
+          if (isRunning && !contextLost) {
+            frameId = requestAnimationFrame(animate);
+          }
+        });
       }
     },
     dispose: () => {
@@ -413,6 +430,88 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     rotateView: (dx: number, dy: number) => {
       targetRotation.y += dx;
       targetRotation.x += dy;
+    },
+    prepareForFirstFrame: async () => {
+      await yieldToMain();
+    },
+    updateFlakeAsync: async (data: BuildResult, animate = true) => {
+      currentFlakeData = data;
+
+      const coreData = data.core;
+      coreMesh.position.set(coreData.position[0], coreData.position[1], coreData.position[2]);
+      coreMesh.rotation.set(coreData.rotation[0], coreData.rotation[1], coreData.rotation[2]);
+
+      const requiredCount = data.matrices.length / 16;
+      const currentCapacity = branchMesh ? branchMesh.instanceMatrix.array.length / 16 : 0;
+
+      if (!branchMesh || requiredCount > currentCapacity) {
+        if (branchMesh) {
+          flakeHolder.remove(branchMesh);
+          branchMesh.dispose();
+        }
+
+        const capacity = Math.ceil(requiredCount * 1.25);
+        branchMesh = new THREE.InstancedMesh(branchGeom, material, capacity);
+        flakeHolder.add(branchMesh);
+      }
+
+      await yieldToMain();
+
+      branchMesh.count = requiredCount;
+      const shouldAnimate = animate && !prefersReducedMotion;
+
+      if (!shouldAnimate) {
+        branchMesh.instanceMatrix.array.set(data.matrices);
+        if (typeof branchMesh.instanceMatrix.clearUpdateRanges === "function") {
+          branchMesh.instanceMatrix.clearUpdateRanges();
+          branchMesh.instanceMatrix.addUpdateRange(0, data.matrices.length);
+        } else {
+          (branchMesh.instanceMatrix as any).updateRange = {
+            offset: 0,
+            count: data.matrices.length,
+          };
+        }
+        branchMesh.instanceMatrix.needsUpdate = true;
+        animator.minAnimatedIndex = data.armCount;
+      } else {
+        const target = branchMesh.instanceMatrix.array as Float32Array;
+        const source = data.matrices;
+        target.fill(0, 0, requiredCount << 4);
+        for (let i = 0; i < requiredCount; i++) {
+          const o = i << 4;
+          target[o + 12] = source[o + 12];
+          target[o + 13] = source[o + 13];
+          target[o + 14] = source[o + 14];
+          target[o + 15] = 1;
+          if ((i & 15) === 15) {
+            await yieldToMain();
+          }
+        }
+        branchMesh.instanceMatrix.clearUpdateRanges();
+        branchMesh.instanceMatrix.needsUpdate = true;
+        animator.minAnimatedIndex = 0;
+
+        const delays = data.delays;
+        for (let i = 0; i < delays.length; i++) {
+          delays[i] *= LUT_SCALE_FACTOR;
+        }
+      }
+
+      if (!flakeHolder.children.includes(coreMesh)) {
+        flakeHolder.add(coreMesh);
+      }
+
+      if (!shouldAnimate) {
+        coreMesh.scale.set(coreData.scale[0], coreData.scale[1], coreData.scale[2]);
+        flakeHolder.position.y = 0;
+        animator.needsMatrixUpdate = false;
+        animator.entryState.progress = 1;
+        animator.entryActive = false;
+        animator.syncEntryState();
+      } else {
+        animator.needsMatrixUpdate = true;
+        animator.startEntryTween();
+      }
     },
     updateFlake: (data: BuildResult, animate = true) => {
       currentFlakeData = data;

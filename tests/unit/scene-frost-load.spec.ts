@@ -41,7 +41,7 @@ describe("createScene frost map loading", () => {
       const { createScene } = await import("../../src/snowflake/scene.ts");
       const canvas = document.createElement("canvas");
 
-      createScene(canvas);
+      await createScene(canvas);
 
       // Let the rejected loadFrostMaps() promise settle and let Node's
       // unhandled-rejection detection run its course.

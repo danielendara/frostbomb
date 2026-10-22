@@ -85,8 +85,10 @@ describe("createScene glint mode", () => {
     vi.stubGlobal("cancelAnimationFrame", () => {});
 
     const { createScene } = await import("../../src/snowflake/scene.ts");
-    const scene = createScene(document.createElement("canvas"));
+    const scene = await createScene(document.createElement("canvas"));
     scene.start();
+    const { flushMainThreadYields } = await import("./flush-yields.ts");
+    await flushMainThreadYields();
     let t = 1000;
     const frame = () => {
       t += 16;

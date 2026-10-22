@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const gate = vi.hoisted(() => ({ failPane: false }));
 
 vi.mock("../../src/snowflake/scene", () => ({
-  createScene: () => ({
+  createScene: async () => ({
     start: vi.fn(),
+    prepareForFirstFrame: async () => {},
     dispose: vi.fn(),
     isAutoRotateEnabled: false,
     isPinkModeEnabled: false,
@@ -15,6 +16,7 @@ vi.mock("../../src/snowflake/scene", () => ({
     setPrismMode: vi.fn(),
     setPhotoMode: vi.fn(),
     updateFlake: vi.fn(),
+    updateFlakeAsync: vi.fn(async () => {}),
     resetView: vi.fn(),
     rotateView: vi.fn(),
   }),
@@ -101,7 +103,9 @@ async function boot() {
   document.body.innerHTML = FIXTURE;
   const announcer = await import("../../src/ui/announcer");
   const announce = vi.spyOn(announcer, "announce");
-  await import("../../src/main.ts");
+  const { installFrostbomb, runDeferredBoot } = await import("../../src/app.ts");
+  installFrostbomb();
+  await runDeferredBoot();
   return { announce, ...transport };
 }
 

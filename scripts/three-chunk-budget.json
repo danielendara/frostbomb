@@ -1,0 +1,6 @@
+{
+  "assetsDir": "dist/client/assets",
+  "chunkNamePrefix": "three-",
+  "maxRawBytes": 583000,
+  "maxGzipBytes": 147000
+}

@@ -38,6 +38,7 @@ async function copiedUrl(page: Page): Promise<URL> {
 test("Copy Link of a sampled crystal reopens the same geometry", async ({ page }) => {
   await stubClipboard(page);
   await page.goto("/?seed=abcde");
+  await page.waitForSelector('[data-boot="ready"]');
   await expect(page.locator("#seed-display")).toHaveText("abcde");
   await expect(page.locator("#stat-branches")).toHaveText("301");
 
@@ -54,6 +55,7 @@ test("Copy Link of a sampled crystal reopens the same geometry", async ({ page }
 
 test("Back and Forward restore sampled geometry, not the rounded Lab point", async ({ page }) => {
   await page.goto("/?seed=abcde");
+  await page.waitForSelector('[data-boot="ready"]');
   await expect(page.locator("#stat-branches")).toHaveText("301");
   const first = await downloadPolygons(page);
 

@@ -1,4 +1,5 @@
 import { getHabit, Habit, LAB_TEMP_MAX_C, LAB_TEMP_MIN_C } from './nakaya';
+import { newYieldDeadline, yieldIfOverBudget } from '../lib/yield-to-main';
 
 const HABIT_COLORS: Record<Habit, string> = {
   plate: 'rgba(158, 201, 255, 0.15)',
@@ -10,7 +11,7 @@ const HABIT_COLORS: Record<Habit, string> = {
   capped_column: 'rgba(138, 155, 176, 0.3)',
 };
 
-export function initNakayaDiagram(canvas: HTMLCanvasElement) {
+export async function initNakayaDiagram(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
@@ -40,12 +41,13 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
   const cacheCtx = cacheCanvas.getContext('2d');
   cacheCtx?.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  function drawBackground() {
+  async function drawBackground() {
     if (!cacheCtx) return;
     cacheCtx.clearRect(0, 0, width, height);
 
     // Sample morphology regions (high-density grid)
     const res = 4;
+    let deadline = newYieldDeadline();
     for (let x = 0; x < width; x += res) {
       for (let y = 0; y < height; y += res) {
         const temp = (x / width) * (LAB_TEMP_MAX_C - LAB_TEMP_MIN_C) + LAB_TEMP_MIN_C;
@@ -53,6 +55,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
         const habit = getHabit(temp, ss);
         cacheCtx.fillStyle = HABIT_COLORS[habit];
         cacheCtx.fillRect(x, y, res, res);
+        deadline = await yieldIfOverBudget(deadline);
       }
     }
 
@@ -81,7 +84,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     cacheCtx.fillText('Needles', toX(-7), toY(0.8));
   }
 
-  drawBackground();
+  await drawBackground();
 
   let isDisposed = false;
   let lastPath: { temp: number; ss: number }[] = [];
@@ -90,8 +93,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
   if (document.fonts) {
     document.fonts.ready.then(() => {
       if (isDisposed) return;
-      drawBackground();
-      render();
+      void drawBackground().then(() => render());
     });
   }
 

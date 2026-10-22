@@ -39,6 +39,7 @@ export function createInertScene(): Scene {
     qualityTier: "lite",
     glintMode: "static",
     start() {},
+    prepareForFirstFrame: async () => {},
     dispose() {},
     setAutoRotate() {},
     setPinkMode(enabled: boolean) {
@@ -50,6 +51,7 @@ export function createInertScene(): Scene {
     setPhotoMode() {},
     setQualityTier: () => "lite",
     updateFlake() {},
+    updateFlakeAsync: async () => {},
     resetView() {},
     rotateView() {},
     resize() {},

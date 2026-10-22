@@ -19,6 +19,7 @@ test("chips are hidden until Lab Mode is on", async ({ page }) => {
 
 test("a chip jumps to its habit, and one Back step returns to the previous crystal", async ({ page }) => {
   await page.goto("/?seed=abcde");
+  await page.waitForSelector('[data-boot="ready"]');
   await page.click("#lab-toggle");
   // "ON" only after the Tweakpane chunk has loaded (it reads LOADING... first).
   await expect(page.locator("#lab-status")).toHaveText("ON");
@@ -48,6 +49,7 @@ test("a chip jumps to its habit, and one Back step returns to the previous cryst
 
 test("the active chip follows the Nakaya diagram keyboard, and only one is pressed", async ({ page }) => {
   await page.goto("/?seed=abcde");
+  await page.waitForSelector('[data-boot="ready"]');
   await page.click("#lab-toggle");
   await expect(page.locator("#lab-status")).toHaveText("ON");
   await expect(page.locator("#habit-chips")).toBeVisible();
@@ -70,6 +72,7 @@ test("the active chip follows the Nakaya diagram keyboard, and only one is press
 test("chips wrap inside the 360px panel without horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await page.goto("/?seed=abcde");
+  await page.waitForSelector('[data-boot="ready"]');
   await page.click("#lab-toggle");
   await expect(page.locator("#habit-chips")).toBeVisible();
   const box = await page.locator("#habit-chips").boundingBox();
