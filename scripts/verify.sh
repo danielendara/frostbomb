@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 
 step() { printf '\n=== verify: %s ===\n' "$1"; }
 
+step "AGENTS.md policy";   node scripts/check-agents-md.mjs
 step "typecheck (app)";    npx tsc --noEmit
 step "typecheck (tests)";  npm run typecheck:tests
 step "unit tests";         npm run test:unit
