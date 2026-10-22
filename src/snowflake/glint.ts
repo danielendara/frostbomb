@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { Material, ShaderChunk, Vector3 } from "three";
 import { GLINT_STATIC_FROM, GLINT_STATIC_TO } from "./frost-data";
 import type { QualityTier } from "./quality";
 
@@ -25,7 +25,7 @@ import type { QualityTier } from "./quality";
 export type GlintMode = "view" | "static";
 
 /** Virtual light in view space (up, right, towards the camera), before any view-driven turn. */
-const REST_LIGHT = new THREE.Vector3(0.35, 0.55, 0.76).normalize();
+const REST_LIGHT = new Vector3(0.35, 0.55, 0.76).normalize();
 /** Virtual-light azimuth (radians) added per radian the flake turns: shimmer beyond plain geometry. */
 export const GLINT_PHASE_GAIN = 0.6;
 
@@ -107,7 +107,7 @@ export function patchGlintShader(
   Object.assign(shader.uniforms, uniforms);
   shader.fragmentShader = shader.fragmentShader
     .replace("#include <normal_fragment_maps>", () =>
-      THREE.ShaderChunk.normal_fragment_maps.replace(NORMAL_MAP_FETCH, NORMAL_MAP_FETCH_KEEPING_ALPHA),
+      ShaderChunk.normal_fragment_maps.replace(NORMAL_MAP_FETCH, NORMAL_MAP_FETCH_KEEPING_ALPHA),
     )
     .replace("#include <common>", `#include <common>\n${GLINT_PARS}`)
     .replace("#include <fog_fragment>", `#include <fog_fragment>\n${GLINT_BODY}`);
@@ -176,13 +176,13 @@ export class GlintController {
   }
 
   /** Install the shader patch and cache key. Call once; pair with {@link syncDefines}. */
-  attach(material: THREE.Material): void {
+  attach(material: Material): void {
     material.onBeforeCompile = (shader) => patchGlintShader(shader, this.uniforms);
     material.customProgramCacheKey = () => `glint-${this.current}`;
   }
 
   /** Mirror the mode into the material's `GLINT` / `GLINT_STATIC` defines. The caller sets `needsUpdate`. */
-  syncDefines(material: THREE.Material): void {
+  syncDefines(material: Material): void {
     material.defines ??= {};
     delete material.defines.GLINT;
     delete material.defines.GLINT_STATIC;

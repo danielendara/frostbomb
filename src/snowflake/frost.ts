@@ -1,32 +1,39 @@
-import * as THREE from "three";
+import {
+  DataTexture,
+  LinearFilter,
+  LinearMipmapLinearFilter,
+  NoColorSpace,
+  RepeatWrapping,
+  RGBAFormat,
+} from "three";
 import { FROST_REPEAT, FROST_SIZE, generateFrostBuffers, type FrostBuffers } from "./frost-data";
 import { reportClientError } from "../ui/client-error";
 
-function configureMap(texture: THREE.DataTexture): THREE.DataTexture {
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
+function configureMap(texture: DataTexture): DataTexture {
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
   // Square grain on the faceted plate segments (see FROST_REPEAT).
   texture.repeat.set(FROST_REPEAT[0], FROST_REPEAT[1]);
   texture.anisotropy = 8;
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
-  texture.colorSpace = THREE.NoColorSpace;
+  texture.colorSpace = NoColorSpace;
   texture.needsUpdate = true;
   return texture;
 }
 
 export interface FrostMaps {
-  roughnessMap: THREE.DataTexture;
-  normalMap: THREE.DataTexture;
+  roughnessMap: DataTexture;
+  normalMap: DataTexture;
 }
 
 function buffersToTextures(buffers: FrostBuffers): FrostMaps {
   const roughnessMap = configureMap(
-    new THREE.DataTexture(buffers.roughnessData, FROST_SIZE, FROST_SIZE, THREE.RGBAFormat),
+    new DataTexture(buffers.roughnessData, FROST_SIZE, FROST_SIZE, RGBAFormat),
   );
   const normalMap = configureMap(
-    new THREE.DataTexture(buffers.normalData, FROST_SIZE, FROST_SIZE, THREE.RGBAFormat),
+    new DataTexture(buffers.normalData, FROST_SIZE, FROST_SIZE, RGBAFormat),
   );
   return { roughnessMap, normalMap };
 }
@@ -35,10 +42,10 @@ function buffersToTextures(buffers: FrostBuffers): FrostMaps {
 export function createFrostPlaceholders(): FrostMaps {
   const roughness = new Uint8Array([128, 89, 128, 0]);
   const normal = new Uint8Array([128, 128, 255, 0]);
-  const roughnessMap = new THREE.DataTexture(roughness, 1, 1, THREE.RGBAFormat);
-  const normalMap = new THREE.DataTexture(normal, 1, 1, THREE.RGBAFormat);
-  roughnessMap.colorSpace = THREE.NoColorSpace;
-  normalMap.colorSpace = THREE.NoColorSpace;
+  const roughnessMap = new DataTexture(roughness, 1, 1, RGBAFormat);
+  const normalMap = new DataTexture(normal, 1, 1, RGBAFormat);
+  roughnessMap.colorSpace = NoColorSpace;
+  normalMap.colorSpace = NoColorSpace;
   roughnessMap.needsUpdate = true;
   normalMap.needsUpdate = true;
   return { roughnessMap, normalMap };

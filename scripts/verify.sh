@@ -10,6 +10,7 @@ step "typecheck (app)";    npx tsc --noEmit
 step "typecheck (tests)";  npm run typecheck:tests
 step "unit tests";         npm run test:unit
 step "build";              npx vite build
+step "three chunk budget"; node scripts/check-three-chunk-budget.mjs
 step "e2e smoke";          npm run test:e2e:smoke
 
 printf '\n=== verify: ALL PASSED ===\n'

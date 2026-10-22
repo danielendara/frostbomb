@@ -1,9 +1,15 @@
-import * as THREE from "three";
+import {
+  AdditiveBlending,
+  BufferAttribute,
+  BufferGeometry,
+  Points,
+  PointsMaterial,
+} from "three";
 
 export class SnowfallParticleSystem {
-  public particles: THREE.Points;
-  public geometry: THREE.BufferGeometry;
-  public material: THREE.PointsMaterial;
+  public particles: Points;
+  public geometry: BufferGeometry;
+  public material: PointsMaterial;
 
   private particleCount: number;
   /** Buffer size; `setCount` can only shrink below it. */
@@ -26,7 +32,7 @@ export class SnowfallParticleSystem {
   constructor(prefersReducedMotion: boolean, particleCount = 200) {
     this.particleCount = particleCount;
     this.capacity = particleCount;
-    this.geometry = new THREE.BufferGeometry();
+    this.geometry = new BufferGeometry();
     this.particlePos = new Float32Array(this.particleCount * 3);
     this.particleVelBase = new Float32Array(this.particleCount);
     this.particleSinPhaseBase = new Float32Array(this.particleCount);
@@ -51,15 +57,15 @@ export class SnowfallParticleSystem {
     this.driftScale = 0.002 * this.motionScale;
     this.updateScaledBuffers();
 
-    this.geometry.setAttribute("position", new THREE.BufferAttribute(this.particlePos, 3));
-    this.material = new THREE.PointsMaterial({
+    this.geometry.setAttribute("position", new BufferAttribute(this.particlePos, 3));
+    this.material = new PointsMaterial({
       color: 0xffffff,
       size: 0.05,
       transparent: true,
       opacity: 0.5,
-      blending: THREE.AdditiveBlending,
+      blending: AdditiveBlending,
     });
-    this.particles = new THREE.Points(this.geometry, this.material);
+    this.particles = new Points(this.geometry, this.material);
   }
 
   /** Draw and animate only the first `count` particles (a quality tier change). */

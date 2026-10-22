@@ -1,4 +1,15 @@
-import * as THREE from "three";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Euler,
+  Matrix3,
+  Matrix4,
+  Mesh,
+  MeshStandardMaterial,
+  Quaternion,
+  Scene,
+  Vector3,
+} from "three";
 import { STLExporter } from "three/addons/exporters/STLExporter.js";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import type { BuildResult, InstanceData } from "./geometry";
@@ -11,13 +22,13 @@ import {
 /** Long-axis size in millimetres. STL/GLB are unitless; most slicers treat this as mm. */
 const PHYSICAL_MM = 50;
 
-function coreMatrix(core: InstanceData): THREE.Matrix4 {
-  return new THREE.Matrix4().compose(
-    new THREE.Vector3(core.position[0], core.position[1], core.position[2]),
-    new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(core.rotation[0], core.rotation[1], core.rotation[2], CORE_EULER_ORDER),
+function coreMatrix(core: InstanceData): Matrix4 {
+  return new Matrix4().compose(
+    new Vector3(core.position[0], core.position[1], core.position[2]),
+    new Quaternion().setFromEuler(
+      new Euler(core.rotation[0], core.rotation[1], core.rotation[2], CORE_EULER_ORDER),
     ),
-    new THREE.Vector3(core.scale[0], core.scale[1], core.scale[2]),
+    new Vector3(core.scale[0], core.scale[1], core.scale[2]),
   );
 }
 
@@ -32,11 +43,11 @@ function toArrayBuffer(data: unknown): ArrayBuffer {
   throw new Error("Export payload was not binary");
 }
 
-function scaleToPhysicalMm(geom: THREE.BufferGeometry): void {
+function scaleToPhysicalMm(geom: BufferGeometry): void {
   geom.computeBoundingBox();
   const box = geom.boundingBox;
   if (!box) return;
-  const size = new THREE.Vector3();
+  const size = new Vector3();
   box.getSize(size);
   const long = Math.max(size.x, size.y, size.z, 1e-6);
   const s = PHYSICAL_MM / long;
@@ -48,12 +59,12 @@ function scaleToPhysicalMm(geom: THREE.BufferGeometry): void {
  * Each prism is closed (every edge in two faces), but segments overlap, so the merge is
  * not a boolean union.
  */
-function bakeExportGeometry(data: BuildResult): THREE.BufferGeometry {
+function bakeExportGeometry(data: BuildResult): BufferGeometry {
   const segment = createSegmentGeometry();
   const plate = createCorePlateGeometry();
   const instN = data.matrices.length / 16;
 
-  const segPos = segment.getAttribute("position") as THREE.BufferAttribute;
+  const segPos = segment.getAttribute("position") as BufferAttribute;
   const plateVerts = plate.getAttribute("position").count;
   const segIdx = segment.getIndex();
   const plateIdx = plate.getIndex();
@@ -69,16 +80,16 @@ function bakeExportGeometry(data: BuildResult): THREE.BufferGeometry {
   const normals = new Float32Array(vTotal * 3);
   const indices = new Uint32Array(iTotal);
 
-  const matrix = new THREE.Matrix4();
-  const normalMatrix = new THREE.Matrix3();
-  const vertex = new THREE.Vector3();
-  const normal = new THREE.Vector3();
+  const matrix = new Matrix4();
+  const normalMatrix = new Matrix3();
+  const vertex = new Vector3();
+  const normal = new Vector3();
   let vOffset = 0;
   let iOffset = 0;
 
-  const bake = (proto: THREE.BufferGeometry, idx: THREE.BufferAttribute, m: THREE.Matrix4) => {
-    const pos = proto.getAttribute("position") as THREE.BufferAttribute;
-    const nrm = proto.getAttribute("normal") as THREE.BufferAttribute;
+  const bake = (proto: BufferGeometry, idx: BufferAttribute, m: Matrix4) => {
+    const pos = proto.getAttribute("position") as BufferAttribute;
+    const nrm = proto.getAttribute("normal") as BufferAttribute;
     normalMatrix.getNormalMatrix(m);
 
     for (let i = 0; i < pos.count; i++) {
@@ -108,10 +119,10 @@ function bakeExportGeometry(data: BuildResult): THREE.BufferGeometry {
   segment.dispose();
   plate.dispose();
 
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geom.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
-  geom.setIndex(new THREE.BufferAttribute(indices, 1));
+  const geom = new BufferGeometry();
+  geom.setAttribute("position", new BufferAttribute(positions, 3));
+  geom.setAttribute("normal", new BufferAttribute(normals, 3));
+  geom.setIndex(new BufferAttribute(indices, 1));
   scaleToPhysicalMm(geom);
   return geom;
 }
@@ -120,9 +131,9 @@ export async function exportSnowflakeModels(
   data: BuildResult,
 ): Promise<{ stl: Blob; glb: Blob }> {
   const geom = bakeExportGeometry(data);
-  const mesh = new THREE.Mesh(
+  const mesh = new Mesh(
     geom,
-    new THREE.MeshStandardMaterial({
+    new MeshStandardMaterial({
       color: 0xffffff,
       metalness: 0,
       roughness: 0.35,
@@ -131,7 +142,7 @@ export async function exportSnowflakeModels(
 
   const stl = new STLExporter().parse(mesh, { binary: true });
 
-  const exportScene = new THREE.Scene();
+  const exportScene = new Scene();
   exportScene.add(mesh);
   const glb = await new GLTFExporter().parseAsync(exportScene, {
     binary: true,

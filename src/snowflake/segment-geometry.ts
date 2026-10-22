@@ -1,4 +1,9 @@
-import * as THREE from "three";
+import {
+  BufferGeometry,
+  Float32BufferAttribute,
+  Vector3,
+  type EulerOrder,
+} from "three";
 
 /**
  * Render-side meshes for the crystal. `buildSnowflake` is untouched: every segment instance
@@ -54,7 +59,7 @@ const CORE_SPEC: PrismSpec = {
  * is applied before the X turn and tips the disc 30° out of the flake plane. "ZXY" lays it
  * flat first, then spins it about world Z.
  */
-export const CORE_EULER_ORDER: THREE.EulerOrder = "ZXY";
+export const CORE_EULER_ORDER: EulerOrder = "ZXY";
 
 type Vec3 = [number, number, number];
 interface Vertex {
@@ -75,7 +80,7 @@ function ring(spec: PrismSpec, y: number, scale: number): Vec3[] {
   return section.map(([x, z]) => [x * scale, y, z * scale]);
 }
 
-function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
+function buildPrism(spec: PrismSpec): BufferGeometry {
   const { bevelLength, bevelScale, capUvScale } = spec;
   const rings = [
     ring(spec, -0.5, bevelScale),
@@ -91,10 +96,10 @@ function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
 
   /** One flat face (convex polygon). Wound outward: the prism is convex and centred on the origin. */
   const face = (verts: Vertex[]) => {
-    const [a, b, c] = verts.map((v) => new THREE.Vector3(...v.p));
-    const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
-    const centre = new THREE.Vector3();
-    for (const v of verts) centre.add(new THREE.Vector3(...v.p));
+    const [a, b, c] = verts.map((v) => new Vector3(...v.p));
+    const n = new Vector3().subVectors(b, a).cross(new Vector3().subVectors(c, a));
+    const centre = new Vector3();
+    for (const v of verts) centre.add(new Vector3(...v.p));
     if (n.dot(centre) < 0) {
       verts = [...verts].reverse();
       n.negate();
@@ -135,10 +140,10 @@ function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
     );
   }
 
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geom.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
-  geom.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  const geom = new BufferGeometry();
+  geom.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geom.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+  geom.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
   geom.setIndex(indices);
   geom.computeTangents();
   return geom;
@@ -148,7 +153,7 @@ function buildPrism(spec: PrismSpec): THREE.BufferGeometry {
  * Instance geometry for one crystal segment: a closed, chamfered, ridged flat hex prism,
  * 44 triangles, spanning X ±0.433, Y ±0.5, Z ±0.2 (thin in the flake's Z).
  */
-export function createSegmentGeometry(): THREE.BufferGeometry {
+export function createSegmentGeometry(): BufferGeometry {
   return buildPrism(SEGMENT_SPEC);
 }
 
@@ -157,6 +162,6 @@ export function createSegmentGeometry(): THREE.BufferGeometry {
  * is local Y, the same layout as the cylinder it replaces, so `core.scale` ([2r, height, 2r])
  * and `core.rotation` apply as before. Use {@link CORE_EULER_ORDER} on the mesh.
  */
-export function createCorePlateGeometry(): THREE.BufferGeometry {
+export function createCorePlateGeometry(): BufferGeometry {
   return buildPrism(CORE_SPEC);
 }
