@@ -1,8 +1,8 @@
 /** Gap between sequential blob downloads so the second click is not dropped. */
-export const DOWNLOAD_GAP_MS = 100;
+const DOWNLOAD_GAP_MS = 100;
 
 /** Keep object URLs alive until the browser has started the save. */
-export const OBJECT_URL_REVOKE_MS = 2000;
+const OBJECT_URL_REVOKE_MS = 2000;
 
 function overrideMs(key: string, fallback: number): number {
   const value = (window as unknown as Record<string, unknown>)[key];

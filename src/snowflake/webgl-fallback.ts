@@ -2,12 +2,12 @@ import type { Scene } from "./scene";
 
 export const WEBGL_UNAVAILABLE_ANNOUNCEMENT =
   "3D view unavailable on this device. Rotate, view reset and PNG, wallpaper, SVG and 3D exports are disabled.";
-export const WEBGL_UNAVAILABLE_NOTE = "3D view unavailable on this device";
-export const WEBGL_FALLBACK_ALT =
+const WEBGL_UNAVAILABLE_NOTE = "3D view unavailable on this device";
+const WEBGL_FALLBACK_ALT =
   "A stellar dendrite snowflake: six branching arms around a small hexagonal core, rendered in pale ice-grey on a dark blue night sky.";
 
 /** Buttons that need the 3D scene. Their keyboard shortcuts are gated in main.ts. */
-export const WEBGL_ONLY_BUTTON_IDS = [
+const WEBGL_ONLY_BUTTON_IDS = [
   "btn-rotate",
   "btn-reset",
   "btn-save",

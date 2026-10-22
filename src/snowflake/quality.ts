@@ -20,7 +20,7 @@ export interface TierHints extends PostprocessingSkipHints {
 }
 
 /** A coarse-pointer viewport this narrow or narrower is a basic phone. */
-export const LITE_MAX_VIEWPORT_CSS_PX = 480;
+const LITE_MAX_VIEWPORT_CSS_PX = 480;
 
 export interface TierProfile {
   /** Upper bound for the renderer pixel ratio. */
@@ -40,7 +40,7 @@ export const TIER_PROFILES: Readonly<Record<QualityTier, TierProfile>> = {
 };
 
 /** Reduced motion renders at CSS resolution regardless of tier. */
-export const REDUCED_MOTION_DPR_CAP = 1;
+const REDUCED_MOTION_DPR_CAP = 1;
 
 export function dprCapFor(tier: QualityTier, prefersReducedMotion: boolean): number {
   return prefersReducedMotion ? REDUCED_MOTION_DPR_CAP : TIER_PROFILES[tier].dprCap;
@@ -90,7 +90,7 @@ export function readTierHints(
 }
 
 /** EMA frame time above this (25 ms) counts as a slow frame. */
-export const SLOW_FRAME_SECONDS = 1 / 40;
+const SLOW_FRAME_SECONDS = 1 / 40;
 /** Consecutive slow frames (by EMA) before RICH falls to LITE. */
 export const SLOW_FRAME_LIMIT = 90;
 const EMA_WEIGHT = 0.05;
