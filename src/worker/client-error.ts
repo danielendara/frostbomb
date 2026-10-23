@@ -81,6 +81,13 @@ export async function handleClientError(
     return new Response(null, { status: 405, headers: { allow: "POST", "cache-control": "no-store" } });
   }
 
+  // Reject cross-site posts; requests with neither header (old sendBeacon) pass.
+  const site = request.headers.get("sec-fetch-site");
+  const origin = request.headers.get("origin");
+  if ((site !== null && site !== "same-origin") || (origin !== null && origin !== new URL(request.url).origin)) {
+    return empty(403);
+  }
+
   const declared = Number(request.headers.get("content-length") ?? "0");
   if (declared > CLIENT_ERROR_BODY_MAX) return empty(413);
 
