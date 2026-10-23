@@ -1,0 +1,60 @@
+{
+ "before": [
+  {
+   "lcpMs": 5620,
+   "cls": 0,
+   "fcpMs": 5554,
+   "score": 0.65,
+   "lighthouse": "13.5.0",
+   "formFactor": "mobile",
+   "throttling": "simulate"
+  },
+  {
+   "lcpMs": 5607,
+   "cls": 0,
+   "fcpMs": 5403,
+   "score": 0.65,
+   "lighthouse": "13.5.0",
+   "formFactor": "mobile",
+   "throttling": "simulate"
+  },
+  {
+   "lcpMs": 5605,
+   "cls": 0,
+   "fcpMs": 5402,
+   "score": 0.51,
+   "lighthouse": "13.5.0",
+   "formFactor": "mobile",
+   "throttling": "simulate"
+  }
+ ],
+ "after": [
+  {
+   "lcpMs": 5612,
+   "cls": 0,
+   "fcpMs": 5253,
+   "score": 0.66,
+   "lighthouse": "13.5.0",
+   "formFactor": "mobile",
+   "throttling": "simulate"
+  },
+  {
+   "lcpMs": 5615,
+   "cls": 0,
+   "fcpMs": 5253,
+   "score": 0.66,
+   "lighthouse": "13.5.0",
+   "formFactor": "mobile",
+   "throttling": "simulate"
+  },
+  {
+   "lcpMs": 5506,
+   "cls": 0,
+   "fcpMs": 5151,
+   "score": 0.66,
+   "lighthouse": "13.5.0",
+   "formFactor": "mobile",
+   "throttling": "simulate"
+  }
+ ]
+}

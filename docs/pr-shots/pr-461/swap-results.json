@@ -1,0 +1,186 @@
+{
+ "before": [
+  {
+   "cls": 0,
+   "shifts": [],
+   "lcp": {
+    "t": 1368,
+    "el": "wordmark"
+   },
+   "fcp": 788,
+   "wordmarkFirstFrame": {
+    "t": 746,
+    "w": 109.7,
+    "loaded": true
+   },
+   "wordmarkSwapFrame": {
+    "t": 1284,
+    "w": 116.9,
+    "loaded": true
+   },
+   "wordmarkWidths": [
+    109.7,
+    116.9
+   ],
+   "fontMs": [
+    {
+     "start": 638,
+     "end": 1060
+    }
+   ],
+   "fallbackShotTaken": false
+  },
+  {
+   "cls": 0,
+   "shifts": [],
+   "lcp": {
+    "t": 1244,
+    "el": "wordmark"
+   },
+   "fcp": 692,
+   "wordmarkFirstFrame": {
+    "t": 650,
+    "w": 109.7,
+    "loaded": true
+   },
+   "wordmarkSwapFrame": {
+    "t": 1157,
+    "w": 116.9,
+    "loaded": true
+   },
+   "wordmarkWidths": [
+    109.7,
+    116.9
+   ],
+   "fontMs": [
+    {
+     "start": 633,
+     "end": 960
+    }
+   ],
+   "fallbackShotTaken": false
+  },
+  {
+   "cls": 0,
+   "shifts": [],
+   "lcp": {
+    "t": 1224,
+    "el": "wordmark"
+   },
+   "fcp": 672,
+   "wordmarkFirstFrame": {
+    "t": 637,
+    "w": 109.7,
+    "loaded": true
+   },
+   "wordmarkSwapFrame": {
+    "t": 1148,
+    "w": 116.9,
+    "loaded": true
+   },
+   "wordmarkWidths": [
+    109.7,
+    116.9
+   ],
+   "fontMs": [
+    {
+     "start": 624,
+     "end": 945
+    }
+   ],
+   "fallbackShotTaken": false
+  }
+ ],
+ "after": [
+  {
+   "cls": 0,
+   "shifts": [],
+   "lcp": {
+    "t": 1272,
+    "el": "wordmark"
+   },
+   "fcp": 672,
+   "wordmarkFirstFrame": {
+    "t": 639,
+    "w": 109.7,
+    "loaded": true
+   },
+   "wordmarkSwapFrame": {
+    "t": 1170,
+    "w": 116.9,
+    "loaded": true
+   },
+   "wordmarkWidths": [
+    109.7,
+    116.9
+   ],
+   "fontMs": [
+    {
+     "start": 312,
+     "end": 621
+    }
+   ],
+   "fallbackShotTaken": false
+  },
+  {
+   "cls": 0,
+   "shifts": [],
+   "lcp": {
+    "t": 1172,
+    "el": "wordmark"
+   },
+   "fcp": 672,
+   "wordmarkFirstFrame": {
+    "t": 638,
+    "w": 109.7,
+    "loaded": true
+   },
+   "wordmarkSwapFrame": {
+    "t": 1095,
+    "w": 116.9,
+    "loaded": true
+   },
+   "wordmarkWidths": [
+    109.7,
+    116.9
+   ],
+   "fontMs": [
+    {
+     "start": 312,
+     "end": 621
+    }
+   ],
+   "fallbackShotTaken": false
+  },
+  {
+   "cls": 0,
+   "shifts": [],
+   "lcp": {
+    "t": 1184,
+    "el": "wordmark"
+   },
+   "fcp": 668,
+   "wordmarkFirstFrame": {
+    "t": 636,
+    "w": 109.7,
+    "loaded": true
+   },
+   "wordmarkSwapFrame": {
+    "t": 1105,
+    "w": 116.9,
+    "loaded": true
+   },
+   "wordmarkWidths": [
+    109.7,
+    116.9
+   ],
+   "fontMs": [
+    {
+     "start": 311,
+     "end": 619
+    }
+   ],
+   "fallbackShotTaken": false
+  }
+ ]
+}
