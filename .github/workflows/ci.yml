@@ -30,77 +30,30 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
-          ACTOR: ${{ github.actor }}
           FULL_E2E: ${{ github.event.inputs.full_e2e }}
         run: |
           set -euo pipefail
 
-          skip_playwright=false
-          e2e_mode=smoke
-
+          args=()
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             if [ "$FULL_E2E" = "true" ]; then
-              e2e_mode=full
+              args+=(--force-full)
             else
-              e2e_mode=smoke
+              args+=(--force-smoke)
             fi
-            echo "skip_playwright=false" >> "$GITHUB_OUTPUT"
-            echo "e2e_mode=$e2e_mode" >> "$GITHUB_OUTPUT"
+            bash scripts/e2e-mode.sh --dispatch "${args[@]}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [ "$EVENT_NAME" = "pull_request" ]; then
             git fetch origin "$BASE_REF" --depth=1
-            mapfile -t changed < <(git diff --name-only "origin/${BASE_REF}...HEAD")
-          else
-            mapfile -t changed < <(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
-            if [ "${#changed[@]}" -eq 0 ]; then
-              mapfile -t changed < <(git ls-files)
-            fi
-          fi
-
-          echo "Changed files:"
-          printf '  %s\n' "${changed[@]}"
-
-          if [ "$EVENT_NAME" = "pull_request" ]; then
             if jq -e '.pull_request.labels[]? | select(.name == "full-e2e")' "$GITHUB_EVENT_PATH" >/dev/null; then
-              e2e_mode=full
+              args+=(--force-full)
             fi
+            bash scripts/e2e-mode.sh --pr "origin/${BASE_REF}" "${args[@]}" >> "$GITHUB_OUTPUT"
+          else
+            bash scripts/e2e-mode.sh --push >> "$GITHUB_OUTPUT"
           fi
-
-          docs_only=true
-          dependabot_lock_only=true
-          for f in "${changed[@]}"; do
-            case "$f" in
-              *.md|docs/*|LICENSE) ;;
-              *) docs_only=false ;;
-            esac
-
-            case "$f" in
-              package-lock.json|pnpm-lock.yaml|yarn.lock) ;;
-              *) dependabot_lock_only=false ;;
-            esac
-
-            if [[ "$f" == src/snowflake/* ]] \
-              || [[ "$f" == src/ui/* ]] \
-              || [[ "$f" == playwright.config.ts ]] \
-              || [[ "$f" == vite.config.ts ]] \
-              || { [[ "$f" == src/* ]] && [[ "$f" =~ (canvas|webgl|export) ]]; } \
-              || { [[ "$f" == tests/* ]] && [[ "$f" != *.smoke.spec.ts ]]; }; then
-              e2e_mode=full
-            fi
-          done
-
-          if [ "$docs_only" = true ] && [ "${#changed[@]}" -gt 0 ]; then
-            skip_playwright=true
-          fi
-
-          if [ "$ACTOR" = "dependabot[bot]" ] && [ "$dependabot_lock_only" = true ]; then
-            skip_playwright=true
-          fi
-
-          echo "skip_playwright=$skip_playwright" >> "$GITHUB_OUTPUT"
-          echo "e2e_mode=$e2e_mode" >> "$GITHUB_OUTPUT"
 
   build-and-test:
     needs: changes

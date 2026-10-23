@@ -123,11 +123,11 @@ npm run preview # Serves the Worker locally with Wrangler
 ```bash
 npm run test:unit          # Vitest unit tests
 npm run test:e2e:smoke     # Smoke Playwright project only (sequential-smoke; same as default CI e2e)
-npm run test:e2e:full      # Full chromium project plus smoke (FROSTBOMB_E2E=full)
-npm test                   # pretest runs unit tests, then Playwright with FROSTBOMB_E2E defaulting to smoke (smoke project only)
+npm run test:e2e:full      # Full chromium project plus smoke (all Playwright projects)
+npm test                   # pretest runs unit tests, then smoke Playwright project only (`--project=sequential-smoke`)
 ```
 
-`playwright.config.ts` treats unset `FROSTBOMB_E2E` as `smoke`, so `npm test` does **not** run the full chromium suite unless you set `FROSTBOMB_E2E=full` or use `npm run test:e2e:full`.
+`playwright.config.ts` always declares both projects; `npm test` and `npm run test:e2e:smoke` narrow to smoke via `--project=sequential-smoke`. Use `npm run test:e2e:full` for the full chromium suite.
 
 ### CI
 

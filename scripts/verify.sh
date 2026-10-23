@@ -12,6 +12,23 @@ step "typecheck (tests)";  npm run typecheck:tests
 step "unit tests";         npm run test:unit
 step "build";              npx vite build
 step "three chunk budget"; node scripts/check-three-chunk-budget.mjs
-step "e2e smoke";          npm run test:e2e:smoke
+
+mapfile -t e2e_out < <(bash scripts/e2e-mode.sh --local)
+e2e_mode=""
+reason=""
+for line in "${e2e_out[@]}"; do
+  case "$line" in
+    e2e_mode=*) e2e_mode="${line#e2e_mode=}" ;;
+    reason=*) reason="${line#reason=}" ;;
+  esac
+done
+
+if [[ "$e2e_mode" == full ]]; then
+  step "e2e full ($reason)"
+  npm run test:e2e:full
+else
+  step "e2e smoke ($reason)"
+  npm run test:e2e:smoke
+fi
 
 printf '\n=== verify: ALL PASSED ===\n'
