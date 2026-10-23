@@ -27,6 +27,27 @@ describe("POST /api/client-error", () => {
     expect(JSON.parse(log.mock.calls[0]![0])).toEqual({ event: "client_error", ...valid });
   });
 
+  it("accepts same-origin and header-less requests", async () => {
+    const log = vi.fn();
+    const body = JSON.stringify(valid);
+
+    expect((await handleClientError(post(body, { origin: "https://frostbomb.com", "sec-fetch-site": "same-origin" }), log)).status).toBe(204);
+    expect((await handleClientError(post(body), log)).status).toBe(204);
+    expect(log).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["a cross-site Origin", { origin: "https://evil.example" }],
+    ["Sec-Fetch-Site cross-site", { "sec-fetch-site": "cross-site" }],
+    ["Sec-Fetch-Site same-site", { "sec-fetch-site": "same-site" }],
+  ])("returns 403 and does not log for %s", async (_label, headers) => {
+    const log = vi.fn();
+    const res = await handleClientError(post(JSON.stringify(valid), headers), log);
+
+    expect(res.status).toBe(403);
+    expect(log).not.toHaveBeenCalled();
+  });
+
   it("returns 413 for an oversized body, by header or by bytes", async () => {
     const log = vi.fn();
     const big = JSON.stringify({ ...valid, message: "x".repeat(CLIENT_ERROR_BODY_MAX) });
