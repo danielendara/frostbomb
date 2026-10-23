@@ -10,9 +10,10 @@ cd "$REPO_ROOT"
 force_full=false
 force_smoke=false
 scope=""
+declare -a fixture_paths=()
 
 usage() {
-  echo "usage: scripts/e2e-mode.sh [--force-full|--force-smoke] --local | --push | --pr <base-ref> | --dispatch" >&2
+  echo "usage: scripts/e2e-mode.sh [--force-full|--force-smoke] --local | --push | --pr <base-ref> | --dispatch | --fixtures <path>..." >&2
   exit 2
 }
 
@@ -23,6 +24,12 @@ while [[ $# -gt 0 ]]; do
     --local) scope=local; shift ;;
     --push) scope=push; shift ;;
     --dispatch) scope=dispatch; shift ;;
+    --fixtures)
+      scope=fixtures
+      shift
+      fixture_paths=("$@")
+      set --
+      ;;
     --pr)
       scope=pr
       pr_base="${2:?--pr requires base ref}"
@@ -34,6 +41,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$scope" ]] || usage
+[[ "$scope" != fixtures || ${#fixture_paths[@]} -gt 0 ]] || usage
 
 emit() {
   local skip="$1" mode="$2" reason="$3"
@@ -82,7 +90,9 @@ collect_changed() {
 }
 
 declare -a changed=()
-if ! collect_changed changed; then
+if [[ "$scope" == fixtures ]]; then
+  changed=("${fixture_paths[@]}")
+elif ! collect_changed changed; then
   exit 0
 fi
 
