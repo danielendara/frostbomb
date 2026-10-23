@@ -1,8 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// FROSTBOMB_E2E=smoke (default CI) | full (on-demand full chromium suite)
-const e2eMode = process.env.FROSTBOMB_E2E ?? 'smoke';
-
 const smokeProject = {
   name: 'sequential-smoke',
   use: { ...devices['Desktop Chrome'] },
@@ -33,5 +30,5 @@ export default defineConfig({
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: !process.env.CI,
   },
-  projects: e2eMode === 'full' ? [chromiumProject, smokeProject] : [smokeProject],
+  projects: [chromiumProject, smokeProject],
 });
