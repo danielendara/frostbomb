@@ -15,4 +15,15 @@ describe("self-hosted display fonts", () => {
     expect(existsSync("public/fonts/OFL-Cormorant-Garamond.txt")).toBe(true);
     expect(existsSync("public/fonts/OFL-JetBrains-Mono.txt")).toBe(true);
   });
+
+  it("preloads only the wordmark face, with crossorigin", () => {
+    const html = readFileSync("index.html", "utf8");
+    const preloads = html.match(/<link\b[^>]*\brel="preload"[^>]*>/g) ?? [];
+
+    expect(preloads).toHaveLength(1);
+    expect(preloads[0]).toContain('href="/fonts/cormorant-garamond-latin-300-italic.woff2"');
+    expect(preloads[0]).toContain('as="font"');
+    expect(preloads[0]).toContain('type="font/woff2"');
+    expect(preloads[0]).toMatch(/\bcrossorigin\b/);
+  });
 });
