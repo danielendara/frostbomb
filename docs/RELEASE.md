@@ -39,6 +39,7 @@ npm run preview
 After the Worker is live at https://frostbomb.com:
 
 1. **Headers / CSP** — `curl -sI https://frostbomb.com/` should include `Content-Security-Policy` from `public/_headers` (also `X-Content-Type-Options: nosniff`).
+   Then load the site and confirm the browser console shows no CSP violations (this covers the Cloudflare Web Analytics beacon, since `script-src` has no `'unsafe-inline'`).
 2. **postprocessing is not modulepreloaded** — fetch the live HTML and confirm there is no `<link rel="modulepreload"` whose href contains `postprocessing`. `vite.config.ts` filters those deps in `build.modulePreload.resolveDependencies` so first paint stays on the lightweight pipeline.
 3. **Smoke** — open the site, confirm a crystal renders, and that Lab Mode / export still work.
 4. **Client-error endpoint** — `curl -s -o /dev/null -w '%{http_code}\n' -X POST https://frostbomb.com/api/client-error -H 'content-type: application/json' -d '{"kind":"error","message":"release check","build":"release-check","ua":"other"}'` should print `204`, and the line should show up in Workers Logs (below).
