@@ -11,13 +11,13 @@ function inlineScripts(html: string): string[] {
 }
 
 describe("CSP", () => {
-  it("script-src does not allow 'unsafe-inline'", () => {
+  it("script-src allows 'unsafe-inline' for Cloudflare bot-check injection", () => {
     const headers = readFileSync(resolve(root, "public/_headers"), "utf8");
     const csp = headers.split("\n").find((l) => l.trim().startsWith("Content-Security-Policy:"));
     expect(csp).toBeDefined();
     const scriptSrc = csp!.split(";").find((d) => d.trim().startsWith("script-src"));
     expect(scriptSrc).toBeDefined();
-    expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(scriptSrc).toContain("'unsafe-inline'");
   });
 
   it("index.html has no inline scripts or on* handlers", () => {
