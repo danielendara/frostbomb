@@ -10,7 +10,17 @@ const HABIT_COLORS: Record<Habit, string> = {
   capped_column: 'rgba(138, 155, 176, 0.3)',
 };
 
-export function initNakayaDiagram(canvas: HTMLCanvasElement) {
+export type NakayaDiagram = {
+  update: (path: { temp: number; ss: number }[], previewPoint?: { temp: number; ss: number }) => void;
+  ensureBackground: () => void;
+  hasBackground: () => boolean;
+  dispose: () => void;
+};
+
+export function initNakayaDiagram(
+  canvas: HTMLCanvasElement,
+  options: { deferBackground?: boolean } = {},
+): NakayaDiagram | null {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
@@ -81,19 +91,10 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     cacheCtx.fillText('Needles', toX(-7), toY(0.8));
   }
 
-  drawBackground();
-
+  let backgroundReady = false;
   let isDisposed = false;
   let lastPath: { temp: number; ss: number }[] = [];
   let lastPreview: { temp: number; ss: number } | undefined;
-  // Re-draw background when fonts are ready to ensure JetBrains Mono is used
-  if (document.fonts) {
-    document.fonts.ready.then(() => {
-      if (isDisposed) return;
-      drawBackground();
-      render();
-    });
-  }
 
   function drawPath(path: { temp: number; ss: number }[]) {
     if (path.length === 0) return;
@@ -156,6 +157,7 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
   }
 
   function render() {
+    if (!backgroundReady) return;
     ctx!.clearRect(0, 0, width, height);
     // Fast blit of pre-rendered background at logical size
     ctx!.drawImage(cacheCanvas, 0, 0, width, height);
@@ -165,6 +167,25 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
     }
   }
 
+  function ensureBackground() {
+    if (backgroundReady) return;
+    drawBackground();
+    backgroundReady = true;
+  }
+
+  if (!options.deferBackground) {
+    ensureBackground();
+  }
+
+  // Re-draw background when fonts are ready to ensure JetBrains Mono is used
+  if (document.fonts) {
+    document.fonts.ready.then(() => {
+      if (isDisposed) return;
+      drawBackground();
+      render();
+    });
+  }
+
   return {
     update: (path: { temp: number; ss: number }[], previewPoint?: { temp: number; ss: number }) => {
       if (isDisposed) return;
@@ -172,8 +193,10 @@ export function initNakayaDiagram(canvas: HTMLCanvasElement) {
       lastPreview = previewPoint;
       render();
     },
+    ensureBackground,
+    hasBackground: () => backgroundReady,
     dispose: () => {
       isDisposed = true;
-    }
+    },
   };
 }

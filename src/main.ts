@@ -11,11 +11,11 @@ import {
   showReloadCrystalAffordance,
 } from "./snowflake/context-loss";
 import { buildSnowflake, type BuildResult } from "./snowflake/geometry";
-import { buildSnowflakeSvg } from "./snowflake/svg-export";
 import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snowflake/nakaya";
 import { initHabitChips, syncHabitChips } from "./ui/habit-presets";
 import { mulberry32, resolveSeed, randomSeed, dailySeed, hashString, Rand } from "./snowflake/random";
-import { initNakayaDiagram } from "./snowflake/diagram";
+import { initNakayaDiagram, type NakayaDiagram } from "./snowflake/diagram";
+import { scheduleIdleTask } from "./snowflake/postprocessing";
 import { copyTextToClipboard } from "./ui/clipboard";
 import { createPhotoMode } from "./ui/photo-mode";
 import { announce as announceRaw } from "./ui/announcer";
@@ -134,7 +134,39 @@ installStaleBuildRecovery({
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const nakayaCanvas = document.getElementById("nakaya-diagram") as HTMLCanvasElement;
-const nakayaDiagram = initNakayaDiagram(nakayaCanvas);
+let nakayaDiagram: NakayaDiagram | null = null;
+let pendingNakayaUpdate: {
+  path: { temp: number; ss: number }[];
+  preview?: { temp: number; ss: number };
+} | null = null;
+
+function ensureNakayaDiagramShell(): NakayaDiagram | null {
+  if (!nakayaCanvas || nakayaDiagram) return nakayaDiagram;
+  nakayaDiagram = initNakayaDiagram(nakayaCanvas, { deferBackground: true });
+  return nakayaDiagram;
+}
+
+function syncNakayaDiagramToConditions(
+  path: { temp: number; ss: number }[],
+  preview?: { temp: number; ss: number },
+) {
+  pendingNakayaUpdate = { path, preview };
+  if (!nakayaDiagram) return;
+  if (isGuideOpen) {
+    nakayaDiagram.ensureBackground();
+  }
+  if (nakayaDiagram.hasBackground()) {
+    nakayaDiagram.update(path, preview);
+  }
+}
+
+function onFieldGuideOpened() {
+  const diagram = ensureNakayaDiagramShell();
+  diagram?.ensureBackground();
+  if (pendingNakayaUpdate && diagram?.hasBackground()) {
+    diagram.update(pendingNakayaUpdate.path, pendingNakayaUpdate.preview);
+  }
+}
 
 // Change detection cache for DOM attributes
 let lastNakayaAria = "";
@@ -153,6 +185,15 @@ let currentSeedLabel: string;
 let currentSeed: { seed: number; label: string } | null = null;
 let lastFlake: BuildResult | null = null;
 let labToggleGeneration = 0;
+
+requestAnimationFrame(() => {
+  scheduleIdleTask(() => {
+    ensureNakayaDiagramShell();
+    if (isGuideOpen) {
+      onFieldGuideOpened();
+    }
+  });
+});
 
 // History Manager
 const historyManager = new SeedHistoryManager({
@@ -259,12 +300,12 @@ function grow(
 
   scene.updateFlake(result, animate);
   const isCanvasFocused = document.activeElement === nakayaCanvas;
-  nakayaDiagram?.update(
+  syncNakayaDiagramToConditions(
     conditions.path,
     previewPoint ||
       (isCanvasFocused
         ? { temp: conditions.temperatureC, ss: conditions.supersaturation }
-        : undefined)
+        : undefined),
   );
 
   if (canvas) {
@@ -506,6 +547,7 @@ function toggleFieldGuide(target: HTMLElement | null | Event = null) {
     if (isGuideOpen) {
       fieldGuide.scrollTop = 0;
       fieldGuide.focus();
+      onFieldGuideOpened();
     } else {
       const restoreTo = guideReturnTarget || guideToggle;
       requestAnimationFrame(() => restoreTo?.focus());
@@ -617,7 +659,7 @@ nakayaCanvas?.addEventListener("pointermove", (e) => {
     updateNakayaStatus(t, ss, true);
 
     if (currentConditions) {
-      nakayaDiagram?.update(currentConditions.path, { temp: t, ss });
+      syncNakayaDiagramToConditions(currentConditions.path, { temp: t, ss });
     }
   }
 });
@@ -626,19 +668,19 @@ nakayaCanvas?.addEventListener("pointerleave", () => {
   if (currentConditions) {
     updateNakayaStatus(currentConditions.temperatureC, currentConditions.supersaturation, false);
     if (document.activeElement === nakayaCanvas) {
-      nakayaDiagram?.update(currentConditions.path, {
+      syncNakayaDiagramToConditions(currentConditions.path, {
         temp: currentConditions.temperatureC,
         ss: currentConditions.supersaturation,
       });
     } else {
-      nakayaDiagram?.update(currentConditions.path);
+      syncNakayaDiagramToConditions(currentConditions.path);
     }
   }
 });
 
 nakayaCanvas?.addEventListener("focus", () => {
   if (currentConditions) {
-    nakayaDiagram?.update(currentConditions.path, {
+    syncNakayaDiagramToConditions(currentConditions.path, {
       temp: currentConditions.temperatureC,
       ss: currentConditions.supersaturation,
     });
@@ -647,7 +689,7 @@ nakayaCanvas?.addEventListener("focus", () => {
 
 nakayaCanvas?.addEventListener("blur", () => {
   if (currentConditions) {
-    nakayaDiagram?.update(currentConditions.path);
+    syncNakayaDiagramToConditions(currentConditions.path);
   }
 });
 
@@ -941,11 +983,12 @@ async function saveSnowflakeSvg() {
       success: "Snowflake SVG saved",
       failure: "Failed to save snowflake SVG",
     },
-    () => {
+    async () => {
       if (!lastFlake) {
         throw new Error("No snowflake geometry to export");
       }
 
+      const { buildSnowflakeSvg } = await import("./snowflake/svg-export");
       const svg = buildSnowflakeSvg(lastFlake, currentExportIdentity());
       const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
       downloadHref(
