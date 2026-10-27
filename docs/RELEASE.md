@@ -50,7 +50,7 @@ Browser failures are reported to `POST /api/client-error` (#356), and the Worker
 
 To view them: Cloudflare dashboard → Workers & Pages → `frostbombsite` → **Observability** → **Logs** (Workers Logs, enabled by `observability.enabled` in `wrangler.jsonc`). Filter on `event = client_error`, then group by `kind` or `build`. For a live tail, use `npx wrangler tail frostbombsite --format pretty`.
 
-Each report is a fixed allowlist, and the Worker rejects anything else with `400`/`413`:
+Each report is a fixed allowlist, and the Worker rejects anything else with `400`/`413`. Non-`POST` requests get `405`, and cross-site posts (a `Sec-Fetch-Site` other than `same-origin`, or an `Origin` that differs from the request origin) get `403`. Requests with neither header, like the `curl` check above, are accepted:
 
 | Field | Meaning |
 | --- | --- |

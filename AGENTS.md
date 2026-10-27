@@ -10,7 +10,7 @@ Frostbomb: Vite + three.js snowflake app on a Cloudflare Worker. Node >= 22.12, 
 - Lint and coverage: the repo has neither, so there is no gate for them.
 
 ## Verify (the gate; CI is local-only)
-`npm run verify` (`scripts/verify.sh`) runs, fail-fast: AGENTS.md policy check, tsc, typecheck:tests, vitest, vite build, three chunk budget, e2e smoke. Run it before pushing. Setup once: `npm ci && npx playwright install chromium`.
+`npm run verify` (`scripts/verify.sh`) runs, fail-fast: AGENTS.md policy check, tsc, typecheck:tests, vitest, vite build, three chunk budget, then e2e smoke or the full suite (`scripts/e2e-mode.sh --local` picks full when the diff vs `origin/main` touches rendering/UI/test paths). Run it before pushing. Setup once: `npm ci && npx playwright install chromium`.
 
 How to launch and drive the app: `.cursor/skills/verify-frostbomb/SKILL.md`.
 
