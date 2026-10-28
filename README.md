@@ -133,15 +133,15 @@ npm test                   # pretest runs unit tests, then smoke Playwright proj
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `push` to `main`, `pull_request`, and `workflow_dispatch` (optional `full_e2e` input, default `true`).
 
-Every run that does not skip Playwright executes `npm run build`, `npm run typecheck:tests`, `npm run test:unit`, then either `npm run test:e2e:smoke` (default) or `npm run test:e2e:full`.
+Every run executes `npm run build`, the AGENTS.md policy check, the three.js chunk budget (`scripts/check-three-chunk-budget.mjs`), `npm run typecheck:tests`, and `npm run test:unit`; unless Playwright is skipped it then runs either `npm run test:e2e:smoke` (default) or `npm run test:e2e:full`. The smoke/full/skip decision comes from `scripts/e2e-mode.sh`, which `npm run verify` also uses locally (`--local`, diffing against `origin/main`).
 
 | When | Playwright |
 | --- | --- |
-| PR changes only `*.md`, `docs/*`, or `LICENSE` | **Skipped** (`skip_playwright`) |
+| PR or push changes only `*.md`, `docs/*`, or `LICENSE` | **Skipped** (`skip_playwright`) |
 | PR from `dependabot[bot]` that changes only `package-lock.json` / `pnpm-lock.yaml` / `yarn.lock` | **Skipped** |
 | Otherwise | **Runs** — smoke by default |
 | PR has label `full-e2e` | Full suite (`npm run test:e2e:full`) |
-| PR or push touches `src/snowflake/*`, `src/ui/*`, `playwright.config.ts`, `vite.config.ts`, `src/*` paths matching `canvas` / `webgl` / `export`, or `tests/*` except `*.smoke.spec.ts` | Full suite |
+| PR or push touches `src/snowflake/*`, `src/ui/*`, `src/main.ts`, `src/style.css`, `index.html`, `playwright.config.ts`, `vite.config.ts`, `src/*` paths matching `canvas` / `webgl` / `export`, or `tests/*` except `*.smoke.spec.ts` | Full suite |
 | `workflow_dispatch` with `full_e2e: true` | Full suite |
 | `workflow_dispatch` with `full_e2e: false` | Smoke only |
 

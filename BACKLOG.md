@@ -16,17 +16,11 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - Ideas: Lighthouse, WebPageTest, Chrome Performance panel, reduced-motion comparison.
 - Done means: baseline metrics are recorded for desktop and mobile, with one or two concrete follow-up tasks.
 
-### Tune postprocessing loading
-- Goal: preserve visual polish while minimizing startup cost.
-- Status: the `postprocessing` package is already behind a dynamic `import()` in `src/snowflake/postprocessing.ts`; RICH tier schedules the fetch from `requestLoad()` (plain renderer first). Low-power / reduced-motion / Save-Data clients skip the chunk via `shouldSkipPostprocessing`.
-- Remaining: defer the dynamic import until the main thread is idle (e.g. `requestIdleCallback`) instead of `setTimeout(0)` on the first eligible frame, so parse/compile of the postprocessing chunk does not compete with first-frame work.
-- Ideas: compare before/after `frostbomb:first-frame-rendered` and `frostbomb:postprocessing-ready` marks; optional load bloom only after first interaction.
-- Done means: first render stays fast and visual difference is intentional.
-
 ---
 
 ## Completed
 
+- [x] **Tune postprocessing loading (#456):** the `postprocessing` chunk loads behind a dynamic `import()` scheduled with `requestIdleCallback` (2 s timeout, `setTimeout(0)` fallback) so it no longer competes with first-frame work; low-power / reduced-motion / Save-Data clients skip it.
 - [x] **Add release checklist (#280):** `docs/RELEASE.md` covers Worker build, unit, e2e, `npm run deploy`, live CSP/`_headers`/postprocessing-not-modulepreloaded checks, and rollback via `npx wrangler rollback <version-id>`.
 - [x] **3D model export (#234):** Merged instanced hex-cylinders to binary STL + GLB (50mm long axis). Overlapping segments, not a watertight boolean union.
 - [x] **Ice crystal shaders (#235):** Thin-film iridescence, procedural frost grain, and Photo Mode depth of field.
