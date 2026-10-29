@@ -27,7 +27,7 @@ export function hasWebGL2(doc: Document = document): boolean {
 
 /** Inert stand-in so the Field Guide, Nakaya diagram and keyboard wiring run unchanged. */
 export function createInertScene(): Scene {
-  const flags = { rotate: false, pink: false, prism: false };
+  const flags = { rotate: false, pink: false, prism: false, glow: true };
   return {
     isAutoRotateEnabled: false,
     get isPinkModeEnabled() {
@@ -35,6 +35,9 @@ export function createInertScene(): Scene {
     },
     get isPrismModeEnabled() {
       return flags.prism;
+    },
+    get isGlowEnabled() {
+      return flags.glow;
     },
     qualityTier: "lite",
     glintMode: "static",
@@ -46,6 +49,9 @@ export function createInertScene(): Scene {
     },
     setPrismMode(enabled: boolean) {
       flags.prism = enabled;
+    },
+    setGlowMode(enabled: boolean) {
+      flags.glow = enabled;
     },
     setPhotoMode() {},
     setQualityTier: () => "lite",

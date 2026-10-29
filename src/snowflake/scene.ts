@@ -16,6 +16,7 @@ import {
 import { createFrostPlaceholders, loadFrostMaps } from "./frost";
 import { GlintController, type GlintMode } from "./glint";
 import { preventSilentContextLoss } from "./context-loss";
+import { GLOW_LOOK, GLOW_MODE, applyGlowLook } from "../ui/mode-toggle";
 import { advanceAutoRotate, INITIAL_AUTO_ROTATE } from "./auto-rotate";
 import {
   TIER_PROFILES,
@@ -40,6 +41,8 @@ export interface Scene {
   isAutoRotateEnabled: boolean;
   isPinkModeEnabled: boolean;
   isPrismModeEnabled: boolean;
+  /** Glow (emissive + opacity flattening); on by default, Lab-only. */
+  isGlowEnabled: boolean;
   /** Active quality tier; also on `canvas[data-quality]`. */
   qualityTier: QualityTier;
   /** `view` (RICH, animated by view) or `static` (LITE, frozen under reduced motion); also on `canvas[data-glint]`. */
@@ -47,6 +50,7 @@ export interface Scene {
   setAutoRotate: (enabled: boolean) => void;
   setPinkMode: (enabled: boolean) => void;
   setPrismMode: (enabled: boolean) => void;
+  setGlowMode: (enabled: boolean) => void;
   setPhotoMode: (enabled: boolean) => void;
   /** Explicit tier choice (Lab Mode). Reduced motion keeps LITE. Returns the tier applied. */
   setQualityTier: (tier: QualityTier) => QualityTier;
@@ -144,10 +148,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     sheen: 0.18,
     sheenColor: new THREE.Color("#e4f1ff"),
     sheenRoughness: 0.6,
-    transparent: true,
-    opacity: 0.9,
+    transparent: GLOW_LOOK.on.transparent,
+    opacity: GLOW_LOOK.on.opacity,
     emissive: new THREE.Color("#e0f0ff"),
-    emissiveIntensity: 0.25,
+    emissiveIntensity: GLOW_LOOK.on.emissiveIntensity,
   });
 
   const glint = new GlintController();
@@ -322,6 +326,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     isAutoRotateEnabled: !prefersReducedMotion,
     isPinkModeEnabled: false,
     isPrismModeEnabled: false,
+    isGlowEnabled: GLOW_MODE.defaultEnabled,
     qualityTier: tierController.tier,
     glintMode: glint.mode,
     start: () => {
@@ -388,6 +393,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
         sceneInterface.setPinkMode(sceneInterface.isPinkModeEnabled);
       }
       particles.setPrismMode(enabled, sceneInterface.isPinkModeEnabled);
+    },
+    setGlowMode: (enabled: boolean) => {
+      sceneInterface.isGlowEnabled = enabled;
+      applyGlowLook(material, enabled);
     },
     setPhotoMode: (enabled: boolean) => {
       pipeline.setPhotoMode(enabled);

@@ -33,6 +33,8 @@ export interface LabPanelParams {
   habit: string;
   /** Debug quality tier (`?quality=` equivalent). Never part of a share link. */
   quality: QualityTier;
+  /** Glow look (emissive + opacity). Lab-only; never part of a share link. */
+  glow: boolean;
 }
 
 export interface LabPanelCallbacks {
@@ -44,6 +46,8 @@ export interface LabPanelCallbacks {
   getQualityTier?: () => QualityTier;
   /** Returns the tier actually applied (reduced motion keeps LITE). */
   onQualityChange?: (tier: QualityTier) => QualityTier;
+  getGlow?: () => boolean;
+  onGlowChange?: (enabled: boolean) => void;
 }
 
 export class LabPanel {
@@ -54,6 +58,7 @@ export class LabPanel {
     supersaturation: 80,
     habit: "—",
     quality: "rich",
+    glow: true,
   };
 
   private pane: TweakpanePane | null = null;
@@ -171,6 +176,14 @@ export class LabPanel {
           if (this.refreshDepth > 0) return;
           const applied = this.callbacks.onQualityChange?.(ev.value as QualityTier);
           if (applied && applied !== ev.value) this.syncQuality(applied);
+        });
+      }
+
+      if (this.callbacks.onGlowChange) {
+        this.params.glow = this.callbacks.getGlow?.() ?? this.params.glow;
+        p.addBinding(this.params, "glow", { label: "Glow" }).on("change", (ev) => {
+          if (this.refreshDepth > 0) return;
+          this.callbacks.onGlowChange?.(ev.value);
         });
       }
 

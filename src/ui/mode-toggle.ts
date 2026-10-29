@@ -26,3 +26,33 @@ export function syncModeToggleButton(btn: HTMLElement | null, spec: ModeToggleSp
   btn.setAttribute("aria-label", `${spec.label} Mode (${spec.key})`);
   btn.title = `Toggle ${spec.label.toLowerCase()} mode (${spec.key}) - current: ${enabled ? "active" : "inactive"}`;
 }
+
+/** Material params for Glow mode. On is today's look; off drops the emissive and opacity flattening. */
+export const GLOW_LOOK = {
+  on: { emissiveIntensity: 0.25, opacity: 0.9, transparent: true },
+  off: { emissiveIntensity: 0, opacity: 1, transparent: false },
+} as const;
+
+/**
+ * Glow is Lab-only: no button, shortcut or share-URL flag, so it is not a ShareModeKind.
+ * Default on, so the first-load look is unchanged.
+ */
+export const GLOW_MODE = { label: "Glow", defaultEnabled: true } as const;
+
+/** Apply Glow on/off to a material (static, no transition). Emissive colour stays with Pink/Prism. */
+export function applyGlowLook(
+  material: {
+    emissiveIntensity: number;
+    opacity: number;
+    transparent: boolean;
+    needsUpdate: boolean;
+  },
+  enabled: boolean,
+): void {
+  const look = enabled ? GLOW_LOOK.on : GLOW_LOOK.off;
+  const transparentChanged = material.transparent !== look.transparent;
+  material.emissiveIntensity = look.emissiveIntensity;
+  material.opacity = look.opacity;
+  material.transparent = look.transparent;
+  if (transparentChanged) material.needsUpdate = true;
+}
