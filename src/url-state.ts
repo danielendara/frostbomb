@@ -54,8 +54,12 @@ function parseSeed(raw: string | null): string | null {
   return raw && SEED_PATTERN.test(raw) ? raw.toLowerCase() : null;
 }
 
+const PLAIN_DECIMAL = /^[+-]?(\d+\.?\d*|\.\d+)$/;
+
 function parseLab(tRaw: string | null, ssRaw: string | null): LabConditionsState | null {
   if (tRaw === null || ssRaw === null) return null;
+  // Number("") and Number(" ") are 0, and Number("0x0") is 0; only plain decimals count.
+  if (!PLAIN_DECIMAL.test(tRaw) || !PLAIN_DECIMAL.test(ssRaw)) return null;
   const temperatureC = Number(tRaw);
   const ssPercent = Number(ssRaw);
   if (!Number.isFinite(temperatureC) || !Number.isFinite(ssPercent)) return null;

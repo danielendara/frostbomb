@@ -30,9 +30,21 @@ describe("parseCrystalUrlState", () => {
   });
 
   it("drops out-of-range or unparsable Lab conditions", () => {
-    for (const query of ["?t=-12.5", "?ss=80", "?t=abc&ss=80", "?t=-12.5&ss=oops", "?t=5&ss=80", "?t=-41&ss=80", "?t=-12.5&ss=101"]) {
+    for (const query of ["?t=-12.5", "?ss=80", "?t=abc&ss=80", "?t=-12.5&ss=oops", "?t=5&ss=80", "?t=-41&ss=80", "?t=-12.5&ss=101", "?t=&ss=", "?t=-12.5&ss=", "?t=&ss=80", "?t=%20&ss=80", "?t=-12.5&ss=%20", "?t=0x0&ss=80"]) {
       expect(parseCrystalUrlState(query).lab).toBeNull();
     }
+  });
+
+  it("treats blank Lab params as sampled, not a 0 °C / 0 % manual point", () => {
+    const state = parseCrystalUrlState("?seed=abc12&t=&ss=");
+    expect(state.provenance).toBe("sampled");
+    expect(state.lab).toBeNull();
+  });
+
+  it("still parses the Lab values the app writes", () => {
+    expect(parseCrystalUrlState("?t=0.0&ss=0").lab).toEqual({ temperatureC: 0, supersaturation: 0 });
+    expect(parseCrystalUrlState("?t=-40.0&ss=100").lab).toEqual({ temperatureC: -40, supersaturation: 1 });
+    expect(parseCrystalUrlState("?t=-0.0&ss=50").lab).not.toBeNull();
   });
 
   it("treats an absent mode param as 'no opinion' and a non-1 value as off", () => {
