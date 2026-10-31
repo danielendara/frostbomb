@@ -11,7 +11,7 @@ This is the recovery runbook for frostbomb: how to roll back a bad deploy and co
 
 ---
 
-## frostbomb (private): static site + tiny Worker
+## frostbomb: static site + tiny Worker
 
 - **Hosting:** Cloudflare Worker `frostbombsite` with static assets (SPA fallback). The Worker only handles `/api/client-error`. **No D1, KV, R2 or other bindings** (verified in `wrangler.jsonc`). Live at `frostbomb.com`.
 - **Deploy path:** Workers Builds auto-deploys `main` on merge to GitHub `main` (**UNVERIFIED:** exact build/version IDs change every deploy; list them with wrangler before rollback).
@@ -28,4 +28,4 @@ Replace `<version-id>` with a **version ID** (not a deployment ID) from `npx wra
 
 | Current RTO | Gap | Fix |
 |---|---|---|
-| 30-60 s from the Mac, blocked from the box | No Cloudflare auth on the shared box. No post-deploy smoke. | Scoped Cloudflare API token on the box; add the site to a cron smoke |
+| 30-60 s from a maintainer machine | No post-deploy smoke. | Add the site to a scheduled smoke check |
