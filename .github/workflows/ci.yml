@@ -13,6 +13,9 @@ on:
         type: boolean
         default: true
 
+permissions:
+  contents: read
+
 jobs:
   changes:
     runs-on: ubuntu-latest
@@ -99,8 +102,10 @@ jobs:
 
       - name: Install Playwright
         if: needs.changes.outputs.skip_playwright != 'true'
+        env:
+          PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
         run: |
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+          if [ "$PLAYWRIGHT_CACHE_HIT" = "true" ]; then
             npx playwright install-deps chromium
           else
             npx playwright install --with-deps chromium

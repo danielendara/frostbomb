@@ -6,7 +6,7 @@ This is the recovery runbook for frostbomb: how to roll back a bad deploy and co
 - Bar: outages on live sites are unacceptable, and recovery must take minutes, ideally seconds.
 - If a deploy or merge happened in the last ~30 min and the site breaks, **roll back code first**, investigate after.
 - Never run a bare `wrangler rollback`: without a version ID it can pick a PR preview version. Always pass an explicit version ID from `npx wrangler versions list` or `npx wrangler deployments list`.
-- Private-repo GitHub Actions is currently blocked by the spend cap. Cloudflare access (wrangler) works from Daniel's Mac only, not from the shared box.
+- Cloudflare deploys are done from a maintainer machine.
 - **Before merging** any release that adds database migrations (not applicable to frostbomb today), apply and verify those migrations on production first. frostbomb has **no D1, KV, R2, or other bindings** in `wrangler.jsonc`.
 
 ---
