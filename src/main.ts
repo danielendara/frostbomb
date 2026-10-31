@@ -236,6 +236,8 @@ const labPanel = new LabPanel({
   getCurrentSeedLabel: () => currentSeedLabel,
   getQualityTier: () => scene.qualityTier,
   onQualityChange: (tier) => scene.setQualityTier(tier),
+  getGlow: () => scene.isGlowEnabled,
+  onGlowChange: (enabled) => scene.setGlowMode(enabled),
   onSeedChange: (val) => {
     urlWrites.flush();
     currentSeed = {

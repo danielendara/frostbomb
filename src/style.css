@@ -444,6 +444,9 @@ body.pink-mode {
   bottom: var(--pad);
   z-index: 10;
   max-width: 280px;
+  /* Guide + Lab together fill a 720px-tall window; scroll instead of pushing the header off-screen. */
+  max-height: calc(100dvh - var(--pad) * 2);
+  overflow-y: auto;
   font-family: var(--mono);
   font-size: 0.72rem;
   animation: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
