@@ -9,6 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "prepare": "simple-git-hooks",
+    "prepush": "npm run lint && npx tsc --noEmit && npm run typecheck:tests && npm run test:unit",
     "verify": "bash scripts/verify.sh",
     "build": "tsc && vite build",
     "typecheck:tests": "tsc -p tsconfig.test.json",
@@ -40,10 +42,14 @@
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.13.0",
     "happy-dom": "^21.0.4",
+    "simple-git-hooks": "^2.14.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vitest": "^5.0.5",
     "wrangler": "^4.129.1"
+  },
+  "simple-git-hooks": {
+    "pre-push": "npm run prepush"
   }
 }
