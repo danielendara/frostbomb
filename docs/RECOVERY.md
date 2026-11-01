@@ -6,12 +6,12 @@ This is the recovery runbook for frostbomb: how to roll back a bad deploy and co
 - Bar: outages on live sites are unacceptable, and recovery must take minutes, ideally seconds.
 - If a deploy or merge happened in the last ~30 min and the site breaks, **roll back code first**, investigate after.
 - Never run a bare `wrangler rollback`: without a version ID it can pick a PR preview version. Always pass an explicit version ID from `npx wrangler versions list` or `npx wrangler deployments list`.
-- Private-repo GitHub Actions is currently blocked by the spend cap. Cloudflare access (wrangler) works from Daniel's Mac only, not from the shared box.
+- Cloudflare deploys are done from a maintainer machine.
 - **Before merging** any release that adds database migrations (not applicable to frostbomb today), apply and verify those migrations on production first. frostbomb has **no D1, KV, R2, or other bindings** in `wrangler.jsonc`.
 
 ---
 
-## frostbomb (private): static site + tiny Worker
+## frostbomb: static site + tiny Worker
 
 - **Hosting:** Cloudflare Worker `frostbombsite` with static assets (SPA fallback). The Worker only handles `/api/client-error`. **No D1, KV, R2 or other bindings** (verified in `wrangler.jsonc`). Live at `frostbomb.com`.
 - **Deploy path:** Workers Builds auto-deploys `main` on merge to GitHub `main` (**UNVERIFIED:** exact build/version IDs change every deploy; list them with wrangler before rollback).
@@ -28,4 +28,4 @@ Replace `<version-id>` with a **version ID** (not a deployment ID) from `npx wra
 
 | Current RTO | Gap | Fix |
 |---|---|---|
-| 30-60 s from the Mac, blocked from the box | No Cloudflare auth on the shared box. No post-deploy smoke. | Scoped Cloudflare API token on the box; add the site to a cron smoke |
+| 30-60 s from a maintainer machine | No post-deploy smoke. | Add the site to a scheduled smoke check |
