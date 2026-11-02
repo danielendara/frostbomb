@@ -72,6 +72,38 @@ describe('initNakayaDiagram HiDPI', () => {
     expect(cache.calls.some(([name]) => name === 'fillRect')).toBe(true);
   });
 
+  it('does not bake deferred background on document.fonts.ready before ensureBackground', async () => {
+    const cache = fakeCanvas(0, 0);
+    let resolveFonts!: () => void;
+    const ready = new Promise<void>((r) => {
+      resolveFonts = r;
+    });
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    vi.stubGlobal('document', { createElement: () => cache, fonts: { ready } });
+
+    const canvas = fakeCanvas(300, 200);
+    const diagram = initNakayaDiagram(canvas, { deferBackground: true })!;
+    const fillRects = () => cache.calls.filter(([name]) => name === 'fillRect').length;
+
+    expect(diagram.hasBackground()).toBe(false);
+    expect(fillRects()).toBe(0);
+
+    resolveFonts();
+    await ready;
+    await Promise.resolve();
+
+    expect(diagram.hasBackground()).toBe(false);
+    expect(fillRects()).toBe(0);
+
+    diagram.ensureBackground();
+    expect(diagram.hasBackground()).toBe(true);
+    const baked = fillRects();
+    expect(baked).toBeGreaterThan(0);
+
+    diagram.ensureBackground();
+    expect(fillRects()).toBe(baked);
+  });
+
   it('caps the scale at 3 and defaults to 1', () => {
     vi.stubGlobal('document', { createElement: () => fakeCanvas(0, 0) });
 

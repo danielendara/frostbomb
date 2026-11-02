@@ -181,6 +181,7 @@ export function initNakayaDiagram(
   if (document.fonts) {
     document.fonts.ready.then(() => {
       if (isDisposed) return;
+      if (!backgroundReady) return;
       drawBackground();
       render();
     });
