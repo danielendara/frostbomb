@@ -20,6 +20,7 @@ export default defineConfig({
   testIgnore: ['**/unit/**', '**/e2e-helpers.ts'],
   forbidOnly: !!process.env.CI,
   timeout: 60000,
+  workers: process.env.CI ? 4 : undefined,
   maxFailures: process.env.CI ? 5 : undefined,
   use: {
     baseURL: 'http://127.0.0.1:5173',
