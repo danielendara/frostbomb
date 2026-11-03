@@ -185,7 +185,7 @@ jobs:
 
   merge-e2e-reports:
     needs: [changes, e2e-full]
-    if: ${{ always() && needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'full' && needs.e2e-full.result != 'skipped' }}
+    if: needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'full' && needs.e2e-full.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
