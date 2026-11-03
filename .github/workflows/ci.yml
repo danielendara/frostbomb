@@ -171,7 +171,8 @@ jobs:
 
       - name: E2E full (shard ${{ matrix.shardIndex }}/4)
         env:
-          PLAYWRIGHT_BLOB_OUTPUT_FILE: blob-report-${{ matrix.shardIndex }}.zip
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: playwright-ci-blobs
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: shard-${{ matrix.shardIndex }}.zip
         run: |
           npx playwright test --shard=${{ matrix.shardIndex }}/4 --reporter=blob --reporter=list
 
@@ -180,7 +181,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blob-report-${{ matrix.shardIndex }}
-          path: blob-report-${{ matrix.shardIndex }}.zip
+          path: playwright-ci-blobs/shard-${{ matrix.shardIndex }}.zip
+          if-no-files-found: error
           retention-days: 1
 
   merge-e2e-reports:
