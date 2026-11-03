@@ -61,7 +61,7 @@ jobs:
   build-and-test:
     needs: changes
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.changes.outputs.e2e_mode == 'full' && 35 || 20 }}
+    timeout-minutes: ${{ needs.changes.outputs.e2e_mode == 'full' && 20 || 20 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -90,23 +90,30 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Playwright version
+        if: needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'smoke'
+        id: playwright-version
+        run: |
+          version="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Cache Playwright browsers
-        if: needs.changes.outputs.skip_playwright != 'true'
+        if: needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'smoke'
         uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
           restore-keys: |
             playwright-${{ runner.os }}-
 
       - name: Install Playwright
-        if: needs.changes.outputs.skip_playwright != 'true'
+        if: needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'smoke'
         env:
           PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
         run: |
           if [ "$PLAYWRIGHT_CACHE_HIT" = "true" ]; then
-            npx playwright install-deps chromium
+            npx playwright install chromium
           else
             npx playwright install --with-deps chromium
           fi
@@ -115,6 +122,52 @@ jobs:
         if: needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'smoke'
         run: npm run test:e2e:smoke
 
-      - name: E2E full (on demand)
-        if: needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'full'
-        run: npm run test:e2e:full
+  e2e-full:
+    needs: [changes, build-and-test]
+    if: needs.changes.outputs.skip_playwright != 'true' && needs.changes.outputs.e2e_mode == 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Playwright version
+        id: playwright-version
+        run: |
+          version="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright
+        env:
+          PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+        run: |
+          if [ "$PLAYWRIGHT_CACHE_HIT" = "true" ]; then
+            npx playwright install chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      - name: E2E full (shard ${{ matrix.shardIndex }}/4)
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/4
