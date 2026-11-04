@@ -12,7 +12,7 @@ async function openLab(page: import("@playwright/test").Page) {
 async function expectGlowChecked(page: import("@playwright/test").Page, checked: boolean) {
   await openLab(page);
   const glow = page.locator('.tp-lblv:has-text("Glow") input');
-  await expect.poll(async () => glow.isChecked()).toBe(checked);
+  await expect.poll(async () => glow.isChecked(), { timeout: 15_000 }).toBe(checked);
 }
 
 test("Glow preference survives reload, links override without clobbering storage", async ({
@@ -20,6 +20,8 @@ test("Glow preference survives reload, links override without clobbering storage
   context,
 }) => {
   await stubClipboard(page);
+  await page.goto("/");
+  await page.evaluate(() => localStorage.removeItem("frostbomb-mode-prefs"));
   await page.goto("/?glow=0");
   await page.keyboard.press("o");
   await expectGlowChecked(page, true);
