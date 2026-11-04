@@ -12,7 +12,7 @@ async function openLab(page: import("@playwright/test").Page) {
 async function expectGlowChecked(page: import("@playwright/test").Page, checked: boolean) {
   await openLab(page);
   const glow = page.locator('.tp-lblv:has-text("Glow") input');
-  await expect.poll(async () => glow.isChecked(), { timeout: 15_000 }).toBe(checked);
+  await expect.poll(async () => glow.isChecked()).toBe(checked);
 }
 
 test("Glow preference survives reload, links override without clobbering storage", async ({
@@ -20,8 +20,6 @@ test("Glow preference survives reload, links override without clobbering storage
   context,
 }) => {
   await stubClipboard(page);
-  await page.goto("/");
-  await page.evaluate(() => localStorage.removeItem("frostbomb-mode-prefs"));
   await page.goto("/?glow=0");
   await page.keyboard.press("o");
   await expectGlowChecked(page, true);
@@ -52,11 +50,9 @@ test("Glow preference survives reload, links override without clobbering storage
   expect(link.searchParams.get("prism")).toBe("1");
 
   const fresh = await context.newPage();
-  await fresh.goto(link.pathname + link.search);
+  await fresh.goto(link.href);
   await openLab(fresh);
-  await expect.poll(async () => fresh.locator('.tp-lblv:has-text("Glow") input').isChecked(), {
-    timeout: 15_000,
-  }).toBe(true);
+  await expect.poll(async () => fresh.locator('.tp-lblv:has-text("Glow") input').isChecked()).toBe(true);
   await expect(fresh.locator("body")).toHaveClass(/pink-mode/);
   await expect(fresh.locator("body")).toHaveClass(/prism-mode/);
   await fresh.close();

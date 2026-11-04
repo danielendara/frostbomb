@@ -2,9 +2,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BuildResult } from "../../src/snowflake/geometry";
 
+const { buildSceneEnvironment, envDispose } = vi.hoisted(() => ({
+  buildSceneEnvironment: vi.fn(),
+  envDispose: vi.fn(),
+}));
+
+vi.mock("../../src/snowflake/scene-environment.ts", () => ({
+  ENV_PMREM_SIZE: { rich: 512, lite: 256 },
+  buildSceneEnvironment,
+}));
+
 describe("procedural scene environment", () => {
-  const buildSceneEnvironment = vi.fn();
-  const envDispose = vi.fn();
   const requestLoad = vi.fn();
 
   beforeEach(() => {
@@ -12,7 +20,7 @@ describe("procedural scene environment", () => {
     buildSceneEnvironment.mockReset();
     envDispose.mockReset();
     requestLoad.mockClear();
-    buildSceneEnvironment.mockImplementation(async () => ({
+    buildSceneEnvironment.mockImplementation(() => ({
       texture: { uuid: "test-env" },
       dispose: envDispose,
     }));
@@ -28,10 +36,6 @@ describe("procedural scene environment", () => {
       dispatchEvent: () => false,
     }));
 
-    vi.doMock("../../src/snowflake/scene-environment.ts", () => ({
-      ENV_PMREM_SIZE: { rich: 512, lite: 256 },
-      buildSceneEnvironment,
-    }));
     vi.doMock("../../src/snowflake/frost.ts", () => ({
       createFrostPlaceholders: () => ({
         roughnessMap: { dispose: () => {} },
@@ -50,6 +54,7 @@ describe("procedural scene environment", () => {
       },
       shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
+      scheduleIdleTask: (task: () => void) => task(),
     }));
     vi.doMock("three", async (importOriginal) => {
       const actual = await importOriginal<typeof import("three")>();
@@ -69,7 +74,6 @@ describe("procedural scene environment", () => {
   });
 
   afterEach(() => {
-    vi.doUnmock("../../src/snowflake/scene-environment.ts");
     vi.doUnmock("../../src/snowflake/frost.ts");
     vi.doUnmock("../../src/snowflake/postprocessing.ts");
     vi.doUnmock("three");
@@ -100,7 +104,7 @@ describe("procedural scene environment", () => {
 
     const { createScene } = await import("../../src/snowflake/scene.ts");
     const scene = createScene(document.createElement("canvas"));
-    scene.updateFlake(buildResult());
+    scene.updateFlake(buildResult(), false);
     scene.start();
 
     for (let i = 0; i < frameCount; i++) {
@@ -115,8 +119,8 @@ describe("procedural scene environment", () => {
     const scene = await runFrames(3);
     await vi.waitFor(() => {
       expect(buildSceneEnvironment).toHaveBeenCalledTimes(1);
+      expect(scene.scene.environment).toEqual({ uuid: "test-env" });
     });
-    expect(scene.scene.environment).toEqual({ uuid: "test-env" });
     scene.dispose();
     expect(envDispose).toHaveBeenCalledTimes(1);
     expect(scene.scene.environment).toBeNull();

@@ -3,6 +3,7 @@ import { BuildResult } from "./geometry";
 import {
   PostprocessingPipeline,
   RenderPipeline,
+  scheduleIdleTask,
   skipPostprocessingFromEnvironment,
 } from "./postprocessing";
 import { MARK_FIRST_FRAME_RENDERED, markOnce } from "./perf-marks";
@@ -312,6 +313,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   let environmentHandle: SceneEnvironmentHandle | null = null;
   let environmentBuildId = 0;
   let environmentRequested = false;
+  let environmentBuildQueued = false;
+  let environmentBuildInFlight = false;
 
   function clearSceneEnvironment(): void {
     scene.environment = null;
@@ -319,8 +322,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     environmentHandle = null;
   }
 
-  function scheduleEnvironmentRebuild(): void {
-    if (!environmentRequested) return;
+  function runEnvironmentBuild(): void {
+    if (environmentBuildInFlight) return;
+    environmentBuildInFlight = true;
     const buildId = ++environmentBuildId;
     const tier = tierController.tier;
     void import("./scene-environment")
@@ -336,13 +340,41 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       })
       .catch((err) => {
         console.error("Failed to build scene environment:", err);
+      })
+      .finally(() => {
+        environmentBuildInFlight = false;
       });
+  }
+
+  function queueEnvironmentBuild(): void {
+    if (environmentBuildQueued || environmentBuildInFlight || environmentHandle) return;
+    environmentBuildQueued = true;
+    scheduleIdleTask(() => {
+      environmentBuildQueued = false;
+      runEnvironmentBuild();
+    });
+  }
+
+  /** After first paint, once the entry tween has settled (idle, not on a rAF hot path). */
+  function maybeQueueEnvironmentBuild(): void {
+    if (!environmentRequested || !firstFrameMarked) return;
+    if (animator.entryActive) return;
+    queueEnvironmentBuild();
+  }
+
+  function scheduleEnvironmentRebuild(): void {
+    if (!environmentRequested) return;
+    environmentBuildId++;
+    clearSceneEnvironment();
+    environmentBuildQueued = false;
+    environmentBuildInFlight = false;
+    maybeQueueEnvironmentBuild();
   }
 
   function requestEnvironmentAfterFirstFrame(): void {
     if (environmentRequested) return;
     environmentRequested = true;
-    scheduleEnvironmentRebuild();
+    maybeQueueEnvironmentBuild();
   }
 
   const tempColor = new THREE.Color();
@@ -691,6 +723,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     // Defer procedural IBL and the first postprocessing import until after the first painted frame.
     if (!isFirstPaintFrame) {
       requestEnvironmentAfterFirstFrame();
+      maybeQueueEnvironmentBuild();
       pipeline.requestLoad(skipPostprocessingFromEnvironment(prefersReducedMotion));
     }
   }
