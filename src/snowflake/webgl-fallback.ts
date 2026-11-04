@@ -25,9 +25,16 @@ export function hasWebGL2(doc: Document = document): boolean {
   }
 }
 
+import { GLOW_MODE } from "../ui/mode-toggle";
+
 /** Inert stand-in so the Field Guide, Nakaya diagram and keyboard wiring run unchanged. */
 export function createInertScene(): Scene {
-  const flags = { rotate: false, pink: false, prism: false, glow: true };
+  const flags: { rotate: boolean; pink: boolean; prism: boolean; glow: boolean } = {
+    rotate: false,
+    pink: false,
+    prism: false,
+    glow: GLOW_MODE.defaultEnabled,
+  };
   return {
     isAutoRotateEnabled: false,
     get isPinkModeEnabled() {

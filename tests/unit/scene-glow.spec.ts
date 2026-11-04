@@ -1,9 +1,10 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as THREE from "three";
-import { GLOW_LOOK, applyGlowLook } from "../../src/ui/mode-toggle";
+import { GLOW_LOOK, GLOW_MODE, applyGlowLook } from "../../src/ui/mode-toggle";
+import { PHOTO_ICE_BY_TIER } from "../../src/snowflake/ice-material";
 
-/** Glow is today's emissive + opacity look, on by default, switched from the Lab only. */
+/** Glow is today's emissive + opacity look; photographic ice defaults to Glow off. */
 describe("Glow mode", () => {
   const motionQuery = {
     matches: false,
@@ -44,6 +45,13 @@ describe("Glow mode", () => {
       }),
       loadFrostMaps: () => new Promise(() => {}),
     }));
+    vi.doMock("../../src/snowflake/scene-environment.ts", () => ({
+      ENV_PMREM_SIZE: { rich: 512, lite: 256 },
+      buildSceneEnvironment: vi.fn(async () => ({
+        texture: {},
+        dispose: () => {},
+      })),
+    }));
     vi.doMock("../../src/snowflake/postprocessing.ts", () => ({
       PostprocessingPipeline: class {
         setSize() {}
@@ -72,15 +80,26 @@ describe("Glow mode", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("defaults to today's emissive 0.25 / opacity 0.9 look on both tiers", async () => {
-    for (const tier of ["rich", "lite"]) {
+  it("defaults Glow off on a plain first visit (no glow param)", async () => {
+    const { scene, material } = await loadScene("");
+    expect(GLOW_MODE.defaultEnabled).toBe(false);
+    expect(scene.isGlowEnabled).toBe(false);
+    expect(material.emissiveIntensity).toBe(0);
+    expect(material.opacity).toBe(1);
+    expect(material.transparent).toBe(false);
+    scene.dispose();
+  });
+
+  it("loads photographic ice material params on both tiers when Glow is off", async () => {
+    for (const tier of ["rich", "lite"] as const) {
       const { scene, material } = await loadScene(`?quality=${tier}`);
       expect(scene.qualityTier).toBe(tier);
-      expect(scene.isGlowEnabled).toBe(true);
-      expect(material.emissiveIntensity).toBe(0.25);
-      expect(material.opacity).toBe(0.9);
-      expect(material.transparent).toBe(true);
-      expect(material.emissive.getHexString()).toBe("e0f0ff");
+      expect(scene.isGlowEnabled).toBe(false);
+      expect(material.roughness).toBe(PHOTO_ICE_BY_TIER[tier].roughness);
+      expect(material.transmission).toBe(PHOTO_ICE_BY_TIER[tier].transmission);
+      expect(material.dispersion).toBe(PHOTO_ICE_BY_TIER[tier].dispersion);
+      expect(material.iridescence).toBe(PHOTO_ICE_BY_TIER[tier].iridescence);
+      expect(material.clearcoat).toBe(PHOTO_ICE_BY_TIER[tier].clearcoat);
       scene.dispose();
     }
   });

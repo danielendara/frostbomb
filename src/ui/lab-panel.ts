@@ -3,6 +3,7 @@ import { LAB_TEMP_MAX_C, LAB_TEMP_MIN_C } from "../snowflake/nakaya";
 import { SEED_PATTERN } from "../url-state";
 import { SHARE_PARAM_SEED } from "../share-url-params";
 import type { QualityTier } from "../snowflake/quality";
+import { GLOW_MODE } from "./mode-toggle";
 
 /**
  * A pasted share link yields its `?seed=`; anything else is the raw text.
@@ -58,7 +59,7 @@ export class LabPanel {
     supersaturation: 80,
     habit: "—",
     quality: "rich",
-    glow: true,
+    glow: GLOW_MODE.defaultEnabled,
   };
 
   private pane: TweakpanePane | null = null;

@@ -17,6 +17,8 @@ import { createFrostPlaceholders, loadFrostMaps } from "./frost";
 import { GlintController, type GlintMode } from "./glint";
 import { preventSilentContextLoss } from "./context-loss";
 import { GLOW_LOOK, GLOW_MODE, applyGlowLook } from "../ui/mode-toggle";
+import { applyPhotoIceMaterial } from "./ice-material";
+import type { SceneEnvironmentHandle } from "./scene-environment";
 import { advanceAutoRotate, INITIAL_AUTO_ROTATE } from "./auto-rotate";
 import {
   TIER_PROFILES,
@@ -27,8 +29,6 @@ import {
   type QualityTier,
 } from "./quality";
 
-/** `MeshPhysicalMaterial.transmission` on RICH (LITE overrides it, see TIER_PROFILES). */
-const RICH_TRANSMISSION = 0.85;
 
 export interface Scene {
   scene: THREE.Scene;
@@ -41,7 +41,7 @@ export interface Scene {
   isAutoRotateEnabled: boolean;
   isPinkModeEnabled: boolean;
   isPrismModeEnabled: boolean;
-  /** Glow (emissive + opacity flattening); on by default, Lab-only. */
+  /** Glow (emissive + opacity flattening); photographic default is off, Lab / O / URL. */
   isGlowEnabled: boolean;
   /** Active quality tier; also on `canvas[data-quality]`. */
   qualityTier: QualityTier;
@@ -102,22 +102,22 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   renderer.setClearColor(0x000000, 0);
 
   // Lighting
-  const ambient = new THREE.AmbientLight(0x1a2a4a, 0.5);
+  const ambient = new THREE.AmbientLight(0x1a2a4a, 0.35);
   scene.add(ambient);
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
   keyLight.position.set(5, 8, 10);
   scene.add(keyLight);
 
-  const rimLight = new THREE.DirectionalLight(0xb0d5ff, 2.5);
+  const rimLight = new THREE.DirectionalLight(0xb0d5ff, 1.6);
   rimLight.position.set(-8, -5, 2);
   scene.add(rimLight);
 
-  const glint1 = new THREE.PointLight(0xffffff, 1.5, 15);
+  const glint1 = new THREE.PointLight(0xffffff, 1.0, 15);
   glint1.position.set(-2, 3, 4);
   scene.add(glint1);
 
-  const glint2 = new THREE.PointLight(0x9ec9ff, 1.2, 15);
+  const glint2 = new THREE.PointLight(0x9ec9ff, 0.85, 15);
   glint2.position.set(4, -2, 3);
   scene.add(glint2);
 
@@ -129,17 +129,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color("#ffffff"),
     metalness: 0,
-    // Multiplied by the frost roughness map (green). Peaks frost over, facets stay glossier.
-    roughness: 0.28,
     roughnessMap: frost.roughnessMap,
-    transmission: TIER_PROFILES[tierController.tier].transmission ?? RICH_TRANSMISSION,
-    thickness: 0.5,
-    ior: 1.31,
-    dispersion: 0.02,
     reflectivity: 0.5,
-    // Thin-film interference on grazing facets. Stays enabled when Pink/Prism
-    // retint albedo and emissive — it is view-angle, not a base-color overlay.
-    iridescence: 0.8,
     iridescenceIOR: 1.31,
     iridescenceThicknessMinimum: 150,
     iridescenceThicknessMaximum: 380,
@@ -149,11 +140,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     sheen: 0.18,
     sheenColor: new THREE.Color("#e4f1ff"),
     sheenRoughness: 0.6,
-    transparent: GLOW_LOOK.on.transparent,
-    opacity: GLOW_LOOK.on.opacity,
     emissive: new THREE.Color("#e0f0ff"),
-    emissiveIntensity: GLOW_LOOK.on.emissiveIntensity,
+    transparent: GLOW_LOOK.off.transparent,
+    opacity: GLOW_LOOK.off.opacity,
+    emissiveIntensity: GLOW_LOOK.off.emissiveIntensity,
   });
+  applyPhotoIceMaterial(material, tierController.tier);
+  applyGlowLook(material, GLOW_MODE.defaultEnabled);
 
   const glint = new GlintController();
   glint.attach(material);
@@ -200,10 +193,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     glint.syncDefines(material);
     canvas.setAttribute("data-glint", glint.mode);
     sceneInterface.glintMode = glint.mode;
-    material.transmission = profile.transmission ?? RICH_TRANSMISSION;
-    material.needsUpdate = true;
+    applyPhotoIceMaterial(material, tier);
     particles.setCount(profile.particleCount);
     pipeline.setTier(tier);
+    scheduleEnvironmentRebuild();
   }
   const animator = new GrowthAnimator(canvas);
 
@@ -316,6 +309,42 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   let firstFrameMarked = false;
   let sceneNonblank = false;
 
+  let environmentHandle: SceneEnvironmentHandle | null = null;
+  let environmentBuildId = 0;
+  let environmentRequested = false;
+
+  function clearSceneEnvironment(): void {
+    scene.environment = null;
+    environmentHandle?.dispose();
+    environmentHandle = null;
+  }
+
+  function scheduleEnvironmentRebuild(): void {
+    if (!environmentRequested) return;
+    const buildId = ++environmentBuildId;
+    const tier = tierController.tier;
+    void import("./scene-environment")
+      .then(({ buildSceneEnvironment }) => buildSceneEnvironment(renderer, tier))
+      .then((handle) => {
+        if (buildId !== environmentBuildId) {
+          handle.dispose();
+          return;
+        }
+        clearSceneEnvironment();
+        environmentHandle = handle;
+        scene.environment = handle.texture;
+      })
+      .catch((err) => {
+        console.error("Failed to build scene environment:", err);
+      });
+  }
+
+  function requestEnvironmentAfterFirstFrame(): void {
+    if (environmentRequested) return;
+    environmentRequested = true;
+    scheduleEnvironmentRebuild();
+  }
+
   const tempColor = new THREE.Color();
 
   const sceneInterface: Scene = {
@@ -360,6 +389,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       frost.roughnessMap.dispose();
       frost.normalMap.dispose();
       particles.dispose();
+      clearSceneEnvironment();
+      environmentBuildId++;
     },
     setAutoRotate: (enabled: boolean) => {
       isAutoRotate = enabled && !prefersReducedMotion;
@@ -657,8 +688,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       }
     }
 
-    // Defer the first postprocessing import until after the first painted frame.
+    // Defer procedural IBL and the first postprocessing import until after the first painted frame.
     if (!isFirstPaintFrame) {
+      requestEnvironmentAfterFirstFrame();
       pipeline.requestLoad(skipPostprocessingFromEnvironment(prefersReducedMotion));
     }
   }

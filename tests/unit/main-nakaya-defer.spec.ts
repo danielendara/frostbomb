@@ -13,7 +13,7 @@ vi.mock("../../src/snowflake/scene", () => ({
     isAutoRotateEnabled: false,
     isPinkModeEnabled: false,
     isPrismModeEnabled: false,
-    isGlowEnabled: true,
+    isGlowEnabled: false,
     setAutoRotate: vi.fn(),
     setPinkMode: vi.fn(),
     setPrismMode: vi.fn(),

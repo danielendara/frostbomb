@@ -240,11 +240,11 @@ export class PostprocessingPipeline implements RenderPipeline {
       nextComposer.addPass(new RenderPass(this.scene, this.camera));
 
       const bloomEffect = new BloomEffect({
-        intensity: 1.1,
-        luminanceThreshold: 0.55,
-        luminanceSmoothing: 0.3,
+        intensity: 0.95,
+        luminanceThreshold: 0.82,
+        luminanceSmoothing: 0.25,
         mipmapBlur: true,
-        radius: 0.75,
+        radius: 0.65,
       });
 
       const dofEffect = new DepthOfFieldEffect(this.camera, {
