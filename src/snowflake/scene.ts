@@ -141,7 +141,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     // retint albedo and emissive — it is view-angle, not a base-color overlay.
     iridescence: 0.8,
     iridescenceIOR: 1.31,
-    iridescenceThicknessRange: [150, 380],
+    iridescenceThicknessMinimum: 150,
+    iridescenceThicknessMaximum: 380,
     iridescenceThicknessMap: frost.roughnessMap,
     normalMap: frost.normalMap,
     normalScale: new THREE.Vector2(0.18, 0.18),
