@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { stubClipboard } from "./e2e-helpers";
 
 async function openLab(page: import("@playwright/test").Page) {
+  await expect(page.locator("#scene")).toHaveAttribute("data-entry-active", "false");
   const status = page.locator("#lab-status");
   if ((await status.textContent()) !== "ON") {
     await page.keyboard.press("l");

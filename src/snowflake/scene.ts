@@ -346,13 +346,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       });
   }
 
+  /** PMREM is sync and heavy; wait longer than postprocessing idle so e2e/interaction wins on CI. */
+  const ENVIRONMENT_IDLE_TIMEOUT_MS = 8_000;
+
   function queueEnvironmentBuild(): void {
     if (environmentBuildQueued || environmentBuildInFlight || environmentHandle) return;
     environmentBuildQueued = true;
     scheduleIdleTask(() => {
       environmentBuildQueued = false;
       runEnvironmentBuild();
-    });
+    }, ENVIRONMENT_IDLE_TIMEOUT_MS);
   }
 
   /** After first paint, once the entry tween has settled (idle, not on a rAF hot path). */
