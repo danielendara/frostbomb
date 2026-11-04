@@ -33,7 +33,7 @@ export interface LabPanelParams {
   habit: string;
   /** Debug quality tier (`?quality=` equivalent). Never part of a share link. */
   quality: QualityTier;
-  /** Glow look (emissive + opacity). Lab-only; never part of a share link. */
+  /** Glow look (emissive + opacity). Lab-only; encoded in share links as `glow=`. */
   glow: boolean;
 }
 
@@ -214,6 +214,12 @@ export class LabPanel {
   /** Show the active tier (it can fall on its own while the pane is open). */
   public syncQuality(tier: QualityTier): void {
     this.params.quality = tier;
+    this.refresh();
+  }
+
+  /** Keep the Glow checkbox aligned with O / URL / boot precedence. */
+  public syncGlow(enabled: boolean): void {
+    this.params.glow = enabled;
     this.refresh();
   }
 

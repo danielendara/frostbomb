@@ -34,8 +34,8 @@ export const GLOW_LOOK = {
 } as const;
 
 /**
- * Glow is Lab-only: no button, shortcut or share-URL flag, so it is not a ShareModeKind.
- * Default on, so the first-load look is unchanged.
+ * Glow is Lab-only (no toolbar button). Toggle with **O** or the Lab checkbox;
+ * share links and localStorage carry `glow=`.
  */
 export const GLOW_MODE = { label: "Glow", defaultEnabled: true } as const;
 

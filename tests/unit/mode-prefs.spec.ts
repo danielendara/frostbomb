@@ -55,15 +55,26 @@ describe("mode prefs read/write", () => {
       prism: false,
       lab: undefined,
       rotate: undefined,
+      glow: undefined,
     });
   });
 
-  it("round-trips lab=true through localStorage", () => {
-    saveModePrefs({ pink: false, prism: false, lab: true, rotate: undefined });
-    expect(loadModePrefs().lab).toBe(true);
+  it("round-trips glow through localStorage", () => {
+    saveModePrefs({ pink: false, prism: false, glow: true });
+    expect(loadModePrefs().glow).toBe(true);
   });
 
-  it("treats non-boolean lab values as unset", () => {
+  it("treats non-boolean glow values as unset", () => {
+    localStorage.setItem(MODE_PREFS_KEY, JSON.stringify({ glow: "yes" }));
+    expect(loadModePrefs().glow).toBeUndefined();
+  });
+
+  it("falls back to glow unset when storage is corrupt", () => {
+    localStorage.setItem(MODE_PREFS_KEY, "not-json");
+    expect(loadModePrefs().glow).toBeUndefined();
+  });
+
+  it("round-trips lab=true through localStorage", () => {
     localStorage.setItem(MODE_PREFS_KEY, JSON.stringify({ lab: "yes" }));
     expect(loadModePrefs().lab).toBeUndefined();
   });

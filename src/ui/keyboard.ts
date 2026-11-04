@@ -17,6 +17,7 @@ export interface KeyboardHandlerContext {
   onToggleUI: () => void;
   onTogglePink: () => void;
   onTogglePrism: () => void;
+  onToggleGlow: () => void;
   onSave: () => void;
   onSaveSvg: () => void;
   onSave3d: () => void;
@@ -153,6 +154,9 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
         break;
       case "m":
         ctx.onTogglePrism();
+        break;
+      case "o":
+        ctx.onToggleGlow();
         break;
       case "s":
         ctx.onSave();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  SHARE_PARAM_GLOW,
   SHARE_PARAM_LAB,
   SHARE_PARAM_PINK,
   SHARE_PARAM_PRISM,
@@ -18,6 +19,7 @@ const FLAGS: ReadonlyArray<{
   { name: SHARE_PARAM_PRISM, writesZeroWhenOff: false },
   { name: SHARE_PARAM_ROTATE, writesZeroWhenOff: true },
   { name: SHARE_PARAM_LAB, writesZeroWhenOff: true },
+  { name: SHARE_PARAM_GLOW, writesZeroWhenOff: true },
 ];
 
 describe("share URL param names", () => {
@@ -27,6 +29,7 @@ describe("share URL param names", () => {
     expect(SHARE_PARAM_PRISM).toBe("prism");
     expect(SHARE_PARAM_ROTATE).toBe("rotate");
     expect(SHARE_PARAM_LAB).toBe("lab");
+    expect(SHARE_PARAM_GLOW).toBe("glow");
   });
 });
 
@@ -62,7 +65,7 @@ describe("setShareFlag / readShareFlag", () => {
     expect(readShareFlag(new URLSearchParams(), name)).toBeNull();
   });
 
-  it.each([SHARE_PARAM_ROTATE, SHARE_PARAM_LAB] as const)(
+  it.each([SHARE_PARAM_ROTATE, SHARE_PARAM_LAB, SHARE_PARAM_GLOW] as const)(
     "reads explicit %s=0 as 0",
     (name) => {
       const params = new URLSearchParams(`${name}=0`);

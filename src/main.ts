@@ -50,6 +50,7 @@ import {
   crystalStatesEqual,
   parseCrystalUrlState,
   quantizeLabConditions,
+  resolveGlow,
   resolveModes,
   retainedLabConditions,
   writeCrystalGeneration,
@@ -58,6 +59,7 @@ import {
   type ModeSource,
 } from "./url-state";
 import {
+  SHARE_PARAM_GLOW,
   SHARE_PARAM_LAB,
   SHARE_PARAM_PINK,
   SHARE_PARAM_PRISM,
@@ -67,6 +69,7 @@ import {
   setShareFlag,
   type ShareFlagName,
 } from "./share-url-params";
+import { GLOW_MODE } from "./ui/mode-toggle";
 
 /**
  * Restoring a history entry re-applies look modes through the same toggles a
@@ -237,7 +240,10 @@ const labPanel = new LabPanel({
   getQualityTier: () => scene.qualityTier,
   onQualityChange: (tier) => scene.setQualityTier(tier),
   getGlow: () => scene.isGlowEnabled,
-  onGlowChange: (enabled) => scene.setGlowMode(enabled),
+  onGlowChange: (enabled) => {
+    if (enabled === scene.isGlowEnabled) return;
+    setGlowEnabled(enabled, { persistPref: true });
+  },
   onSeedChange: (val) => {
     urlWrites.flush();
     currentSeed = {
@@ -481,6 +487,7 @@ async function toggleLabMode(focusControls: boolean | Event = true) {
     try {
       await labPanel.ensurePane();
       labPanel.syncQuality(scene.qualityTier);
+      labPanel.syncGlow(scene.isGlowEnabled);
     } catch (err) {
       console.error("Failed to load Lab Mode:", err);
       reportClientError("chunk-load", err);
@@ -1086,10 +1093,49 @@ for (const kind of Object.keys(MODE_TOGGLES) as ShareModeKind[]) {
 // The user's rotate choice, not the live scene flag (which export/share
 // pauses and reduced motion force off). Set by applyModes and toggleAutoRotate.
 let rotatePref: boolean | undefined;
+/** Remembered Glow toggle; URL apply never writes this. */
+let glowPref: boolean | undefined = loadModePrefs().glow;
+
+function syncGlowParam(enabled: boolean) {
+  urlWrites.flush();
+  const url = new URL(window.location.href);
+  setShareFlag(url.searchParams, SHARE_PARAM_GLOW, enabled);
+  const next = url.pathname + url.search;
+  if (next !== window.location.pathname + window.location.search) {
+    window.history.replaceState(null, "", next);
+    syncCommittedSearch();
+  }
+}
+
+function setGlowEnabled(enabled: boolean, options: { persistPref: boolean }) {
+  scene.setGlowMode(enabled);
+  if (labPanel.isLoaded()) {
+    labPanel.syncGlow(enabled);
+  }
+  if (options.persistPref) {
+    glowPref = enabled;
+    persistModePrefs();
+  }
+  syncGlowParam(enabled);
+  announce(`Glow mode ${enabled ? "enabled" : "disabled"}`);
+}
+
+function toggleGlow() {
+  setGlowEnabled(!scene.isGlowEnabled, { persistPref: true });
+}
+
+function applyGlowFromResolver(enabled: boolean) {
+  if (enabled === scene.isGlowEnabled) return;
+  scene.setGlowMode(enabled);
+  if (labPanel.isLoaded()) {
+    labPanel.syncGlow(enabled);
+  }
+}
 
 function writeCurrentModeParams(params: URLSearchParams) {
   setShareFlag(params, SHARE_PARAM_PINK, scene.isPinkModeEnabled);
   setShareFlag(params, SHARE_PARAM_PRISM, scene.isPrismModeEnabled);
+  setShareFlag(params, SHARE_PARAM_GLOW, scene.isGlowEnabled);
   if (isLabMode) {
     setShareFlag(params, SHARE_PARAM_LAB, true);
   } else if (loadModePrefs().lab === false) {
@@ -1125,6 +1171,7 @@ function persistModePrefs(): void {
     prism: scene.isPrismModeEnabled,
     lab: isLabMode,
     rotate: rotatePref,
+    glow: glowPref,
   });
 }
 
@@ -1147,6 +1194,7 @@ function onScreenCrystalState(): CrystalUrlState {
     modes: {
       pink: scene.isPinkModeEnabled,
       prism: scene.isPrismModeEnabled,
+      glow: scene.isGlowEnabled,
       lab: isLabMode,
       // The rotate *preference*, not the live scene flag: export/share pause
       // the scene mid-flight and reduced motion forces it off, while share
@@ -1176,6 +1224,9 @@ function applyModes(source: ModeSource) {
   const target = resolveModes(source, params, stored);
   if (target.pink !== scene.isPinkModeEnabled) setShareMode("pink", target.pink);
   if (target.prism !== scene.isPrismModeEnabled) setShareMode("prism", target.prism);
+
+  const glowTarget = resolveGlow(source, params, glowPref, GLOW_MODE.defaultEnabled);
+  applyGlowFromResolver(glowTarget);
 
   if (rotateParam !== null) {
     if (!motionQuery.matches) {
@@ -1423,6 +1474,9 @@ initKeyboardShortcuts({
   },
   onTogglePrism: () => {
     toggleShareMode("prism");
+  },
+  onToggleGlow: () => {
+    toggleGlow();
   },
   onSave: () => {
     saveSnowflake();
