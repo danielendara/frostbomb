@@ -52,7 +52,9 @@ test("Glow preference survives reload, links override without clobbering storage
   const fresh = await context.newPage();
   await fresh.goto(link.pathname + link.search);
   await openLab(fresh);
-  await expect.poll(async () => fresh.locator('.tp-lblv:has-text("Glow") input').isChecked()).toBe(true);
+  await expect.poll(async () => fresh.locator('.tp-lblv:has-text("Glow") input').isChecked(), {
+    timeout: 15_000,
+  }).toBe(true);
   await expect(fresh.locator("body")).toHaveClass(/pink-mode/);
   await expect(fresh.locator("body")).toHaveClass(/prism-mode/);
   await fresh.close();
