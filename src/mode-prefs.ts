@@ -12,6 +12,8 @@ export interface ModePrefs {
    * toggleAutoRotate(), which already refuses to run under reduced-motion,
    * so a stored value is always a genuine, reduced-motion-free choice. */
   rotate?: boolean;
+  /** `undefined` = never explicitly toggled — default / URL precedence decides. */
+  glow?: boolean;
 }
 
 /** Mirrors src/ui/history.ts's try/catch-and-warn localStorage pattern: a
@@ -61,11 +63,12 @@ export function loadModePrefs(): ModePrefs {
           prism: parsed.prism === true,
           lab: typeof parsed.lab === "boolean" ? parsed.lab : undefined,
           rotate: typeof parsed.rotate === "boolean" ? parsed.rotate : undefined,
+          glow: typeof parsed.glow === "boolean" ? parsed.glow : undefined,
         };
       }
     }
   } catch (e) {
     console.warn("Failed to parse mode prefs from localStorage:", e);
   }
-  return { pink: false, prism: false, lab: undefined, rotate: undefined };
+  return { pink: false, prism: false, lab: undefined, rotate: undefined, glow: undefined };
 }

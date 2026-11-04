@@ -10,15 +10,15 @@ import {
   type CrystalUrlState,
 } from "../../src/url-state";
 
-const EMPTY_MODES = { pink: null, prism: null, lab: null, rotate: null };
+const EMPTY_MODES = { pink: null, prism: null, lab: null, rotate: null, glow: null };
 
 describe("parseCrystalUrlState", () => {
   it("reads a full share URL", () => {
-    expect(parseCrystalUrlState("?seed=ab12x&t=-12.5&ss=80&pink=1&prism=1&lab=1&rotate=0")).toEqual({
+    expect(parseCrystalUrlState("?seed=ab12x&t=-12.5&ss=80&pink=1&prism=1&lab=1&rotate=0&glow=1")).toEqual({
       seed: "ab12x",
       provenance: "manual",
       lab: { temperatureC: -12.5, supersaturation: 0.8 },
-      modes: { pink: true, prism: true, lab: true, rotate: false },
+      modes: { pink: true, prism: true, lab: true, rotate: false, glow: true },
     });
   });
 
@@ -45,6 +45,13 @@ describe("parseCrystalUrlState", () => {
     expect(parseCrystalUrlState("?t=0.0&ss=0").lab).toEqual({ temperatureC: 0, supersaturation: 0 });
     expect(parseCrystalUrlState("?t=-40.0&ss=100").lab).toEqual({ temperatureC: -40, supersaturation: 1 });
     expect(parseCrystalUrlState("?t=-0.0&ss=50").lab).not.toBeNull();
+  });
+
+  it("parses glow=1/0/x and absent as null", () => {
+    expect(parseCrystalUrlState("?glow=1").modes.glow).toBe(true);
+    expect(parseCrystalUrlState("?glow=0").modes.glow).toBe(false);
+    expect(parseCrystalUrlState("?glow=x").modes.glow).toBe(false);
+    expect(parseCrystalUrlState("").modes.glow).toBeNull();
   });
 
   it("treats an absent mode param as 'no opinion' and a non-1 value as off", () => {
@@ -84,7 +91,7 @@ describe("crystalStatesEqual", () => {
     seed: "ab12x",
     provenance: "manual",
     lab: { temperatureC: -12.5, supersaturation: 0.8 },
-    modes: { pink: true, prism: false, lab: true, rotate: false },
+    modes: { pink: true, prism: false, lab: true, rotate: false, glow: null },
   };
 
   it("is true for the same crystal and look — a popped entry that matches is a no-op", () => {
@@ -111,7 +118,7 @@ describe("crystalStatesEqual", () => {
       seed: "abcde",
       provenance: "sampled",
       lab: null,
-      modes: { pink: false, prism: false, lab: false, rotate: false },
+      modes: { pink: false, prism: false, lab: false, rotate: false, glow: false },
     };
     expect(crystalStatesEqual(parsed, onScreen)).toBe(true);
   });
@@ -122,7 +129,7 @@ describe("crystalStatesEqual", () => {
       seed: "abcde",
       provenance: "sampled",
       lab: null,
-      modes: { pink: false, prism: false, lab: false, rotate: true },
+      modes: { pink: false, prism: false, lab: false, rotate: true, glow: false },
     };
     expect(crystalStatesEqual(parsed, onScreen)).toBe(true);
   });
@@ -133,7 +140,7 @@ describe("crystalStatesEqual", () => {
       seed: "abcde",
       provenance: "sampled",
       lab: null,
-      modes: { pink: false, prism: false, lab: false, rotate: false },
+      modes: { pink: false, prism: false, lab: false, rotate: false, glow: false },
     };
     expect(crystalStatesEqual(parsed, onScreen)).toBe(false);
     expect(
@@ -150,7 +157,7 @@ describe("crystalStatesEqual", () => {
       seed: "abcde",
       provenance: "sampled",
       lab: null,
-      modes: { pink: false, prism: false, lab: false, rotate: false },
+      modes: { pink: false, prism: false, lab: false, rotate: false, glow: false },
     };
     expect(crystalStatesEqual(parsed, onScreen, { reducedMotion: true })).toBe(true);
   });
@@ -161,7 +168,7 @@ describe("crystalStatesEqual", () => {
       seed: "abcde",
       provenance: "sampled",
       lab: null,
-      modes: { pink: true, prism: false, lab: false, rotate: false },
+      modes: { pink: true, prism: false, lab: false, rotate: false, glow: false },
     };
     expect(crystalStatesEqual(parsed, onScreen)).toBe(false);
   });

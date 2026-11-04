@@ -39,6 +39,7 @@ function makeCtx(): Harness {
     onToggleUI: track("onToggleUI", vi.fn()),
     onTogglePink: track("onTogglePink", vi.fn()),
     onTogglePrism: track("onTogglePrism", vi.fn()),
+    onToggleGlow: track("onToggleGlow", vi.fn()),
     onSave: track("onSave", vi.fn()),
     onSaveSvg: track("onSaveSvg", vi.fn()),
     onSave3d: track("onSave3d", vi.fn()),
@@ -79,6 +80,7 @@ const DISCRETE_SHORTCUTS: ReadonlyArray<readonly [key: string, handler: string]>
   ["h", "onToggleUI"],
   ["p", "onTogglePink"],
   ["m", "onTogglePrism"],
+  ["o", "onToggleGlow"],
   ["s", "onSave"],
   ["e", "onSaveSvg"],
   ["t", "onSave3d"],
@@ -131,6 +133,12 @@ describe("initKeyboardShortcuts key auto-repeat", () => {
       );
       expect(totalCalls).toBe(1);
     });
+  });
+
+  it("O calls the Glow toggle once and ignores repeat", () => {
+    keydown("o", { repeat: false });
+    keydown("O", { repeat: true });
+    expect(h.handlers.onToggleGlow).toHaveBeenCalledTimes(1);
   });
 
   it("D grows today's crystal once and does not fire while typing in an input", () => {

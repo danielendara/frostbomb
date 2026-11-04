@@ -10,12 +10,28 @@ export const SHARE_PARAM_PINK = "pink";
 export const SHARE_PARAM_PRISM = "prism";
 export const SHARE_PARAM_ROTATE = "rotate";
 export const SHARE_PARAM_LAB = "lab";
+export const SHARE_PARAM_GLOW = "glow";
 
 export type ShareFlagName =
   | typeof SHARE_PARAM_PINK
   | typeof SHARE_PARAM_PRISM
   | typeof SHARE_PARAM_ROTATE
-  | typeof SHARE_PARAM_LAB;
+  | typeof SHARE_PARAM_LAB
+  | typeof SHARE_PARAM_GLOW;
+
+/** Param names written by share URLs — any one present makes it a share link. */
+export const SHARE_URL_WIRE_NAMES = [
+  SHARE_PARAM_SEED,
+  SHARE_PARAM_PINK,
+  SHARE_PARAM_PRISM,
+  SHARE_PARAM_ROTATE,
+  SHARE_PARAM_LAB,
+  SHARE_PARAM_GLOW,
+] as const;
+
+export function urlHasShareParams(params: URLSearchParams): boolean {
+  return SHARE_URL_WIRE_NAMES.some((name) => params.has(name));
+}
 
 /** Present `"1"` / present-but-off / absent. */
 export type ShareFlagTriState = "1" | "0" | null;
@@ -23,6 +39,7 @@ export type ShareFlagTriState = "1" | "0" | null;
 const WRITE_ZERO_WHEN_OFF: ReadonlySet<ShareFlagName> = new Set([
   SHARE_PARAM_LAB,
   SHARE_PARAM_ROTATE,
+  SHARE_PARAM_GLOW,
 ]);
 
 export function setShareFlag(

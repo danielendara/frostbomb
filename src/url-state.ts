@@ -1,10 +1,12 @@
 import {
+  SHARE_PARAM_GLOW,
   SHARE_PARAM_LAB,
   SHARE_PARAM_PINK,
   SHARE_PARAM_PRISM,
   SHARE_PARAM_ROTATE,
   SHARE_PARAM_SEED,
   readShareFlag,
+  urlHasShareParams,
   type ShareFlagName,
   type ShareFlagTriState,
 } from "./share-url-params";
@@ -33,6 +35,7 @@ interface ModeState {
   prism: boolean | null;
   lab: boolean | null;
   rotate: boolean | null;
+  glow: boolean | null;
 }
 
 export interface CrystalUrlState {
@@ -91,6 +94,7 @@ export function parseCrystalUrlState(search: string): CrystalUrlState {
       prism: parseMode(params, SHARE_PARAM_PRISM),
       lab: parseMode(params, SHARE_PARAM_LAB),
       rotate: parseMode(params, SHARE_PARAM_ROTATE),
+      glow: parseMode(params, SHARE_PARAM_GLOW),
     },
   };
 }
@@ -133,6 +137,28 @@ function resolveLookMode(
 ): boolean {
   if (flag !== null) return flag === "1";
   return source === "boot" ? storedOn : false;
+}
+
+/**
+ * Glow on/off at boot or restore. Share links (any share param present) treat
+ * an absent `glow` as off. Plain visits use the remembered toggle, then default.
+ * Applying a URL never writes prefs — callers keep `glowPref` separate.
+ */
+export function resolveGlow(
+  source: ModeSource,
+  params: URLSearchParams,
+  stored: boolean | undefined,
+  defaultEnabled: boolean,
+): boolean {
+  const flag = readShareFlag(params, SHARE_PARAM_GLOW);
+  if (source === "restore") {
+    return flag !== null ? flag === "1" : false;
+  }
+  if (urlHasShareParams(params)) {
+    return flag !== null ? flag === "1" : false;
+  }
+  if (stored !== undefined) return stored;
+  return defaultEnabled;
 }
 
 /** URL precision: 0.1 °C and whole-percent supersaturation. */
@@ -207,6 +233,7 @@ export function crystalStatesEqual(
     labEqual(a.lab, b.lab) &&
     (a.modes.pink ?? false) === (b.modes.pink ?? false) &&
     (a.modes.prism ?? false) === (b.modes.prism ?? false) &&
+    (a.modes.glow ?? false) === (b.modes.glow ?? false) &&
     (a.modes.lab ?? false) === (b.modes.lab ?? false) &&
     rotateStatesEqual(a.modes, b.modes, options)
   );
