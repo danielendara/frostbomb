@@ -347,6 +347,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
 
   /** PMREM is sync and heavy; wait longer than postprocessing idle so e2e/interaction wins on CI. */
   const ENVIRONMENT_IDLE_TIMEOUT_MS = 8_000;
+  /** Extra gap after idle fires so sync PMREM does not overlap postprocessing load or late e2e steps. */
+  const ENVIRONMENT_BUILD_DELAY_MS = 3_000;
 
   /** Like postprocessing idle scheduling, but Safari has no `requestIdleCallback` — use a real delay. */
   function scheduleEnvironmentIdleTask(task: () => void): void {
@@ -362,7 +364,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     environmentBuildQueued = true;
     scheduleEnvironmentIdleTask(() => {
       environmentBuildQueued = false;
-      runEnvironmentBuild();
+      window.setTimeout(() => runEnvironmentBuild(), ENVIRONMENT_BUILD_DELAY_MS);
     });
   }
 

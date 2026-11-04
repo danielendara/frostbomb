@@ -121,7 +121,9 @@ describe("procedural scene environment", () => {
   }
 
   it("assigns the environment once after the first painted frame and disposes it", async () => {
+    vi.useFakeTimers();
     const scene = await runFrames(3);
+    await vi.runAllTimersAsync();
     await vi.waitFor(() => {
       expect(buildSceneEnvironment).toHaveBeenCalledTimes(1);
       expect(scene.scene.environment).toEqual({ uuid: "test-env" });
@@ -129,6 +131,7 @@ describe("procedural scene environment", () => {
     scene.dispose();
     expect(envDispose).toHaveBeenCalledTimes(1);
     expect(scene.scene.environment).toBeNull();
+    vi.useRealTimers();
   });
 
   it("does not build the environment on the first animation frame", async () => {
