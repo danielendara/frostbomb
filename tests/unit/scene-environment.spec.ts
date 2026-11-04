@@ -8,7 +8,7 @@ const { buildSceneEnvironment, envDispose } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../src/snowflake/scene-environment.ts", () => ({
-  ENV_PMREM_SIZE: { rich: 512, lite: 256 },
+  ENV_PMREM_SIZE: { rich: 256, lite: 256 },
   buildSceneEnvironment,
 }));
 
