@@ -4,7 +4,7 @@ import type { QualityTier } from "./quality";
 /** PMREM face size for `fromScene` (LITE uses a smaller target). */
 export const ENV_PMREM_SIZE: Readonly<Record<QualityTier, number>> = {
   rich: 256,
-  lite: 256,
+  lite: 128,
 };
 
 export interface SceneEnvironmentHandle {

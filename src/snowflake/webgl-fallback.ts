@@ -1,4 +1,5 @@
 import type { Scene } from "./scene";
+import { GLOW_MODE } from "../ui/mode-toggle";
 
 export const WEBGL_UNAVAILABLE_ANNOUNCEMENT =
   "3D view unavailable on this device. Rotate, view reset and PNG, wallpaper, SVG and 3D exports are disabled.";
@@ -24,8 +25,6 @@ export function hasWebGL2(doc: Document = document): boolean {
     return false;
   }
 }
-
-import { GLOW_MODE } from "../ui/mode-toggle";
 
 /** Inert stand-in so the Field Guide, Nakaya diagram and keyboard wiring run unchanged. */
 export function createInertScene(): Scene {

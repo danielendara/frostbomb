@@ -3,7 +3,6 @@ import { BuildResult } from "./geometry";
 import {
   PostprocessingPipeline,
   RenderPipeline,
-  scheduleIdleTask,
   skipPostprocessingFromEnvironment,
 } from "./postprocessing";
 import { MARK_FIRST_FRAME_RENDERED, markOnce } from "./perf-marks";
@@ -349,13 +348,22 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   /** PMREM is sync and heavy; wait longer than postprocessing idle so e2e/interaction wins on CI. */
   const ENVIRONMENT_IDLE_TIMEOUT_MS = 8_000;
 
+  /** Like postprocessing idle scheduling, but Safari has no `requestIdleCallback` — use a real delay. */
+  function scheduleEnvironmentIdleTask(task: () => void): void {
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(() => task(), { timeout: ENVIRONMENT_IDLE_TIMEOUT_MS });
+    } else {
+      window.setTimeout(() => task(), ENVIRONMENT_IDLE_TIMEOUT_MS);
+    }
+  }
+
   function queueEnvironmentBuild(): void {
     if (environmentBuildQueued || environmentBuildInFlight || environmentHandle) return;
     environmentBuildQueued = true;
-    scheduleIdleTask(() => {
+    scheduleEnvironmentIdleTask(() => {
       environmentBuildQueued = false;
       runEnvironmentBuild();
-    }, ENVIRONMENT_IDLE_TIMEOUT_MS);
+    });
   }
 
   /** After first paint, once the entry tween has settled (idle, not on a rAF hot path). */

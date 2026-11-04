@@ -8,7 +8,7 @@ const { buildSceneEnvironment, envDispose } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../src/snowflake/scene-environment.ts", () => ({
-  ENV_PMREM_SIZE: { rich: 256, lite: 256 },
+  ENV_PMREM_SIZE: { rich: 256, lite: 128 },
   buildSceneEnvironment,
 }));
 
@@ -29,12 +29,17 @@ describe("procedural scene environment", () => {
       matches: false,
       media: "(prefers-reduced-motion: reduce)",
       onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
       addListener: () => {},
       removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
       dispatchEvent: () => false,
     }));
+
+    vi.stubGlobal("requestIdleCallback", (cb: IdleRequestCallback) => {
+      cb({ didTimeout: false, timeRemaining: () => 50 } as IdleDeadline);
+      return 1;
+    });
 
     vi.doMock("../../src/snowflake/frost.ts", () => ({
       createFrostPlaceholders: () => ({
