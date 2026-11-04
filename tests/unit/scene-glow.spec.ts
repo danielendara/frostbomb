@@ -63,6 +63,7 @@ describe("Glow mode", () => {
       },
       shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
+      scheduleIdleTask: (task: () => void) => task(),
     }));
     vi.stubGlobal("requestAnimationFrame", () => 1);
     vi.stubGlobal("cancelAnimationFrame", () => {});

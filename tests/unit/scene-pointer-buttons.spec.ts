@@ -85,6 +85,7 @@ describe("createScene pointer buttons", () => {
       },
       shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
+      scheduleIdleTask: (task: () => void) => task(),
     }));
   });
 
