@@ -1085,6 +1085,19 @@ kbd {
   display: none !important;
 }
 
+@media (max-width: 768px) {
+  .quality-demotion-notice {
+    top: calc(var(--pad) + env(safe-area-inset-top));
+    bottom: auto;
+    max-width: min(38vw, 9rem);
+    transform: translateX(-50%) translateY(-0.35rem);
+  }
+
+  .quality-demotion-notice.is-visible {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .quality-demotion-notice {
     transition: none;

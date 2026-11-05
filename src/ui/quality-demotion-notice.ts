@@ -7,6 +7,7 @@ const DEFAULT_DISMISS_MS = 4000;
 const FADE_MS = 350;
 
 function dismissMs(): number {
+  if (!import.meta.env.DEV) return DEFAULT_DISMISS_MS;
   const override = (
     window as Window & { __FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__?: number }
   ).__FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__;
@@ -39,8 +40,12 @@ function hideNotice(el: HTMLElement, prefersReducedMotion: boolean): void {
   }, fadeMs);
 }
 
-/** Shows a brief notice when the frame-time governor demotes RICH to LITE. Once per drop. */
+/**
+ * Shows a brief notice when the frame-time governor demotes RICH to LITE.
+ * Does not start the dismiss timer; call {@link beginQualityDemotionNoticeDismiss} after tier work completes.
+ */
 export function showQualityDemotionNotice(prefersReducedMotion = false): void {
+  if (prefersReducedMotion) return;
   if (visible) return;
 
   const el = document.getElementById(QUALITY_DEMOTION_NOTICE_ID);
@@ -54,7 +59,16 @@ export function showQualityDemotionNotice(prefersReducedMotion = false): void {
   el.classList.remove("is-visible");
   void el.offsetWidth;
   el.classList.add("is-visible");
+}
 
+/** Starts the auto-dismiss timer after applyTier / updateCamera have finished. */
+export function beginQualityDemotionNoticeDismiss(prefersReducedMotion = false): void {
+  if (prefersReducedMotion || !visible) return;
+
+  const el = document.getElementById(QUALITY_DEMOTION_NOTICE_ID);
+  if (!el || el.hidden) return;
+
+  if (dismissTimer !== undefined) clearTimeout(dismissTimer);
   dismissTimer = window.setTimeout(() => {
     dismissTimer = undefined;
     hideNotice(el, prefersReducedMotion);

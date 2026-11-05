@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   QUALITY_DEMOTION_NOTICE_ID,
   QUALITY_DEMOTION_NOTICE_MESSAGE,
+  beginQualityDemotionNoticeDismiss,
   resetQualityDemotionNoticeForTests,
   showQualityDemotionNotice,
 } from "../../src/ui/quality-demotion-notice.ts";
@@ -16,11 +17,14 @@ describe("showQualityDemotionNotice", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    delete (window as Window & { __FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__?: number })
+      .__FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__;
     resetQualityDemotionNoticeForTests();
   });
 
   it("shows the message with live-region semantics and auto-dismisses", () => {
     showQualityDemotionNotice(false);
+    beginQualityDemotionNoticeDismiss(false);
 
     const notice = document.getElementById(QUALITY_DEMOTION_NOTICE_ID)!;
     expect(notice.getAttribute("role")).toBe("status");
@@ -40,9 +44,10 @@ describe("showQualityDemotionNotice", () => {
     expect(notice.textContent).toBe("");
   });
 
-  it("respects a shorter dismiss override for tests", () => {
+  it("respects a shorter dismiss override for tests in dev", () => {
     (window as Window & { __FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__?: number }).__FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__ = 500;
     showQualityDemotionNotice(false);
+    beginQualityDemotionNoticeDismiss(false);
     const notice = document.getElementById(QUALITY_DEMOTION_NOTICE_ID)!;
 
     vi.advanceTimersByTime(500);
@@ -54,6 +59,7 @@ describe("showQualityDemotionNotice", () => {
   it("does not repeat while the same drop notice is visible", () => {
     showQualityDemotionNotice(false);
     showQualityDemotionNotice(false);
+    beginQualityDemotionNoticeDismiss(false);
 
     const notice = document.getElementById(QUALITY_DEMOTION_NOTICE_ID)!;
     expect(notice.textContent).toBe(QUALITY_DEMOTION_NOTICE_MESSAGE);
@@ -63,26 +69,30 @@ describe("showQualityDemotionNotice", () => {
     expect(notice.hidden).toBe(true);
 
     showQualityDemotionNotice(false);
+    beginQualityDemotionNoticeDismiss(false);
     expect(notice.hidden).toBe(false);
     expect(notice.textContent).toBe(QUALITY_DEMOTION_NOTICE_MESSAGE);
   });
 
-  it("hides immediately after dismiss when reduced motion is preferred", () => {
+  it("does not show the notice when reduced motion is preferred", () => {
     showQualityDemotionNotice(true);
+    beginQualityDemotionNoticeDismiss(true);
     const notice = document.getElementById(QUALITY_DEMOTION_NOTICE_ID)!;
-
-    vi.advanceTimersByTime(4000);
-    expect(notice.classList.contains("is-visible")).toBe(false);
+    expect(notice.hidden).toBe(true);
+    expect(notice.textContent).toBe("");
+    vi.advanceTimersByTime(10_000);
     expect(notice.hidden).toBe(true);
   });
 
   it("mutation guard: notice must auto-dismiss (visible flag clears)", () => {
     showQualityDemotionNotice(false);
+    beginQualityDemotionNoticeDismiss(false);
     vi.advanceTimersByTime(4350);
     const notice = document.getElementById(QUALITY_DEMOTION_NOTICE_ID)!;
     expect(notice.hidden).toBe(true);
 
     showQualityDemotionNotice(false);
+    beginQualityDemotionNoticeDismiss(false);
     expect(notice.hidden).toBe(false);
   });
 });

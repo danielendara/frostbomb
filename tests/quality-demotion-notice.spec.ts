@@ -67,3 +67,31 @@ test("shows again after Lab promotes back to RICH and governor demotes again", a
   await expect(notice(page)).toContainText(QUALITY_DEMOTION_NOTICE_MESSAGE);
   await expect(notice(page)).toBeVisible();
 });
+
+test("manual Lab quality switches do not show the demotion notice", async ({ page }) => {
+  await page.goto("/?seed=abcde&quality=rich");
+  await page.click("#lab-toggle");
+  const select = page.locator(".tp-lblv", { hasText: "Quality" }).locator("select");
+  await select.selectOption({ label: "LITE" });
+  await expect(quality(page)).toHaveAttribute("data-quality", "lite");
+  await expect(notice(page)).toBeHidden();
+
+  await select.selectOption({ label: "RICH" });
+  await expect(quality(page)).toHaveAttribute("data-quality", "rich");
+  await expect(notice(page)).toBeHidden();
+});
+
+test("starting on LITE never shows the demotion notice", async ({ page }) => {
+  await page.goto("/?seed=abcde&quality=lite");
+  await expect(quality(page)).toHaveAttribute("data-quality", "lite");
+  await page.waitForTimeout(1500);
+  await expect(notice(page)).toBeHidden();
+});
+
+test("reduced motion never shows the demotion notice", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/?seed=abcde&quality=rich");
+  await expect(quality(page)).toHaveAttribute("data-quality", "lite");
+  await demoteViaGovernor(page);
+  await expect(notice(page)).toBeHidden();
+});

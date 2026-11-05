@@ -99,3 +99,77 @@ test("360×640 keeps masthead, field notes, and actions from overlapping", async
   await page.locator("#refresh").click();
   await expect(page.locator("#seed-display")).not.toHaveText("·····");
 });
+
+const SLOW_DELTA = 1 / 30;
+
+async function demoteViaGovernor(page: import("@playwright/test").Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      typeof (window as unknown as { __FROSTBOMB_TIER_GOVERNOR_TICK__?: unknown })
+        .__FROSTBOMB_TIER_GOVERNOR_TICK__ === "function",
+  );
+  await page.evaluate((delta) => {
+    const tick = (window as unknown as { __FROSTBOMB_TIER_GOVERNOR_TICK__?: (d: number) => void })
+      .__FROSTBOMB_TIER_GOVERNOR_TICK__;
+    if (!tick) throw new Error("missing __FROSTBOMB_TIER_GOVERNOR_TICK__");
+    for (let i = 0; i < 200; i++) tick(delta);
+  }, SLOW_DELTA);
+}
+
+async function finishEntryAnimations(page: import("@playwright/test").Page): Promise<void> {
+  await page.evaluate(() => {
+    document.getAnimations().forEach((animation) => {
+      const effect = animation.effect;
+      if (effect && "getTiming" in effect) {
+        const timing = (effect as KeyframeEffect).getTiming();
+        if (timing.iterations === Infinity) return;
+      }
+      try {
+        animation.finish();
+      } catch {
+        animation.cancel();
+      }
+    });
+  });
+}
+
+async function assertNoticeDoesNotOverlapVisibleButtons(
+  page: import("@playwright/test").Page,
+  width: number,
+  height: number,
+): Promise<void> {
+  const noticeBox = await boxOf(page.locator("#quality-demotion-notice"));
+  expect(inViewport(noticeBox, width, height)).toBe(true);
+
+  const buttons = page.locator("button:visible");
+  const count = await buttons.count();
+  for (let i = 0; i < count; i++) {
+    const buttonBox = await buttons.nth(i).boundingBox();
+    if (!buttonBox) continue;
+    expect(
+      overlaps(noticeBox, buttonBox),
+      `notice overlapped visible button index ${i}`,
+    ).toBe(false);
+  }
+}
+
+for (const viewport of [
+  { width: 360, height: 640 },
+  { width: 390, height: 844 },
+  { width: 768, height: 1024 },
+] as const) {
+  test(`${viewport.width}×${viewport.height} quality demotion notice does not cover visible buttons`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.addInitScript(() => {
+      (window as unknown as { __FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__?: number }).__FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__ =
+        120_000;
+    });
+    await page.goto("/?seed=abcde&quality=rich");
+    await finishEntryAnimations(page);
+    await demoteViaGovernor(page);
+    await expect(page.locator("#quality-demotion-notice")).toBeVisible();
+    await assertNoticeDoesNotOverlapVisibleButtons(page, viewport.width, viewport.height);
+  });
+}
