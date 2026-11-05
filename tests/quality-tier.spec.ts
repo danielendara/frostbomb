@@ -91,3 +91,31 @@ test("Lab Mode quality toggle switches the tier without touching the URL", async
   expect(new URL(page.url()).searchParams.get("quality")).toBe("rich");
   expect(new URL(page.url()).searchParams.get("seed")).toBe("abcde");
 });
+
+const SLOW_DELTA = 1 / 30;
+
+async function demoteViaGovernor(page: import("@playwright/test").Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      typeof (window as unknown as { __FROSTBOMB_TIER_GOVERNOR_TICK__?: unknown })
+        .__FROSTBOMB_TIER_GOVERNOR_TICK__ === "function",
+  );
+  await page.evaluate((delta) => {
+    const tick = (window as unknown as { __FROSTBOMB_TIER_GOVERNOR_TICK__?: (d: number) => void })
+      .__FROSTBOMB_TIER_GOVERNOR_TICK__;
+    if (!tick) throw new Error("missing __FROSTBOMB_TIER_GOVERNOR_TICK__");
+    for (let i = 0; i < 200; i++) tick(delta);
+  }, SLOW_DELTA);
+}
+
+test("frame-rate demotion updates the Lab Quality menu to LITE while it is open", async ({ page }) => {
+  await page.goto("/?seed=abcde&quality=rich");
+  await page.click("#lab-toggle");
+  await expect(page.locator("#lab-status")).toHaveText("ON");
+  const select = page.locator(".tp-lblv", { hasText: "Quality" }).locator("select");
+  await expect(select).toHaveValue("RICH");
+
+  await demoteViaGovernor(page);
+  await expect(quality(page)).toHaveAttribute("data-quality", "lite");
+  await expect(select).toHaveValue("LITE");
+});
