@@ -361,15 +361,16 @@ test('Clear history undo stays visually armed until timeout, then chrome returns
   await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsContainer).toBeVisible();
 
-  // Fake timers before clear so the undo window expiry is driven by fastForward below.
+  // Install fake timers, pause real time, then fastForward to fire the app's undo setTimeout.
   await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 1_000));
 
   await clearBtn.click();
   const undoBtn = page.locator('#btn-undo-history');
-  await expect(undoBtn).toBeVisible({ timeout: 15_000 });
-  await expect(undoBtn).toHaveClass(/undo-armed/, { timeout: 15_000 });
-  await expect(recentSeedsContainer).toHaveClass(/undo-armed/, { timeout: 15_000 });
-  await expect(undoBtn).toHaveCSS('border-color', 'rgb(158, 201, 255)', { timeout: 15_000 });
+  await expect(undoBtn).toBeVisible();
+  await expect(undoBtn).toHaveClass(/undo-armed/);
+  await expect(recentSeedsContainer).toHaveClass(/undo-armed/);
+  await expect(undoBtn).toHaveCSS('border-color', 'rgb(158, 201, 255)');
 
   await page.clock.fastForward(10000);
   await expect(recentSeedsContainer).not.toBeVisible();
