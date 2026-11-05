@@ -1,0 +1,50 @@
+=== mutation fail (reverted sync hook) ===
+
+Running 1 test using 1 worker
+
+(node:9369) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [chromium] › tests/quality-tier.spec.ts:111:1 › frame-rate demotion updates the Lab Quality menu to LITE while it is open
+  1) [chromium] › tests/quality-tier.spec.ts:111:1 › frame-rate demotion updates the Lab Quality menu to LITE while it is open 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  locator('.tp-lblv').filter({ hasText: 'Quality' }).locator('select')
+    Expected: "LITE"
+    Received: "RICH"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" locator('.tp-lblv').filter({ hasText: 'Quality' }).locator('select') with timeout 5000ms
+      - waiting for locator('.tp-lblv').filter({ hasText: 'Quality' }).locator('select')
+        13 × locator resolved to <select class="tp-lstv_s">…</select>
+           - unexpected value "RICH"
+
+
+      118 |   await demoteViaGovernor(page);
+      119 |   await expect(quality(page)).toHaveAttribute("data-quality", "lite");
+    > 120 |   await expect(select).toHaveValue("LITE");
+          |                        ^
+      121 | });
+      122 |
+        at /agent/repos/frostbomb/tests/quality-tier.spec.ts:120:24
+
+    Error Context: test-results/quality-tier-frame-rate-de-452be-nu-to-LITE-while-it-is-open-chromium/error-context.md
+
+
+  1 failed
+    [chromium] › tests/quality-tier.spec.ts:111:1 › frame-rate demotion updates the Lab Quality menu to LITE while it is open 
+FAIL as expected (exit 1)
+
+=== mutation pass (restored) ===
+
+Running 1 test using 1 worker
+
+(node:9534) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [chromium] › tests/quality-tier.spec.ts:111:1 › frame-rate demotion updates the Lab Quality menu to LITE while it is open
+  1 passed (5.8s)

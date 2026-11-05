@@ -1,0 +1,30 @@
+  ✓  148 [chromium] › tests/share-url-pink-prism.spec.ts:216:1 › grow-another keeps pink/prism and rewrites seed (4.4s)
+  ✓  146 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:55:1 › Back and Forward restore sampled geometry, not the rounded Lab point (18.6s)
+  ✓  149 [sequential-smoke] › tests/crystal-provenance.smoke.spec.ts:80:1 › an explicit Lab link and a later seed edit round-trip at URL precision (18.1s)
+  ✓  150 [sequential-smoke] › tests/export-identity.smoke.spec.ts:46:1 › Save 3D filenames stay on the crystal captured before the exporter loads (24.2s)
+  ✓  151 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:11:1 › chips are hidden until Lab Mode is on (3.4s)
+  ✓  152 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:20:1 › a chip jumps to its habit, and one Back step returns to the previous crystal (7.0s)
+  ✓  153 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:49:1 › the active chip follows the Nakaya diagram keyboard, and only one is pressed (7.2s)
+  ✓  154 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:70:1 › chips wrap inside the 360px panel without horizontal overflow (2.9s)
+  ✓  155 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:44:1 › 360×640 keeps masthead, field notes, and actions from overlapping (2.6s)
+  ✓  156 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:161:3 › 360×640 quality demotion notice does not cover visible buttons (1.8s)
+  ✓  157 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:161:3 › 390×844 quality demotion notice does not cover visible buttons (2.4s)
+  ✓  158 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:161:3 › 768×1024 quality demotion notice does not cover visible buttons (5.2s)
+  ✓  159 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:10:1 › Share is hidden where the browser cannot share files (962ms)
+  ✓  160 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:54:1 › Share appears with a file-capable navigator and shares one PNG plus the link (7.7s)
+  ✓  161 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:79:1 › cancelling the share sheet is silent (5.1s)
+[WebServer] 4:52:21 AM [vite] (client) [console.error] Failed to share snowflake NotAllowedError: no activation
+[WebServer] {"event":"client_error","kind":"export","message":"no activation","build":"client-error","ua":"chrome"}
+  ✓  162 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:92:1 › a non-abort failure falls back to Copy link and keeps Copy link visible (6.7s)
+  ✓  163 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:31:1 › W downloads a screen-sized opaque wallpaper PNG and restores the live canvas (6.1s)
+  ✓  164 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:65:1 › the Save as wallpaper button works too, and the shortcut is documented (9.5s)
+  ✓  165 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:79:1 › W still works in Photo Mode, where the action bar is hidden (2.8s)
+  ✓  166 [sequential-smoke] › tests/webgl-fallback.smoke.spec.ts:18:5 › WebGL unavailable (null) › static flake replaces the 3D view (381ms)
+[WebServer] 4:52:42 AM [vite] (client) [console.error] THREE.WebGLRenderer: gl.getExtension is not a function
+  ✓  167 [sequential-smoke] › tests/webgl-fallback.smoke.spec.ts:18:5 › WebGL unavailable (stub) › static flake replaces the 3D view (377ms)
+[WebServer] {"event":"client_error","kind":"error","message":"smoke","build":"smoke","ua":"chrome"}
+  ✓  168 [sequential-smoke] › tests/worker-assets.smoke.spec.ts:6:3 › worker entry keeps assets unchanged › serves the app shell and SPA fallback, and handles /api/client-error (69ms)
+
+  168 passed (9.0m)
+
+=== verify: ALL PASSED ===
