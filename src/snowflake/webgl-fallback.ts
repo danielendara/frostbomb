@@ -1,4 +1,5 @@
 import type { Scene } from "./scene";
+import { GLOW_MODE } from "../ui/mode-toggle";
 
 export const WEBGL_UNAVAILABLE_ANNOUNCEMENT =
   "3D view unavailable on this device. Rotate, view reset and PNG, wallpaper, SVG and 3D exports are disabled.";
@@ -27,7 +28,12 @@ export function hasWebGL2(doc: Document = document): boolean {
 
 /** Inert stand-in so the Field Guide, Nakaya diagram and keyboard wiring run unchanged. */
 export function createInertScene(): Scene {
-  const flags = { rotate: false, pink: false, prism: false, glow: true };
+  const flags: { rotate: boolean; pink: boolean; prism: boolean; glow: boolean } = {
+    rotate: false,
+    pink: false,
+    prism: false,
+    glow: GLOW_MODE.defaultEnabled,
+  };
   return {
     isAutoRotateEnabled: false,
     get isPinkModeEnabled() {

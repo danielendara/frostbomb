@@ -37,7 +37,7 @@ export const GLOW_LOOK = {
  * Glow is Lab-only (no toolbar button). Toggle with **O** or the Lab checkbox;
  * share links and localStorage carry `glow=`.
  */
-export const GLOW_MODE = { label: "Glow", defaultEnabled: true } as const;
+export const GLOW_MODE = { label: "Glow", defaultEnabled: false } as const;
 
 /** Apply Glow on/off to a material (static, no transition). Emissive colour stays with Pink/Prism. */
 export function applyGlowLook(

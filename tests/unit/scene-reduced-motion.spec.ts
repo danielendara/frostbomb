@@ -115,6 +115,7 @@ describe("createScene reduced-motion changes", () => {
       },
       shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
+      scheduleIdleTask: (task: () => void) => task(),
     }));
 
     const requestFrame = vi.fn<(callback: FrameRequestCallback) => number>(() => 1);

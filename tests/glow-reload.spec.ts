@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { stubClipboard } from "./e2e-helpers";
 
 async function openLab(page: import("@playwright/test").Page) {
+  await expect(page.locator("#scene")).toHaveAttribute("data-entry-active", "false");
   const status = page.locator("#lab-status");
   if ((await status.textContent()) !== "ON") {
     await page.keyboard.press("l");
@@ -50,7 +51,7 @@ test("Glow preference survives reload, links override without clobbering storage
   expect(link.searchParams.get("prism")).toBe("1");
 
   const fresh = await context.newPage();
-  await fresh.goto(link.pathname + link.search);
+  await fresh.goto(link.href);
   await openLab(fresh);
   await expect.poll(async () => fresh.locator('.tp-lblv:has-text("Glow") input').isChecked()).toBe(true);
   await expect(fresh.locator("body")).toHaveClass(/pink-mode/);

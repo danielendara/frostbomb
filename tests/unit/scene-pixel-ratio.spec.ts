@@ -91,6 +91,7 @@ describe("createScene pixel ratio", () => {
       },
       shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
+      scheduleIdleTask: (task: () => void) => task(),
     }));
   });
 

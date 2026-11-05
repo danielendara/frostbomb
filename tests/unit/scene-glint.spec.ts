@@ -79,6 +79,7 @@ describe("createScene glint mode", () => {
       },
       shouldSkipPostprocessing: () => false,
       skipPostprocessingFromEnvironment: () => false,
+      scheduleIdleTask: (task: () => void) => task(),
     }));
     const requestFrame = vi.fn<(callback: FrameRequestCallback) => number>(() => 1);
     vi.stubGlobal("requestAnimationFrame", requestFrame);
