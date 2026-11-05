@@ -1,0 +1,98 @@
+
+> frostbomb@0.1.0 test:unit
+> vitest run tests/unit/quality-demotion-notice.spec.ts
+
+
+ RUN  v5.0.5 /agent/repos/frostbomb
+
+ ❯ tests/unit/quality-demotion-notice.spec.ts (5 tests | 4 failed) 16ms
+   ❯ showQualityDemotionNotice (5)
+     × shows the message with live-region semantics and auto-dismisses 10ms
+     × respects a shorter dismiss override for tests in dev 2ms
+     × does not repeat while the same drop notice is visible 1ms
+     × mutation guard: notice must auto-dismiss (visible flag clears) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/quality-demotion-notice.spec.ts > showQualityDemotionNotice > shows the message with live-region semantics and auto-dismisses
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/unit/quality-demotion-notice.spec.ts:40:53
+     38|
+     39|     vi.advanceTimersByTime(1);
+     40|     expect(notice.classList.contains("is-visible")).toBe(false);
+       |                                                     ^
+     41|
+     42|     vi.advanceTimersByTime(350);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/unit/quality-demotion-notice.spec.ts > showQualityDemotionNotice > respects a shorter dismiss override for tests in dev
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/unit/quality-demotion-notice.spec.ts:54:53
+     52|
+     53|     vi.advanceTimersByTime(500);
+     54|     expect(notice.classList.contains("is-visible")).toBe(false);
+       |                                                     ^
+     55|     vi.advanceTimersByTime(350);
+     56|     expect(notice.hidden).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/unit/quality-demotion-notice.spec.ts > showQualityDemotionNotice > does not repeat while the same drop notice is visible
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/quality-demotion-notice.spec.ts:69:27
+     67|     vi.advanceTimersByTime(4000);
+     68|     vi.advanceTimersByTime(350);
+     69|     expect(notice.hidden).toBe(true);
+       |                           ^
+     70|
+     71|     showQualityDemotionNotice(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/unit/quality-demotion-notice.spec.ts > showQualityDemotionNotice > mutation guard: notice must auto-dismiss (visible flag clears)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/quality-demotion-notice.spec.ts:92:27
+     90|     vi.advanceTimersByTime(4350);
+     91|     const notice = document.getElementById(QUALITY_DEMOTION_NOTICE_ID)…
+     92|     expect(notice.hidden).toBe(true);
+       |                           ^
+     93|
+     94|     showQualityDemotionNotice(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+   Start at  02:50:48
+   Duration  290ms (environment 73%, transform 13%, tests 8%, import 4%, worker 1%)
+

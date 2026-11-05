@@ -1,0 +1,20 @@
+  ✓  152 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:49:1 › the active chip follows the Nakaya diagram keyboard, and only one is pressed (8.5s)
+  ✓  153 [sequential-smoke] › tests/habit-chips.smoke.spec.ts:70:1 › chips wrap inside the 360px panel without horizontal overflow (3.0s)
+  ✓  154 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:44:1 › 360×640 keeps masthead, field notes, and actions from overlapping (2.2s)
+  ✓  155 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:161:3 › 360×640 quality demotion notice does not cover visible buttons (1.8s)
+  ✓  156 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:161:3 › 390×844 quality demotion notice does not cover visible buttons (1.9s)
+  ✓  157 [sequential-smoke] › tests/mobile-360.smoke.spec.ts:161:3 › 768×1024 quality demotion notice does not cover visible buttons (5.5s)
+  ✓  158 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:10:1 › Share is hidden where the browser cannot share files (942ms)
+  ✓  159 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:54:1 › Share appears with a file-capable navigator and shares one PNG plus the link (8.9s)
+  ✓  160 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:79:1 › cancelling the share sheet is silent (6.6s)
+  ✓  161 [sequential-smoke] › tests/share-sheet.smoke.spec.ts:92:1 › a non-abort failure falls back to Copy link and keeps Copy link visible (7.2s)
+  ✓  162 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:31:1 › W downloads a screen-sized opaque wallpaper PNG and restores the live canvas (5.8s)
+  ✓  163 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:65:1 › the Save as wallpaper button works too, and the shortcut is documented (7.4s)
+  ✓  164 [sequential-smoke] › tests/wallpaper.smoke.spec.ts:79:1 › W still works in Photo Mode, where the action bar is hidden (2.9s)
+  ✓  165 [sequential-smoke] › tests/webgl-fallback.smoke.spec.ts:18:5 › WebGL unavailable (null) › static flake replaces the 3D view (376ms)
+  ✓  166 [sequential-smoke] › tests/webgl-fallback.smoke.spec.ts:18:5 › WebGL unavailable (stub) › static flake replaces the 3D view (347ms)
+  ✓  167 [sequential-smoke] › tests/worker-assets.smoke.spec.ts:6:3 › worker entry keeps assets unchanged › serves the app shell and SPA fallback, and handles /api/client-error (65ms)
+
+  167 passed (8.9m)
+
+=== verify: ALL PASSED ===
