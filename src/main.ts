@@ -70,6 +70,7 @@ import {
   type ShareFlagName,
 } from "./share-url-params";
 import { GLOW_MODE } from "./ui/mode-toggle";
+import type { QualityTier } from "./snowflake/quality";
 
 /**
  * Restoring a history entry re-applies look modes through the same toggles a
@@ -90,6 +91,10 @@ installClientErrorReporting();
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 // No WebGL2 (or the renderer fails to build): static flake, no 3D actions.
 let webglFallback = !hasWebGL2();
+/** Set after LabPanel exists; governor demotion keeps the Quality menu in sync. */
+const labQualityAfterAutoDemotion = {
+  sync: undefined as ((tier: QualityTier) => void) | undefined,
+};
 function createSceneOrInert(): Scene {
   if (!webglFallback) {
     try {
@@ -100,6 +105,7 @@ function createSceneOrInert(): Scene {
           announce(WEBGL_CONTEXT_LOST_ANNOUNCEMENT);
           showReloadCrystalAffordance();
         },
+        onAutoQualityDemotion: (tier) => labQualityAfterAutoDemotion.sync?.(tier),
       });
     } catch (error) {
       webglFallback = true;
@@ -269,6 +275,7 @@ const labPanel = new LabPanel({
     if (last) urlWrites.flush();
   },
 });
+labQualityAfterAutoDemotion.sync = (tier) => labPanel.syncQuality(tier);
 
 function updateRecentSeedsUI() {
   historyManager.updateUI(currentSeedLabel, isLabMode, isGuideOpen);

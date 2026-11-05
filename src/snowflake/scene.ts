@@ -67,6 +67,8 @@ export interface Scene {
 
 export interface SceneOptions {
   onContextLost?: () => void;
+  /** Frame-time governor demoted RICH to LITE (Lab pane should mirror the tier). */
+  onAutoQualityDemotion?: (tier: QualityTier) => void;
 }
 
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {}): Scene {
@@ -668,6 +670,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     }
     applyTier();
     updateCamera();
+    options.onAutoQualityDemotion?.(demoted);
     if (!prefersReducedMotion) {
       requestAnimationFrame(() => {
         beginQualityDemotionNoticeDismiss(false);
