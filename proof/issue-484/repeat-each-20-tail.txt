@@ -1,0 +1,15 @@
+  ✓  270 [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal (4.1s)
+  ✓  269 [chromium] › tests/palette-recent-seeds.spec.ts:196:1 › Recent Seeds buttons support keyboard Arrow key navigation (14.8s)
+  ✓  271 [chromium] › tests/palette-recent-seeds.spec.ts:381:1 › History undo pulse is disabled when prefers-reduced-motion is set (2.5s)
+  ✓  273 [chromium] › tests/palette-recent-seeds.spec.ts:397:1 › Recent Seeds buttons announce state on click (6.6s)
+  ✓  272 [chromium] › tests/palette-recent-seeds.spec.ts:253:1 › Second Clear during the undo window does not wipe the seed backup (10.1s)
+  ✓  275 [chromium] › tests/palette-recent-seeds.spec.ts:291:1 › Masthead seed and recent seeds list are labelled but not live regions (1.5s)
+  ✓  276 [chromium] › tests/palette-recent-seeds.spec.ts:306:1 › Lab Mode grow during the undo window does not wipe the seed backup (23.1s)
+  ✓  274 [chromium] › tests/palette-recent-seeds.spec.ts:425:1 › Keep: a kept seed survives six regrows and a reload without changing the crystal or URL (28.3s)
+  ✓  277 [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal (2.7s)
+  ✓  278 [chromium] › tests/palette-recent-seeds.spec.ts:381:1 › History undo pulse is disabled when prefers-reduced-motion is set (1.2s)
+  ✓  279 [chromium] › tests/palette-recent-seeds.spec.ts:397:1 › Recent Seeds buttons announce state on click (6.7s)
+  ✓  280 [chromium] › tests/palette-recent-seeds.spec.ts:425:1 › Keep: a kept seed survives six regrows and a reload without changing the crystal or URL (14.9s)
+
+  280 passed (25.5m)
+PLAYWRIGHT_EXIT:0

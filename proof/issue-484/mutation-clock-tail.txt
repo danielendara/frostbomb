@@ -1,0 +1,25 @@
+      - Expect "toBeVisible" locator('#btn-undo-history') with timeout 5000ms
+      - waiting for locator('#btn-undo-history')
+
+
+      366 |   await clearBtn.click();
+      367 |   const undoBtn = page.locator('#btn-undo-history');
+    > 368 |   await expect(undoBtn).toBeVisible();
+          |                         ^
+      369 |   await expect(undoBtn).toHaveClass(/undo-armed/);
+      370 |   await expect(recentSeedsContainer).toHaveClass(/undo-armed/);
+      371 |   await expect(undoBtn).toHaveCSS('border-color', 'rgb(158, 201, 255)');
+        at /agent/repos/frostbomb/tests/palette-recent-seeds.spec.ts:368:25
+
+    Error Context: test-results/palette-recent-seeds-Clear-c5f61-en-chrome-returns-to-normal-chromium-repeat9/error-context.md
+
+  7 failed
+    [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal 
+    [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal 
+    [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal 
+    [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal 
+    [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal 
+    [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal 
+    [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal 
+  3 passed (2.2m)
+PLAYWRIGHT_EXIT:1

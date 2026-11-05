@@ -1,0 +1,12 @@
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal (5.8s)
+(node:56516) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal (13.5s)
+(node:56614) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   9 [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal (10.2s)
+  ✓  10 [chromium] › tests/palette-recent-seeds.spec.ts:356:1 › Clear history undo stays visually armed until timeout, then chrome returns to normal (10.4s)
+
+  10 passed (1.0m)
+PLAYWRIGHT_EXIT:0
