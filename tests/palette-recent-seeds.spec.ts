@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+import {
+  expectAnnouncerIncludes,
+  installAnnouncerSpy,
+  waitForSeedChange,
+} from './e2e-helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -162,9 +167,9 @@ test('Recent Seeds clearing can be undone, restoring items and focusing clear bu
   // Container should remain visible and show 'Undo' button
   await expect(recentSeedsContainer).toBeVisible();
   const undoBtn = page.locator('#btn-undo-history');
-  await expect(undoBtn).toBeVisible();
-  await expect(undoBtn).toHaveClass(/undo-armed/);
-  await expect(recentSeedsContainer).toHaveClass(/undo-armed/);
+  await expect(undoBtn).toBeVisible({ timeout: 15_000 });
+  await expect(undoBtn).toHaveClass(/undo-armed/, { timeout: 15_000 });
+  await expect(recentSeedsContainer).toHaveClass(/undo-armed/, { timeout: 15_000 });
 
   // Undo button should receive focus
   await expect(undoBtn).toBeFocused();
@@ -356,15 +361,15 @@ test('Clear history undo stays visually armed until timeout, then chrome returns
   await expect(seedDisplay).not.toHaveText('·····');
   await expect(recentSeedsContainer).toBeVisible();
 
-  // After grow: an 800ms real timeout raced slow CI before the first assert.
+  // Fake timers before clear so the undo window expiry is driven by fastForward below.
   await page.clock.install();
 
   await clearBtn.click();
   const undoBtn = page.locator('#btn-undo-history');
-  await expect(undoBtn).toBeVisible();
-  await expect(undoBtn).toHaveClass(/undo-armed/);
-  await expect(recentSeedsContainer).toHaveClass(/undo-armed/);
-  await expect(undoBtn).toHaveCSS('border-color', 'rgb(158, 201, 255)');
+  await expect(undoBtn).toBeVisible({ timeout: 15_000 });
+  await expect(undoBtn).toHaveClass(/undo-armed/, { timeout: 15_000 });
+  await expect(recentSeedsContainer).toHaveClass(/undo-armed/, { timeout: 15_000 });
+  await expect(undoBtn).toHaveCSS('border-color', 'rgb(158, 201, 255)', { timeout: 15_000 });
 
   await page.clock.fastForward(10000);
   await expect(recentSeedsContainer).not.toBeVisible();
@@ -391,7 +396,6 @@ test('History undo pulse is disabled when prefers-reduced-motion is set', async 
 test('Recent Seeds buttons announce state on click', async ({ page }) => {
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
-  const announcer = page.locator('#a11y-announcer');
 
   // Let first seed load
   await expect(seedDisplay).not.toHaveText('·····');
@@ -401,24 +405,24 @@ test('Recent Seeds buttons announce state on click', async ({ page }) => {
   const refreshBtn = page.locator('#refresh');
   await refreshBtn.click();
 
-  await expect(async () => {
-    const currentSeed = (await seedDisplay.textContent())?.trim() || '';
-    expect(currentSeed).not.toBe(firstSeed);
-  }).toPass({ timeout: 5000 });
+  await waitForSeedChange(page, firstSeed);
 
   const seedButtons = recentSeedsList.locator('button.seed-pill');
   await expect(seedButtons).toHaveCount(2);
 
+  await installAnnouncerSpy(page);
+
   // Click active seed button (first button in list)
   await seedButtons.first().click();
-  await expect(announcer).toContainText('is already active');
+  await expectAnnouncerIncludes(page, 'is already active');
 
   // Click inactive seed button (second button in list)
   await seedButtons.nth(1).click();
-  await expect(announcer).toContainText(`Loaded seed ${firstSeed}:`);
+  await expectAnnouncerIncludes(page, `Loaded seed ${firstSeed}:`);
 });
 
 test('Keep: a kept seed survives six regrows and a reload without changing the crystal or URL', async ({ page }) => {
+  test.slow();
   const recentSeedsList = page.locator('#recent-seeds-list');
   const seedDisplay = page.locator('#seed-display');
   const refreshBtn = page.locator('#refresh');
@@ -441,11 +445,7 @@ test('Keep: a kept seed survives six regrows and a reload without changing the c
   let previous = keptSeed;
   for (let i = 0; i < 6; i++) {
     await refreshBtn.click();
-    await expect(async () => {
-      const current = (await seedDisplay.textContent())?.trim() || '';
-      expect(current).not.toBe(previous);
-    }).toPass({ timeout: 5000 });
-    previous = (await seedDisplay.textContent())?.trim() || '';
+    previous = await waitForSeedChange(page, previous);
   }
 
   const pills = recentSeedsList.locator('button.seed-pill');

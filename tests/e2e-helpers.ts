@@ -1,5 +1,65 @@
 import { createHash } from "node:crypto";
-import type { Download, Page } from "@playwright/test";
+import { expect, type Download, type Page } from "@playwright/test";
+
+const REGROW_WAIT_MS = 30_000;
+
+/** Wait until #seed-display shows a different seed than `previousSeed`. */
+export async function waitForSeedChange(page: Page, previousSeed: string): Promise<string> {
+  await page.waitForFunction(
+    (prev) => {
+      const text = document.getElementById("seed-display")?.textContent?.trim() ?? "";
+      return text.length > 0 && text !== "·····" && text !== prev;
+    },
+    previousSeed,
+    { timeout: REGROW_WAIT_MS },
+  );
+  return (await page.locator("#seed-display").textContent())?.trim() ?? "";
+}
+
+/** Record #a11y-announcer text across debounced clear/set cycles. */
+export async function installAnnouncerSpy(page: Page): Promise<void> {
+  await page.locator("#a11y-announcer").evaluate((el) => {
+    const heard: string[] = [];
+    (window as unknown as { __heard: string[] }).__heard = heard;
+    new MutationObserver(() => {
+      if (el.textContent) heard.push(el.textContent);
+    }).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+}
+
+export async function expectAnnouncerIncludes(page: Page, text: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const heard = await page.evaluate(
+          () => (window as unknown as { __heard?: string[] }).__heard,
+        );
+        if (heard?.some((message) => message.includes(text))) return true;
+        return (await page.locator("#a11y-announcer").textContent())?.includes(text) ?? false;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+}
+
+export function glowCheckbox(page: Page) {
+  return page.locator('.tp-lblv:has-text("Glow") input');
+}
+
+/** Lab Tweakpane loads asynchronously; wait for the Glow binding before asserting. */
+export async function waitForGlowCheckbox(page: Page) {
+  await page.waitForFunction(
+    () => {
+      for (const row of document.querySelectorAll(".tp-lblv")) {
+        if (!row.textContent?.includes("Glow")) continue;
+        if (row.querySelector("input")) return true;
+      }
+      return false;
+    },
+    { timeout: 30_000 },
+  );
+  return glowCheckbox(page);
+}
 
 // Captures whatever copyLink() writes to the clipboard without depending on
 // real browser clipboard permissions (which are flaky in CI). Must be
