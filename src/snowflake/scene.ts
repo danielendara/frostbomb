@@ -28,6 +28,10 @@ import {
   selectStartingTier,
   type QualityTier,
 } from "./quality";
+import {
+  beginQualityDemotionNoticeDismiss,
+  showQualityDemotionNotice,
+} from "../ui/quality-demotion-notice";
 
 
 export interface Scene {
@@ -659,11 +663,21 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     console.info(
       `[frostbomb] quality tier demoted rich -> ${demoted} (EMA frame time > 25 ms for 90 frames) at ${new Date().toISOString()} (t=${Math.round(performance.now())} ms)`,
     );
+    if (!prefersReducedMotion) {
+      showQualityDemotionNotice(false);
+    }
     applyTier();
     updateCamera();
+    if (!prefersReducedMotion) {
+      requestAnimationFrame(() => {
+        beginQualityDemotionNoticeDismiss(false);
+      });
+    }
   }
 
   if (import.meta.env.DEV) {
+    (window as unknown as { __FROSTBOMB_TIER_GOVERNOR_TICK__?: (delta: number) => void }).__FROSTBOMB_TIER_GOVERNOR_TICK__ =
+      adaptQuality;
     (window as unknown as { __FROSTBOMB_AUTOROTATE__?: () => unknown }).__FROSTBOMB_AUTOROTATE__ =
       () => ({
         x: flakeHolder.rotation.x,
