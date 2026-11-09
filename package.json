@@ -33,19 +33,19 @@
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.66.0",
+    "@cloudflare/vite-plugin": "^1.67.0",
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.6",
     "@types/three": "^0.187.0",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@vitest/coverage-v8": "^5.0.5",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.14.0",
     "happy-dom": "^21.0.4",
     "simple-git-hooks": "^2.14.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.72.1",
-    "vite": "^8.3.5",
+    "vite": "^8.3.6",
     "vitest": "^5.0.5",
     "wrangler": "^4.129.1"
   },
