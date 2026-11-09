@@ -289,7 +289,15 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
     pipeline.setSize(w, h);
   }
 
-  window.addEventListener("resize", updateCamera);
+  let resizeFrame: number | null = null;
+  function scheduleResize() {
+    if (resizeFrame !== null) return;
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = null;
+      updateCamera();
+    });
+  }
+  window.addEventListener("resize", scheduleResize);
 
   // Zoom or a monitor change can alter devicePixelRatio without a resize event.
   let dprQuery: MediaQueryList | null = null;
@@ -426,7 +434,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
       canvas.removeEventListener("contextmenu", handleContextMenu);
-      window.removeEventListener("resize", updateCamera);
+      window.removeEventListener("resize", scheduleResize);
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+      resizeFrame = null;
       dprQuery?.removeEventListener("change", handleDprChange);
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       document.removeEventListener("visibilitychange", handleVisibilityChange);

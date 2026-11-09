@@ -7,6 +7,16 @@ describe("createScene pixel ratio", () => {
   let dprListeners: Set<Listener>;
   let removeDprListener: ReturnType<typeof vi.fn>;
   let setPixelRatio: ReturnType<typeof vi.fn>;
+  let setSize: ReturnType<typeof vi.fn>;
+  let pipelineSetSize: ReturnType<typeof vi.fn>;
+  let frames: Map<number, FrameRequestCallback>;
+  let nextFrame: number;
+
+  function flushFrames() {
+    const pending = [...frames.values()];
+    frames.clear();
+    for (const callback of pending) callback(0);
+  }
 
   function setDpr(value: number) {
     Object.defineProperty(window, "devicePixelRatio", { value, configurable: true });
@@ -36,6 +46,10 @@ describe("createScene pixel ratio", () => {
       dprListeners.delete(listener);
     });
     setPixelRatio = vi.fn();
+    setSize = vi.fn();
+    pipelineSetSize = vi.fn();
+    frames = new Map();
+    nextFrame = 1;
     setDpr(1);
     vi.stubGlobal("matchMedia", (query: string) => {
       if (query.startsWith("(resolution")) {
@@ -53,8 +67,12 @@ describe("createScene pixel ratio", () => {
         removeEventListener: () => {},
       } as unknown as MediaQueryList;
     });
-    vi.stubGlobal("requestAnimationFrame", () => 1);
-    vi.stubGlobal("cancelAnimationFrame", () => {});
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      const id = nextFrame++;
+      frames.set(id, callback);
+      return id;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
     vi.doMock("three", async (importOriginal) => {
       const actual = await importOriginal<typeof import("three")>();
       class FakeWebGLRenderer {
@@ -63,7 +81,7 @@ describe("createScene pixel ratio", () => {
           this.domElement = params.canvas;
         }
         setPixelRatio = setPixelRatio;
-        setSize() {}
+        setSize = setSize;
         setClearColor() {}
         render() {}
         dispose() {}
@@ -79,7 +97,7 @@ describe("createScene pixel ratio", () => {
     }));
     vi.doMock("../../src/snowflake/postprocessing.ts", () => ({
       PostprocessingPipeline: class {
-        setSize() {}
+        setSize = pipelineSetSize;
         render() {}
         dispose() {}
         setPhotoMode() {}
@@ -105,11 +123,31 @@ describe("createScene pixel ratio", () => {
     expect(lastRatio()).toBe(1);
     setDpr(2);
     window.dispatchEvent(new Event("resize"));
+    flushFrames();
     expect(lastRatio()).toBe(2);
     setDpr(3);
     window.dispatchEvent(new Event("resize"));
+    flushFrames();
     expect(lastRatio()).toBe(2);
     scene.dispose();
+  });
+
+  it("coalesces resizes and cancels pending work on dispose", async () => {
+    const scene = await makeScene();
+    setSize.mockClear();
+    pipelineSetSize.mockClear();
+    window.dispatchEvent(new Event("resize"));
+    window.dispatchEvent(new Event("resize"));
+    window.dispatchEvent(new Event("resize"));
+    expect(setSize).not.toHaveBeenCalled();
+    flushFrames();
+    expect(setSize).toHaveBeenCalledTimes(1);
+    expect(pipelineSetSize).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new Event("resize"));
+    scene.dispose();
+    flushFrames();
+    expect(setSize).toHaveBeenCalledTimes(1);
+    expect(pipelineSetSize).toHaveBeenCalledTimes(1);
   });
 
   it("recomputes the ratio on a matchMedia change without resize, and re-arms", async () => {
