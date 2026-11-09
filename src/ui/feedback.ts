@@ -1,3 +1,6 @@
+import { testTimeoutOverride } from "./test-timeout";
+
+const LABEL_TIMEOUTS = new WeakMap<HTMLElement, number>();
 const DOM_CACHE = new Map<string, HTMLElement>();
 const ROW_CACHE = new Map<string, HTMLElement>();
 const LAST_TEXT = new Map<string, string>();
@@ -93,13 +96,10 @@ export function setTemporaryLabel(
     btn.classList.remove("btn--success");
   }
 
-  const existingTimeout = btn.getAttribute("data-timeout-id");
-  if (existingTimeout) clearTimeout(parseInt(existingTimeout));
+  const existingTimeout = LABEL_TIMEOUTS.get(btn);
+  if (existingTimeout !== undefined) clearTimeout(existingTimeout);
 
-  const labelDuration =
-    (window as any).__FROSTBOMB_LABEL_TIMEOUT__ !== undefined
-      ? (window as any).__FROSTBOMB_LABEL_TIMEOUT__
-      : 2000;
+  const labelDuration = testTimeoutOverride("__FROSTBOMB_LABEL_TIMEOUT__", 2000);
 
   const timeoutId = window.setTimeout(() => {
     const originalLabel = labelEl.getAttribute("data-original");
@@ -138,10 +138,10 @@ export function setTemporaryLabel(
 
     btn.classList.remove("btn--error");
     btn.classList.remove("btn--success");
-    btn.removeAttribute("data-timeout-id");
+    LABEL_TIMEOUTS.delete(btn);
   }, labelDuration);
 
-  btn.setAttribute("data-timeout-id", timeoutId.toString());
+  LABEL_TIMEOUTS.set(btn, timeoutId);
 }
 
 export function triggerFlash(prefersReducedMotion = false): void {
