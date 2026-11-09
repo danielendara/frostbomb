@@ -1,4 +1,5 @@
 import { visualPress } from "./feedback";
+import { testTimeoutOverride } from "./test-timeout";
 import { announce } from "./announcer";
 import { SEED_PATTERN } from "../url-state";
 
@@ -198,10 +199,7 @@ export class SeedHistoryManager {
       }
     });
 
-    const timeoutDuration =
-      (window as any).__FROSTBOMB_UNDO_TIMEOUT__ !== undefined
-        ? (window as any).__FROSTBOMB_UNDO_TIMEOUT__
-        : 10000;
+    const timeoutDuration = testTimeoutOverride("__FROSTBOMB_UNDO_TIMEOUT__", 10000);
 
     this.undoTimeoutId = window.setTimeout(() => {
       const undoWasFocused = document.activeElement?.id === "btn-undo-history";
