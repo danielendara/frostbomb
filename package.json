@@ -51,5 +51,8 @@
   },
   "simple-git-hooks": {
     "pre-push": "npm run prepush"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
   }
 }
