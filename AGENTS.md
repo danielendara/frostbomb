@@ -18,7 +18,7 @@ How to launch and drive the app: `.cursor/skills/verify-frostbomb/SKILL.md`.
 
 **Baseline target:** Baseline widely available (no narrower browser support policy is documented elsewhere in this repo).
 
-**Modern Web Guidance:** Project skill at `.agents/skills/modern-web-guidance/SKILL.md` (installed via `npx skills add GoogleChrome/modern-web-guidance -y --copy -s modern-web-guidance -a cursor`). For HTML, CSS, and client-side JavaScript work, read that skill first. Search vendored guides locally with `rg` under `.agents/skills/modern-web-guidance/guides/` (for example `rg -i "dialog" .agents/skills/modern-web-guidance/guides/`) before implementing UI or platform APIs from memory. Optional CLI fallback only when local search is insufficient: `npx modern-web-guidance@0.0.195 search "<query>"` and `npx modern-web-guidance@0.0.195 retrieve "<id>"` (pin matches `npm view modern-web-guidance version`).
+**Modern Web Guidance:** Project skill at `.agents/skills/modern-web-guidance/SKILL.md` (installed via `npx skills add GoogleChrome/modern-web-guidance -y --copy -s modern-web-guidance -a cursor`). For HTML, CSS, and client-side JavaScript work, read that skill first. Search vendored guides locally with `rg` under `.agents/skills/modern-web-guidance/guides/` (for example `rg -i "dialog" .agents/skills/modern-web-guidance/guides/`) before implementing UI or platform APIs from memory. Optional CLI fallback only when local search is insufficient: `npx modern-web-guidance@1.0.0 search "<query>"` and `npx modern-web-guidance@1.0.0 retrieve "<id>"` (pin matches `npm view modern-web-guidance version`).
 
 ## Proof required in PRs
 - Verify output (tail with pass/fail counts).
