@@ -226,6 +226,42 @@ body.pink-mode {
   margin-top: 0.2rem;
 }
 
+.masthead__end {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(0.45rem, 2vw, 0.75rem);
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+.masthead-about {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: inherit;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.35rem 0.55rem;
+  min-height: 2.25rem;
+  transition: border-color 0.2s ease, color 0.2s ease;
+  position: fixed;
+  top: calc(var(--pad) + 2.9rem);
+  left: var(--pad);
+  right: auto;
+  z-index: 11;
+  pointer-events: auto;
+}
+
+.masthead-about:hover,
+.masthead-about:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
 .edition {
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -1158,6 +1194,90 @@ kbd {
   cursor: pointer;
 }
 
+.about-panel {
+  margin: auto;
+  max-width: min(21rem, calc(100vw - 2 * var(--pad)));
+  width: calc(100% - 2 * var(--pad));
+  padding: 1.15rem 1.2rem 1rem;
+  border: 1px solid var(--rule);
+  background: var(--paper-lift);
+  color: var(--ink);
+  font-family: var(--display);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  overflow-x: hidden;
+}
+
+.about-panel:modal {
+  overscroll-behavior: contain;
+}
+
+.about-panel::backdrop {
+  background: rgba(5, 9, 18, 0.78);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.about-panel__title {
+  font-size: 1.35rem;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.2;
+  margin: 0 0 0.65rem;
+}
+
+.about-panel__copy {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+}
+
+.about-panel__figure {
+  margin: 0 0 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.about-panel__image {
+  display: block;
+  width: min(10.5rem, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.about-panel__caption {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  text-align: center;
+  line-height: 1.35;
+  max-width: 16rem;
+}
+
+.about-panel__close {
+  margin-top: 0.15rem;
+}
+
+@keyframes about-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.about-panel.about-panel--enter {
+  animation: about-panel-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes camera-flash {
   0% { opacity: 0.8; }
   100% { opacity: 0; }
@@ -1168,6 +1288,9 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .about-panel.about-panel--enter {
+    animation: none !important;
+  }
   .btn-press, .animate-spin-once, #btn-rotate.active .action-btn__icon,
   #btn-pink.active .action-btn__icon, #btn-prism.active .action-btn__icon,
   #btn-undo-history.undo-armed {
@@ -1337,14 +1460,32 @@ kbd {
     font-size: 0.55rem;
   }
 
+  .masthead-about {
+    font-size: 0.52rem;
+    padding: 0.3rem 0.45rem;
+    min-height: 44px;
+  }
+
+  .masthead {
+    mix-blend-mode: normal;
+    align-items: flex-start;
+    padding-top: 0.65rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .masthead-about {
+    top: calc(var(--pad) + 2.55rem);
+    left: var(--pad);
+  }
+
   .field-notes {
-    top: 4.85rem;
+    top: 5.85rem;
     left: var(--pad);
     right: var(--pad);
     bottom: auto;
     max-width: none;
     /* Room for Today's crystal stacked under Regrow on the 360px rail. */
-    max-height: min(26vh, calc(100dvh - 30rem));
+    max-height: min(26vh, calc(100dvh - 31rem));
     overflow-x: hidden;
     overflow-y: auto;
   }

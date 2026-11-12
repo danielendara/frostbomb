@@ -8,6 +8,8 @@ export interface PhotoModeOptions {
   scene: { setPhotoMode(enabled: boolean): void };
   announce: (message: string) => void;
   reducedMotion: () => boolean;
+  /** Called when UI is hidden (e.g. close top-layer chrome). */
+  onEnter?: () => void;
 }
 
 export interface PhotoModeController {
@@ -17,7 +19,7 @@ export interface PhotoModeController {
 }
 
 export function createPhotoMode(opts: PhotoModeOptions): PhotoModeController {
-  const { canvas, button: btnUI, scene, announce, reducedMotion } = opts;
+  const { canvas, button: btnUI, scene, announce, reducedMotion, onEnter } = opts;
   let isUIHidden = false;
 
   const getUIElements = (): NodeListOf<Element> =>
@@ -114,6 +116,7 @@ export function createPhotoMode(opts: PhotoModeOptions): PhotoModeController {
     scene.setPhotoMode(isUIHidden);
 
     if (isUIHidden) {
+      onEnter?.();
       focusGeneration++;
       announce(
         reducedMotion()

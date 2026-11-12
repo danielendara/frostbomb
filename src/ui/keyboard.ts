@@ -1,10 +1,12 @@
 import { visualPress } from "./feedback";
 
 export interface KeyboardHandlerContext {
+  isAboutOpen: () => boolean;
   isGuideOpen: () => boolean;
   isLabMode: () => boolean;
   isUIHidden: () => boolean;
   isDiagramFocused: () => boolean;
+  onEscapeAbout: () => void;
   onEscapeGuide: () => void;
   onEscapeLab: () => void;
   onEscapeUIHidden: () => void;
@@ -65,7 +67,11 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
 
     // Global escape should always work to close overlays
     if (k === "escape") {
-      if (ctx.isGuideOpen()) {
+      if (ctx.isAboutOpen()) {
+        ctx.onEscapeAbout();
+        visualPress("about-close");
+        return;
+      } else if (ctx.isGuideOpen()) {
         ctx.onEscapeGuide();
         visualPress("guide-close");
         return;

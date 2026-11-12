@@ -31,6 +31,7 @@ import {
 import { SeedHistoryManager } from "./ui/history";
 import { LabPanel } from "./ui/lab-panel";
 import { initKeyboardShortcuts } from "./ui/keyboard";
+import { createAboutPanel } from "./ui/about-panel";
 import {
   downloadHref,
   downloadObjectUrls,
@@ -1400,12 +1401,15 @@ function toggleAutoRotate() {
 
 btnRotate?.addEventListener("click", toggleAutoRotate);
 
+const aboutPanel = createAboutPanel(() => motionQuery.matches);
+
 const photoMode = createPhotoMode({
   canvas,
   button: document.getElementById("btn-ui"),
   scene,
   announce,
   reducedMotion: () => motionQuery.matches,
+  onEnter: () => aboutPanel.close(),
 });
 
 document.getElementById("btn-ui")?.addEventListener("click", () => photoMode.toggle());
@@ -1442,10 +1446,14 @@ document.getElementById("btn-reset")?.addEventListener("click", resetView);
 
 // Initialize Global Keyboard Shortcuts
 initKeyboardShortcuts({
+  isAboutOpen: () => aboutPanel.isOpen(),
   isGuideOpen: () => isGuideOpen,
   isLabMode: () => isLabMode,
   isUIHidden: () => photoMode.isHidden(),
   isDiagramFocused: () => document.activeElement === nakayaCanvas,
+  onEscapeAbout: () => {
+    aboutPanel.close();
+  },
   onEscapeGuide: () => {
     toggleFieldGuide();
   },

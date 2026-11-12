@@ -35,12 +35,24 @@
         <div class="wordmark">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
-      <div class="edition" id="edition">
-        <button type="button" id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-label="Copy share link for current seed" aria-keyshortcuts="c">
-          <span class="seed-btn__prefix">Vol.</span>
-          <span id="seed-display">·····</span>
-          <span class="seed-btn__icon" aria-hidden="true">⎘</span>
-        </button>
+      <button
+        type="button"
+        id="btn-about"
+        class="masthead-about"
+        aria-expanded="false"
+        aria-controls="about-panel"
+        aria-haspopup="dialog"
+      >
+        About
+      </button>
+      <div class="masthead__end">
+        <div class="edition" id="edition">
+          <button type="button" id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-label="Copy share link for current seed" aria-keyshortcuts="c">
+            <span class="seed-btn__prefix">Vol.</span>
+            <span id="seed-display">·····</span>
+            <span class="seed-btn__icon" aria-hidden="true">⎘</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -254,6 +266,28 @@
       hidden
     ></div>
     <div id="a11y-announcer" class="sr-only" aria-live="polite" role="status"></div>
+    <dialog id="about-panel" class="about-panel" closedby="any" aria-labelledby="about-panel-title" tabindex="-1">
+      <h2 id="about-panel-title" class="about-panel__title">About frost<span aria-hidden="true">·</span>bomb</h2>
+      <p class="about-panel__copy colophon">
+        No two are alike. Each crystal follows the Nakaya diagram — the branching habit emerges from temperature and supersaturation at the moment of growth.
+      </p>
+      <figure class="about-panel__figure">
+        <img
+          class="about-panel__image"
+          src="/fallback-flake.webp"
+          alt="A stellar dendrite snowflake: six branching arms around a small hexagonal core, rendered in pale ice-grey on a dark blue night sky."
+          width="512"
+          height="512"
+          decoding="async"
+          loading="lazy"
+        />
+        <figcaption class="about-panel__caption">Reference stellar dendrite (static WebGL fallback).</figcaption>
+      </figure>
+      <button type="button" id="about-close" class="about-panel__close field-guide__close">
+        Close
+        <kbd class="btn-kbd" aria-hidden="true">Esc</kbd>
+      </button>
+    </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
