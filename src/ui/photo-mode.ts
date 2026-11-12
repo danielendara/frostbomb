@@ -1,6 +1,7 @@
 import { visualPress } from "./feedback";
 
-const PHOTO_MODE_UI_SELECTOR = ".masthead, .field-notes, .footer, .lab-controls";
+const PHOTO_MODE_UI_SELECTOR =
+  ".masthead, .field-notes, .footer, .lab-controls, #about-panel";
 
 export interface PhotoModeOptions {
   canvas: HTMLElement;
@@ -8,6 +9,7 @@ export interface PhotoModeOptions {
   scene: { setPhotoMode(enabled: boolean): void };
   announce: (message: string) => void;
   reducedMotion: () => boolean;
+  onUIHiddenChange?: (hidden: boolean) => void;
 }
 
 export interface PhotoModeController {
@@ -17,7 +19,7 @@ export interface PhotoModeController {
 }
 
 export function createPhotoMode(opts: PhotoModeOptions): PhotoModeController {
-  const { canvas, button: btnUI, scene, announce, reducedMotion } = opts;
+  const { canvas, button: btnUI, scene, announce, reducedMotion, onUIHiddenChange } = opts;
   let isUIHidden = false;
 
   const getUIElements = (): NodeListOf<Element> =>
@@ -112,6 +114,7 @@ export function createPhotoMode(opts: PhotoModeOptions): PhotoModeController {
     }
 
     scene.setPhotoMode(isUIHidden);
+    onUIHiddenChange?.(isUIHidden);
 
     if (isUIHidden) {
       focusGeneration++;

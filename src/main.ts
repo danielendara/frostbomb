@@ -18,6 +18,7 @@ import { initNakayaDiagram, type NakayaDiagram } from "./snowflake/diagram";
 import { scheduleIdleTask } from "./snowflake/postprocessing";
 import { copyTextToClipboard } from "./ui/clipboard";
 import { createPhotoMode } from "./ui/photo-mode";
+import { createAboutPanel } from "./ui/about-panel";
 import { announce as announceRaw } from "./ui/announcer";
 import { MODE_TOGGLES, syncModeToggleButton, type ShareModeKind } from "./ui/mode-toggle";
 import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
@@ -1400,12 +1401,17 @@ function toggleAutoRotate() {
 
 btnRotate?.addEventListener("click", toggleAutoRotate);
 
+const aboutPanel = createAboutPanel();
+
 const photoMode = createPhotoMode({
   canvas,
   button: document.getElementById("btn-ui"),
   scene,
   announce,
   reducedMotion: () => motionQuery.matches,
+  onUIHiddenChange: (hidden) => {
+    if (hidden) aboutPanel.close();
+  },
 });
 
 document.getElementById("btn-ui")?.addEventListener("click", () => photoMode.toggle());
@@ -1442,10 +1448,14 @@ document.getElementById("btn-reset")?.addEventListener("click", resetView);
 
 // Initialize Global Keyboard Shortcuts
 initKeyboardShortcuts({
+  isAboutOpen: () => aboutPanel.isOpen(),
   isGuideOpen: () => isGuideOpen,
   isLabMode: () => isLabMode,
   isUIHidden: () => photoMode.isHidden(),
   isDiagramFocused: () => document.activeElement === nakayaCanvas,
+  onEscapeAbout: () => {
+    aboutPanel.close();
+  },
   onEscapeGuide: () => {
     toggleFieldGuide();
   },

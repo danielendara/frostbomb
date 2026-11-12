@@ -35,14 +35,51 @@
         <div class="wordmark">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
-      <div class="edition" id="edition">
-        <button type="button" id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-label="Copy share link for current seed" aria-keyshortcuts="c">
-          <span class="seed-btn__prefix">Vol.</span>
-          <span id="seed-display">·····</span>
-          <span class="seed-btn__icon" aria-hidden="true">⎘</span>
-        </button>
+      <div class="masthead__aside">
+        <button
+          type="button"
+          id="btn-about"
+          class="masthead-about-btn"
+          aria-expanded="false"
+          aria-controls="about-panel"
+          aria-haspopup="dialog"
+        >About</button>
+        <div class="edition" id="edition">
+          <button type="button" id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-label="Copy share link for current seed" aria-keyshortcuts="c">
+            <span class="seed-btn__prefix">Vol.</span>
+            <span id="seed-display">·····</span>
+            <span class="seed-btn__icon" aria-hidden="true">⎘</span>
+          </button>
+        </div>
       </div>
     </header>
+
+    <dialog id="about-panel" class="about-panel" closedby="any" tabindex="-1" aria-labelledby="about-panel-title">
+      <h2 id="about-panel-title" class="about-panel__title">
+        About frost<span class="about-panel__dot" aria-hidden="true">·</span>bomb
+      </h2>
+      <p class="about-panel__body colophon">
+        No two are alike. Each crystal follows the Nakaya diagram — the branching habit emerges from temperature and supersaturation at the moment of growth.
+      </p>
+      <figure class="about-panel__figure">
+        <img
+          class="about-panel__img"
+          src="/fallback-flake.webp"
+          alt=""
+          width="320"
+          height="320"
+          decoding="async"
+          loading="lazy"
+        />
+        <figcaption class="about-panel__caption">Static stellar dendrite from the WebGL fallback image.</figcaption>
+      </figure>
+      <form method="dialog" class="about-panel__actions">
+        <button type="submit" id="about-close" class="field-guide__close" value="close">
+          Close
+          <kbd class="btn-kbd" aria-hidden="true">Esc</kbd>
+        </button>
+      </form>
+    </dialog>
 
     <aside class="field-notes" id="field-notes" tabindex="-1" aria-label="Field notes and controls">
       <div class="field-notes__header">
