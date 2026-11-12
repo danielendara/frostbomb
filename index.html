@@ -35,6 +35,18 @@
         <div class="wordmark">frost<span class="wordmark__accent" aria-hidden="true">·</span>bomb</div>
         <div class="wordmark__subtitle">Snowflake Generator</div>
       </a>
+    </header>
+
+    <div class="masthead__aside">
+      <button
+        type="button"
+        class="masthead-about"
+        id="btn-about"
+        aria-expanded="false"
+        aria-controls="about-panel"
+      >
+        About
+      </button>
       <div class="edition" id="edition">
         <button type="button" id="btn-seed" class="seed-btn" title="Copy share link (C)" aria-label="Copy share link for current seed" aria-keyshortcuts="c">
           <span class="seed-btn__prefix">Vol.</span>
@@ -42,7 +54,26 @@
           <span class="seed-btn__icon" aria-hidden="true">⎘</span>
         </button>
       </div>
-    </header>
+      <div class="about-panel" id="about-panel" hidden role="dialog" aria-modal="true" aria-labelledby="about-panel-title" tabindex="-1">
+        <h2 class="about-panel__title" id="about-panel-title">About frost<span aria-hidden="true">·</span>bomb</h2>
+        <p class="about-panel__copy">
+          No two are alike. Each crystal follows the Nakaya diagram — the branching habit emerges from temperature and supersaturation at the moment of growth.
+        </p>
+        <figure class="about-panel__figure">
+          <img
+            src="/fallback-flake.webp"
+            width="512"
+            height="512"
+            alt="A stellar dendrite snowflake: six branching arms around a small hexagonal core, rendered in pale ice-grey on a dark blue night sky."
+          />
+          <figcaption class="about-panel__caption">Static fallback snowflake when WebGL is unavailable.</figcaption>
+        </figure>
+        <button type="button" id="about-close" class="field-guide__close about-panel__close" title="Close About (Esc)" aria-keyshortcuts="Escape">
+          Close
+          <kbd class="btn-kbd" aria-hidden="true">Esc</kbd>
+        </button>
+      </div>
+    </div>
 
     <aside class="field-notes" id="field-notes" tabindex="-1" aria-label="Field notes and controls">
       <div class="field-notes__header">

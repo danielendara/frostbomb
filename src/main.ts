@@ -18,6 +18,7 @@ import { initNakayaDiagram, type NakayaDiagram } from "./snowflake/diagram";
 import { scheduleIdleTask } from "./snowflake/postprocessing";
 import { copyTextToClipboard } from "./ui/clipboard";
 import { createPhotoMode } from "./ui/photo-mode";
+import { initAboutPanel } from "./ui/about-panel";
 import { announce as announceRaw } from "./ui/announcer";
 import { MODE_TOGGLES, syncModeToggleButton, type ShareModeKind } from "./ui/mode-toggle";
 import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
@@ -1440,10 +1441,26 @@ function resetView() {
 
 document.getElementById("btn-reset")?.addEventListener("click", resetView);
 
+const btnAbout = document.getElementById("btn-about");
+const aboutPanelEl = document.getElementById("about-panel");
+const aboutClose = document.getElementById("about-close");
+const aboutPanel =
+  btnAbout instanceof HTMLButtonElement &&
+  aboutPanelEl instanceof HTMLElement &&
+  aboutClose instanceof HTMLElement
+    ? initAboutPanel({
+        trigger: btnAbout,
+        panel: aboutPanelEl,
+        closeButton: aboutClose,
+        reducedMotion: () => motionQuery.matches,
+      })
+    : null;
+
 // Initialize Global Keyboard Shortcuts
 initKeyboardShortcuts({
   isGuideOpen: () => isGuideOpen,
   isLabMode: () => isLabMode,
+  isAboutOpen: () => aboutPanel?.isOpen() ?? false,
   isUIHidden: () => photoMode.isHidden(),
   isDiagramFocused: () => document.activeElement === nakayaCanvas,
   onEscapeGuide: () => {
@@ -1451,6 +1468,9 @@ initKeyboardShortcuts({
   },
   onEscapeLab: () => {
     toggleLabMode();
+  },
+  onEscapeAbout: () => {
+    aboutPanel?.close();
   },
   onEscapeUIHidden: () => {
     photoMode.toggle(true);

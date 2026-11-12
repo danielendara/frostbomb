@@ -25,10 +25,12 @@ function makeCtx(): Harness {
   const ctx: KeyboardHandlerContext = {
     isGuideOpen: () => state.guideOpen,
     isLabMode: () => false,
+    isAboutOpen: () => false,
     isUIHidden: () => false,
     isDiagramFocused: () => state.diagramFocused,
     onEscapeGuide: track("onEscapeGuide", vi.fn()),
     onEscapeLab: track("onEscapeLab", vi.fn()),
+    onEscapeAbout: track("onEscapeAbout", vi.fn()),
     onEscapeUIHidden: track("onEscapeUIHidden", vi.fn()),
     onRotateView: track("onRotateView", vi.fn()),
     onRefresh: track("onRefresh", vi.fn()),

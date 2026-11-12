@@ -1,6 +1,7 @@
 import { visualPress } from "./feedback";
 
-const PHOTO_MODE_UI_SELECTOR = ".masthead, .field-notes, .footer, .lab-controls";
+const PHOTO_MODE_UI_SELECTOR =
+  ".masthead, .masthead__aside, .field-notes, .footer, .lab-controls";
 
 export interface PhotoModeOptions {
   canvas: HTMLElement;
