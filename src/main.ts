@@ -85,7 +85,7 @@ function announce(message: string): void {
 }
 
 // Before anything else can fail: uncaught errors and handled failure paths
-// below go to Workers Logs via /api/client-error (#356).
+// below go to Workers Logs via /api/client-error.
 installClientErrorReporting();
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
@@ -127,8 +127,8 @@ document.getElementById("btn-reload-crystal")?.addEventListener("click", () => {
 });
 
 // A tab that predates a deploy can't load its old hashed chunks (Lab, 3D
-// export, effects): reload once so it picks up the new build (#333). A fresh
-// visit's address bar is still bare (#316), so write seed + look first and
+// export, effects): reload once so it picks up the new build. A fresh
+// visit's address bar is still bare, so write seed + look first and
 // the reload regrows this exact crystal.
 installStaleBuildRecovery({
   storage: sessionStorageOrNull(),
@@ -218,7 +218,7 @@ const historyManager = new SeedHistoryManager({
       label: seedVal,
     };
     const { conditions } = grow(undefined, true, true);
-    // Deliberate crystal change → its own history entry (#316).
+    // Deliberate crystal change → its own history entry.
     syncCrystalUrl(seedVal, conditions, "push");
     announce(`Loaded seed ${seedVal}: ${habitLabel[conditions.habit]}`);
   },
@@ -264,7 +264,7 @@ const labPanel = new LabPanel({
   onRandomizeSeed: () => {
     urlWrites.flush();
     // Roll explicitly — the address bar always carries a seed now, so
-    // re-reading it would hand back the same crystal (#316).
+    // re-reading it would hand back the same crystal.
     const result = grow(retainedManualConditions(), false, false, undefined, randomSeed());
     syncCrystalUrl(result.label, result.conditions, "push");
     announce(`Randomized seed to ${result.label}`);
@@ -413,7 +413,7 @@ function handleRefresh(e?: Event) {
     refreshIcon.classList.add("animate-spin-once");
   }
   // Roll the new seed explicitly rather than deleting `?seed=` first: that
-  // rewrite used to destroy the entry Back needs to return to (#316).
+  // rewrite used to destroy the entry Back needs to return to.
   const { conditions, label } = growAndPush(randomSeed());
   announce(`New snowflake grown: ${habitLabel[conditions.habit]} (Seed: ${label})`);
 }
@@ -771,7 +771,7 @@ function updateFromPane(history: "push" | "replace" = "replace") {
   }
 }
 
-// Habit chips (#376). They live in #lab-controls, which is hidden until Lab
+// Habit chips live in #lab-controls, which is hidden until Lab
 // Mode is on, so a tap always lands with Lab already on.
 const habitChips = document.getElementById("habit-chips");
 if (habitChips) {
@@ -859,7 +859,7 @@ document.getElementById("btn-seed")?.addEventListener("click", () => {
   void copyLink();
 });
 
-// Share sheet (#375): the button is rendered only where the browser can share
+// Share button is rendered only where the browser can share
 // an image file; everywhere else Copy link stays the path.
 const shareBtn = document.getElementById("btn-share") as HTMLButtonElement | null;
 let shareInFlight = false;
@@ -1162,7 +1162,7 @@ function syncCommittedSearch(): void {
 // Keeps the share URL an accurate snapshot of the current mode state,
 // mirroring how seed changes already keep the URL in sync (see
 // historyManager.onSelectSeed / labPanel.onSeedChange above). Always
-// replaceState — crystal Back history is #316.
+// replaceState — mode toggles do not push crystal Back history entries.
 function syncModeParam(name: ShareFlagName, enabled: boolean) {
   urlWrites.flush();
   const url = new URL(window.location.href);

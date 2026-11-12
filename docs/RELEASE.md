@@ -46,7 +46,7 @@ After the Worker is live at https://frostbomb.com:
 
 ## Client errors in Workers Logs
 
-Browser failures are reported to `POST /api/client-error` (#356), and the Worker writes each one as a single `console.error` JSON line with `"event":"client_error"`. The Worker only runs for `/api/*` (`assets.run_worker_first`); every other request is served straight from static assets.
+Browser failures are reported to `POST /api/client-error`, and the Worker writes each one as a single `console.error` JSON line with `"event":"client_error"`. The Worker only runs for `/api/*` (`assets.run_worker_first`); every other request is served straight from static assets.
 
 To view them: Cloudflare dashboard → Workers & Pages → `frostbombsite` → **Observability** → **Logs** (Workers Logs, enabled by `observability.enabled` in `wrangler.jsonc`). Filter on `event = client_error`, then group by `kind` or `build`. For a live tail, use `npx wrangler tail frostbombsite --format pretty`.
 

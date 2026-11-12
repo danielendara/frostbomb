@@ -2,7 +2,7 @@ import { formatExportFileName, type ExportIdentity } from "./download";
 import { drawOnOpaqueCanvas } from "./share-image";
 
 /**
- * Screen-sized wallpaper export (#377): one tap for a crisp PNG in the
+ * Screen-sized wallpaper export: one tap for a crisp PNG in the
  * device's own shape, instead of the live canvas at its working resolution.
  */
 

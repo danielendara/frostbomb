@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("Lab Quality menu stays aligned after auto demotion (#483)", () => {
+describe("Lab Quality menu stays aligned after auto demotion", () => {
   it("notifies main so LabPanel.syncQuality runs when the governor demotes", () => {
     const scene = readFileSync("src/snowflake/scene.ts", "utf8");
     const main = readFileSync("src/main.ts", "utf8");
