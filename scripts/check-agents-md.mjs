@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fail if AGENTS.md documents unpinned Modern Web Guidance CLI usage.
+ * Fail if AGENTS.md documents unpinned CLI usage.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
