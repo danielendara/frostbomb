@@ -38,7 +38,7 @@ test("modified shortcuts do not trigger app actions", async ({ page }) => {
 });
 
 test("regrowing spins the wordmark accent once", async ({ page }) => {
-  const accent = page.locator(".wordmark__accent");
+  const accent = page.locator(".wordmark-link .wordmark__accent");
 
   await page.keyboard.press("r");
 

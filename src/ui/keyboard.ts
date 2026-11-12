@@ -3,10 +3,12 @@ import { visualPress } from "./feedback";
 export interface KeyboardHandlerContext {
   isGuideOpen: () => boolean;
   isLabMode: () => boolean;
+  isAboutOpen: () => boolean;
   isUIHidden: () => boolean;
   isDiagramFocused: () => boolean;
   onEscapeGuide: () => void;
   onEscapeLab: () => void;
+  onEscapeAbout: () => void;
   onEscapeUIHidden: () => void;
   onRotateView: (dx: number, dy: number) => void;
   onRefresh: () => void;
@@ -71,6 +73,10 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
         return;
       } else if (ctx.isLabMode()) {
         ctx.onEscapeLab();
+        return;
+      } else if (ctx.isAboutOpen()) {
+        ctx.onEscapeAbout();
+        visualPress("about-close");
         return;
       } else if (ctx.isUIHidden()) {
         ctx.onEscapeUIHidden();

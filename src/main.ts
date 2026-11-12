@@ -18,6 +18,7 @@ import { initNakayaDiagram, type NakayaDiagram } from "./snowflake/diagram";
 import { scheduleIdleTask } from "./snowflake/postprocessing";
 import { copyTextToClipboard } from "./ui/clipboard";
 import { createPhotoMode } from "./ui/photo-mode";
+import { initAboutPanel } from "./ui/about-panel";
 import { announce as announceRaw } from "./ui/announcer";
 import { MODE_TOGGLES, syncModeToggleButton, type ShareModeKind } from "./ui/mode-toggle";
 import { commitNakayaConditions, updateNakayaStatus } from "./ui/nakaya-status";
@@ -1400,6 +1401,10 @@ function toggleAutoRotate() {
 
 btnRotate?.addEventListener("click", toggleAutoRotate);
 
+const aboutPanel = initAboutPanel({
+  reducedMotion: () => motionQuery.matches,
+});
+
 const photoMode = createPhotoMode({
   canvas,
   button: document.getElementById("btn-ui"),
@@ -1408,7 +1413,13 @@ const photoMode = createPhotoMode({
   reducedMotion: () => motionQuery.matches,
 });
 
-document.getElementById("btn-ui")?.addEventListener("click", () => photoMode.toggle());
+function togglePhotoMode(forceShow?: boolean): void {
+  const nextHidden = forceShow === undefined ? !photoMode.isHidden() : !forceShow;
+  if (nextHidden && aboutPanel.isOpen()) aboutPanel.close(true);
+  photoMode.toggle(forceShow);
+}
+
+document.getElementById("btn-ui")?.addEventListener("click", () => togglePhotoMode());
 
 let canvasPointerDownX = 0;
 let canvasPointerDownY = 0;
@@ -1424,7 +1435,7 @@ canvas.addEventListener("click", (e: MouseEvent) => {
     const dy = e.clientY - canvasPointerDownY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < 6) {
-      photoMode.toggle(true);
+      togglePhotoMode(true);
     }
   }
 });
@@ -1444,6 +1455,7 @@ document.getElementById("btn-reset")?.addEventListener("click", resetView);
 initKeyboardShortcuts({
   isGuideOpen: () => isGuideOpen,
   isLabMode: () => isLabMode,
+  isAboutOpen: () => aboutPanel.isOpen(),
   isUIHidden: () => photoMode.isHidden(),
   isDiagramFocused: () => document.activeElement === nakayaCanvas,
   onEscapeGuide: () => {
@@ -1452,8 +1464,11 @@ initKeyboardShortcuts({
   onEscapeLab: () => {
     toggleLabMode();
   },
+  onEscapeAbout: () => {
+    aboutPanel.close();
+  },
   onEscapeUIHidden: () => {
-    photoMode.toggle(true);
+    togglePhotoMode(true);
   },
   onRotateView: (dx, dy) => {
     scene.rotateView(dx, dy);
@@ -1474,7 +1489,7 @@ initKeyboardShortcuts({
     toggleLabMode();
   },
   onToggleUI: () => {
-    photoMode.toggle();
+    togglePhotoMode();
   },
   onTogglePink: () => {
     toggleShareMode("pink");
