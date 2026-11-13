@@ -57,13 +57,23 @@ describe('initNakayaDiagram HiDPI', () => {
     expect(blits()).toBe(2);
   });
 
-  it('defers morphology background work until ensureBackground is called', () => {
+  it('defers morphology background work until ensureBackground is called', async () => {
     const cache = fakeCanvas(0, 0);
-    vi.stubGlobal('document', { createElement: () => cache, fonts: undefined });
+    let resolveFonts!: () => void;
+    const ready = new Promise<void>((r) => {
+      resolveFonts = r;
+    });
+    vi.stubGlobal('document', { createElement: () => cache, fonts: { ready } });
     vi.stubGlobal('window', { devicePixelRatio: 1 });
 
     const canvas = fakeCanvas(300, 200);
     const diagram = initNakayaDiagram(canvas, { deferBackground: true })!;
+    expect(diagram.hasBackground()).toBe(false);
+    expect(cache.calls.filter(([name]) => name === 'fillRect').length).toBe(0);
+
+    resolveFonts();
+    await ready;
+    await Promise.resolve();
     expect(diagram.hasBackground()).toBe(false);
     expect(cache.calls.filter(([name]) => name === 'fillRect').length).toBe(0);
 

@@ -180,7 +180,7 @@ export function initNakayaDiagram(
   // Re-draw background when fonts are ready to ensure JetBrains Mono is used
   if (document.fonts) {
     document.fonts.ready.then(() => {
-      if (isDisposed) return;
+      if (isDisposed || !backgroundReady) return;
       drawBackground();
       render();
     });
