@@ -7,7 +7,7 @@
 Open `/?seed=abcde`, click Lab (`#lab-toggle`), click a chip.
 
 ## Driving it with Playwright / curl
-`scripts/drive-habit-chips.mjs`; spec: `tests/habit-chips.smoke.spec.ts`. Proof: `#stat-habit` = Needle, URL changed, Back restores the URL captured right after Lab turned on.
+`node .cursor/skills/verify-frostbomb/scripts/drive-habit-chips.mjs http://127.0.0.1:5173 "$EVIDENCE_DIR"`; spec: `tests/habit-chips.smoke.spec.ts`. Proof: `#stat-habit` = Needle, URL changed, Back restores the URL captured right after Lab turned on.
 
 ## Gotchas
 Wait for `#lab-status` = ON before clicking; Tweakpane loads lazily.

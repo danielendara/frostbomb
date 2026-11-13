@@ -10,7 +10,6 @@ step "docs hygiene";       node scripts/check-docs-hygiene.mjs
 step "typecheck (app)";    npx tsc --noEmit
 step "typecheck (tests)";  npm run typecheck:tests
 step "lint";               npm run lint
-step "unit tests";         npm run test:unit
 step "coverage";           npm run test:coverage
 step "build";              npx vite build
 step "three chunk budget"; node scripts/check-three-chunk-budget.mjs

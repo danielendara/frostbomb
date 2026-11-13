@@ -129,6 +129,8 @@ npm test                   # pretest runs unit tests, then smoke Playwright proj
 
 `playwright.config.ts` always declares both projects; `npm test` and `npm run test:e2e:smoke` narrow to smoke via `--project=sequential-smoke`. Use `npm run test:e2e:full` for the full chromium suite.
 
+`npm run verify` (`scripts/verify.sh`) is the local pre-push gate: policy, docs hygiene, typecheck, lint, coverage, build, chunk budget, then e2e, fail-fast.
+
 ### CI
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `push` to `main`, `pull_request`, and `workflow_dispatch` (optional `full_e2e` input, default `true`).

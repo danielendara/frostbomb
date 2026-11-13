@@ -47,4 +47,4 @@ Kills the saved process group, then one chained check prints `port 5173 free` an
 Launch the binary `./node_modules/.bin/vite` directly under `setsid` (not `npx` or `npm run dev`: those wrappers' PIDs differ from the vite process that owns the port), and kill by process group. Never `pkill`. Evidence directory is kept.
 
 ## Gates
-`npm run verify` = tsc --noEmit, typecheck:tests, vitest, vite build, Playwright smoke. There is no linter and no coverage provider in the repo, so those gates do not exist yet.
+`npm run verify` (`scripts/verify.sh`), fail-fast in order: AGENTS.md policy check, docs hygiene, `tsc --noEmit`, typecheck:tests, lint, test:coverage (vitest unit suite with v8 coverage thresholds), vite build, three.js chunk budget (`scripts/check-three-chunk-budget.mjs`), then Playwright e2e smoke or full (`scripts/e2e-mode.sh --local` chooses full when the diff vs `origin/main` touches rendering/UI/test paths). Run before opening a PR.
