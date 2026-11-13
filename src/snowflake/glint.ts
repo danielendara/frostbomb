@@ -39,7 +39,7 @@ export const GLINT_SHADER_CONSTANTS = {
   gain: 3,
   /** `static` shows facets whose baked tilt-x channel (a stand-in for a random draw) is above this... */
   staticFrom: GLINT_STATIC_FROM,
-  /** ...fully lit from here, so only the brightest few facets sparkle (sparse on LITE, #448 review). */
+  /** ...fully lit from here, so only the brightest few facets sparkle (sparse on LITE). */
   staticTo: GLINT_STATIC_TO,
   /**
    * `static` glint = clamp(mask * gain): the mask is the static-facet coverage of the pixel, ~1%
