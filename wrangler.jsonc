@@ -7,9 +7,10 @@
     "enabled": true
   },
   "assets": {
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    // Only the client-error endpoint runs the Worker; assets never do.
-    "run_worker_first": ["/api/*"]
+    // Worker runs first for every request; HTML CSP nonces are set in src/worker/index.ts.
+    "run_worker_first": true
   },
   "compatibility_flags": [
     "nodejs_compat"
