@@ -17,10 +17,12 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
 - **Visual Modes:**
   - **Pink Mode:** A soft, glowing aesthetic.
   - **Prism Mode:** Dynamic HSL color cycling and chromatic dispersion.
+  - **Glow Mode:** A bloom-style glow around the crystal (`O`).
   - **Photo Mode (UI Hide):** Clear away overlays for clean viewing and screenshots, with depth of field on the crystal.
+- **Quality Tiers:** RICH or LITE rendering, with an automatic fallback to Lite (and a brief notice) when frame times stay too slow.
 - **Full Accessibility:** Keyboard navigation, skip-to-controls bypass link, roving tabindex for history, screen reader live regions, and `prefers-reduced-motion` synchronization.
 - **Interactive Controls:** Full 3D orbit controls, inertia, camera reset, accelerated rotation shortcuts, and smooth growth animations.
-- **Export & Share:** Copy full shareable URLs (`?seed=xxxxx`), copy raw seed strings with one click, export high-resolution PNGs, vector SVG paths for laser cutters, or 3D STL/GLB meshes for CAD.
+- **Export & Share:** Copy full shareable URLs (`?seed=xxxxx`), copy raw seed strings with one click, export high-resolution PNGs, save a screen-sized wallpaper PNG (`W`), share the image from the phone share sheet (Share button), vector SVG paths for laser cutters, or 3D STL/GLB meshes for CAD.
 
 ### ⌨️ Keyboard Shortcuts
 
@@ -34,9 +36,11 @@ A procedurally generated 3D snowflake laboratory in your browser. Every page loa
 | `H` | Toggle **Photo Mode** (hide UI, depth of field) |
 | `P` | Toggle **Pink Mode** |
 | `M` | Toggle **Prism Mode** (chromatic dispersion) |
+| `O` | Toggle **Glow Mode** |
 | `S` | **Save** current snowflake as high-resolution PNG |
 | `E` | **Save** current snowflake as vector SVG (laser / plotter) |
 | `T` | **Save** current snowflake as STL and GLB (CAD / print) |
+| `W` | **Save** a screen-sized wallpaper PNG |
 | `A` | Toggle **Auto-Rotate** (respects `prefers-reduced-motion`) |
 | `C` | **Copy Link** to current snowflake URL |
 | `K` | **Copy Seed** string only |
@@ -161,6 +165,10 @@ Full Worker release steps (build, unit, e2e, live CSP / `_headers` / postprocess
 Every snowflake has a unique seed. Share a specific crystal by appending `?seed=xxxxx` to the URL:
 
 `https://frostbomb.com/?seed=k3m7q`
+
+Copy Link also keeps the look and Lab state: `pink`, `prism`, `glow`, `rotate` and `lab` flags (`1` on, `0` off), plus Lab temperature `t` and supersaturation `ss`. For example:
+
+`https://frostbomb.com/?seed=k3m7q&pink=1&glow=1&lab=1&t=-15&ss=0.6`
 
 ---
 
