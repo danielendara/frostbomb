@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local verify entrypoint (CI is local-only). Mirrors .github/workflows/ci.yml, fail-fast.
+# Local verify entrypoint: a superset of .github/workflows/ci.yml (adds docs hygiene, lint, coverage), fail-fast.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

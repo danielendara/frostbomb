@@ -34,7 +34,7 @@ Lightweight project backlog for upcoming improvements. Keep items small enough t
 - [x] **Add seed persistence affordances:** Implemented Recent Seeds list with `localStorage` persistence, clear history with undo, direct seed input in Lab Mode, and a dedicated Copy Seed button/shortcut (`K`).
 - [x] **Add dependency update cadence:** Configured automated weekly dependency updates with GitHub Dependabot (`.github/dependabot.yml`).
 - [x] **Photo Mode & UI Toggle:** Added full UI hide/show toggle (`H`) for clean screenshots and immersive viewing.
-- [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `L`, `G`, `?`, `H`, `P`, `M`, `S`, `E`, `T`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
+- [x] **Comprehensive Keyboard Navigation:** Full shortcut coverage (`R`, `Space`, `D`, `L`, `G`, `?`, `H`, `P`, `M`, `O`, `S`, `E`, `T`, `W`, `A`, `C`, `K`, `V`, `Arrows`, `Home`, `End`, `PgUp`, `PgDn`, `Esc`).
 - [x] **High-Performance Geometry Engine (Bolt):** Controlled benchmarks at `71b97b0` show ~173-181x faster generation vs the initial commit; see `docs/GENERATION_PERFORMANCE_HISTORY.md` (re-run profiles after geometry changes).
 - [x] **Refine mobile layout:** `tests/mobile-360.smoke.spec.ts` covers 360×640 overlap, tap targets, and no horizontal scroll.
 
