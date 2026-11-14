@@ -51,8 +51,15 @@ export function drawOnOpaqueCanvas(
   return out;
 }
 
-function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+/** Encode `canvas` to PNG and return an object URL for it; throws if encoding yields no blob. */
+export async function pngObjectUrl(canvas: HTMLCanvasElement): Promise<string> {
+  const blob = await canvasToPngBlob(canvas);
+  if (!blob) throw new Error("Could not encode snowflake PNG");
+  return URL.createObjectURL(blob);
 }
 
 export interface ShareSnowflakeOptions {

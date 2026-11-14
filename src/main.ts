@@ -39,7 +39,13 @@ import {
 } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { captureWallpaper, wallpaperFileName, wallpaperSize } from "./ui/wallpaper";
-import { canShareFiles, drawOnOpaqueCanvas, shareSnowflake } from "./ui/share-image";
+import {
+  canShareFiles,
+  canvasToPngBlob,
+  drawOnOpaqueCanvas,
+  pngObjectUrl,
+  shareSnowflake,
+} from "./ui/share-image";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { createUrlWriteCoalescer } from "./url-write-coalescer";
@@ -943,10 +949,9 @@ async function saveSnowflake() {
       await new Promise((resolve) => setTimeout(resolve, 100));
       triggerFlash(motionQuery.matches);
       scene.composer.render();
-      downloadHref(
-        formatExportFileName(currentExportIdentity(), "png"),
-        canvas.toDataURL("image/png"),
-      );
+      // toBlob snapshots the bitmap at call time; name it before awaiting.
+      const fileName = formatExportFileName(currentExportIdentity(), "png");
+      downloadHref(fileName, await pngObjectUrl(canvas));
     },
     scene,
     resumeAutoRotateFromPref,
@@ -979,7 +984,7 @@ async function saveWallpaper() {
         size,
         getComputedStyle(document.body).backgroundColor,
       );
-      const blob = await new Promise<Blob | null>((resolve) => wallpaper.toBlob(resolve, "image/png"));
+      const blob = await canvasToPngBlob(wallpaper);
       if (!blob) {
         throw new Error("Could not encode wallpaper PNG");
       }
