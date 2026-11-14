@@ -166,9 +166,9 @@ Every snowflake has a unique seed. Share a specific crystal by appending `?seed=
 
 `https://frostbomb.com/?seed=k3m7q`
 
-Copy Link also keeps the look and Lab state: `pink`, `prism`, `glow`, `rotate` and `lab` flags (`1` on, `0` off), plus Lab temperature `t` and supersaturation `ss`. For example:
+Copy Link also keeps the look and Lab state: `pink`, `prism`, `glow`, `rotate` and `lab` flags (`1` on, `0` off), plus Lab temperature `t` (°C) and supersaturation `ss` (percent, 0–100). For example:
 
-`https://frostbomb.com/?seed=k3m7q&pink=1&glow=1&lab=1&t=-15&ss=0.6`
+`https://frostbomb.com/?seed=k3m7q&pink=1&glow=1&lab=1&t=-15.0&ss=60`
 
 ---
 
