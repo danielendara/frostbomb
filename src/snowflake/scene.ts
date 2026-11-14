@@ -5,6 +5,7 @@ import {
   RenderPipeline,
   skipPostprocessingFromEnvironment,
 } from "./postprocessing";
+import { scheduleIdleTask } from "../idle";
 import { MARK_FIRST_FRAME_RENDERED, markOnce } from "./perf-marks";
 import { SnowfallParticleSystem } from "./particles";
 import { GrowthAnimator, LUT_SCALE_FACTOR } from "./growth-animator";
@@ -364,22 +365,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions = {
   /** Extra gap after idle fires so sync PMREM does not overlap postprocessing load or late e2e steps. */
   const ENVIRONMENT_BUILD_DELAY_MS = 3_000;
 
-  /** Like postprocessing idle scheduling, but Safari has no `requestIdleCallback` — use a real delay. */
-  function scheduleEnvironmentIdleTask(task: () => void): void {
-    if (typeof window.requestIdleCallback === "function") {
-      window.requestIdleCallback(() => task(), { timeout: ENVIRONMENT_IDLE_TIMEOUT_MS });
-    } else {
-      window.setTimeout(() => task(), ENVIRONMENT_IDLE_TIMEOUT_MS);
-    }
-  }
-
   function queueEnvironmentBuild(): void {
     if (environmentBuildQueued || environmentBuildInFlight || environmentHandle) return;
     environmentBuildQueued = true;
-    scheduleEnvironmentIdleTask(() => {
-      environmentBuildQueued = false;
-      window.setTimeout(() => runEnvironmentBuild(), ENVIRONMENT_BUILD_DELAY_MS);
-    });
+    scheduleIdleTask(
+      () => {
+        environmentBuildQueued = false;
+        window.setTimeout(() => runEnvironmentBuild(), ENVIRONMENT_BUILD_DELAY_MS);
+      },
+      // Safari has no `requestIdleCallback`: use a real delay, not setTimeout(0).
+      { timeout: ENVIRONMENT_IDLE_TIMEOUT_MS, fallbackDelayMs: ENVIRONMENT_IDLE_TIMEOUT_MS },
+    );
   }
 
   /** After first paint, once the entry tween has settled (idle, not on a rAF hot path). */

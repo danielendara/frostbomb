@@ -15,7 +15,7 @@ import { sampleConditions, habitLabel, getHabit, GrowthConditions } from "./snow
 import { initHabitChips, syncHabitChips } from "./ui/habit-presets";
 import { mulberry32, resolveSeed, randomSeed, dailySeed, hashString, Rand } from "./snowflake/random";
 import { initNakayaDiagram, type NakayaDiagram } from "./snowflake/diagram";
-import { scheduleIdleTask } from "./snowflake/postprocessing";
+import { scheduleIdleTask } from "./idle";
 import { copyTextToClipboard } from "./ui/clipboard";
 import { createPhotoMode } from "./ui/photo-mode";
 import { announce as announceRaw } from "./ui/announcer";
