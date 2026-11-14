@@ -15,9 +15,9 @@ type Env = {
   ASSETS: { fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> };
 };
 
-// Worker runs first for all requests (`assets.run_worker_first`). `/api/*` is handled
-// here; everything else is proxied to static assets (SPA fallback, `_headers`, caching)
-// with a strict, nonce-bearing CSP on HTML responses for Cloudflare JS detections.
+// `run_worker_first` targets documents and SPA routes (`/*` minus static paths); `/api/*`
+// is included. Hashed `/assets/*`, fonts, and a few root static files bypass the Worker.
+// HTML responses get a per-request CSP nonce for Cloudflare JS detections.
 export default {
   async fetch(request: Request, env?: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
@@ -31,6 +31,6 @@ export default {
     }
 
     const asset = await env.ASSETS.fetch(request);
-    return withHsts(withHtmlCspIfNeeded(request, asset));
+    return withHsts(withHtmlCspIfNeeded(asset));
   },
 };

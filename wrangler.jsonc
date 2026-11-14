@@ -9,8 +9,8 @@
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    // Worker runs first for every request; HTML CSP nonces are set in src/worker/index.ts.
-    "run_worker_first": true
+    // Worker runs for documents and SPA routes (not hashed /assets, fonts, or listed root static files).
+    "run_worker_first": ["/*", "!/assets/*", "!/fonts/*", "!/favicon.svg", "!/og-image.png", "!/fallback-flake.webp"]
   },
   "compatibility_flags": [
     "nodejs_compat"

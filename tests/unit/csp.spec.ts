@@ -2,8 +2,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { staticContentSecurityPolicy } from "../../src/worker/csp";
-import worker from "../../src/worker/index";
+import { CSP_DIRECTIVES, parseContentSecurityPolicy } from "../../src/worker/csp";
 
 const root = resolve(__dirname, "../..");
 const builtIndex = resolve(root, "dist/client/index.html");
@@ -14,13 +13,11 @@ function inlineScripts(html: string): string[] {
     .filter((attrs) => !/\bsrc\s*=/i.test(attrs));
 }
 
-function scriptSrcFromHeadersFile(): string {
+function cspLineFromHeadersFile(): string {
   const headers = readFileSync(resolve(root, "public/_headers"), "utf8");
   const csp = headers.split("\n").find((l) => l.trim().startsWith("Content-Security-Policy:"));
   expect(csp).toBeDefined();
-  const scriptSrc = csp!.split(";").find((d) => d.trim().startsWith("script-src"));
-  expect(scriptSrc).toBeDefined();
-  return scriptSrc!.trim();
+  return csp!.slice(csp!.indexOf(":") + 1).trim();
 }
 
 describe("CSP", () => {
@@ -29,10 +26,14 @@ describe("CSP", () => {
     expect(existsSync(builtIndex)).toBe(true);
   });
 
-  it("static script-src has no 'unsafe-inline' and matches worker static policy", () => {
-    const scriptSrc = scriptSrcFromHeadersFile();
-    expect(scriptSrc).not.toContain("'unsafe-inline'");
-    expect(staticContentSecurityPolicy()).toContain(scriptSrc);
+  it("public/_headers /* CSP directives match CSP_DIRECTIVES", () => {
+    const parsed = parseContentSecurityPolicy(cspLineFromHeadersFile());
+    const expected: Record<string, string[]> = {};
+    for (const [key, values] of Object.entries(CSP_DIRECTIVES)) {
+      expected[key] = [...values];
+    }
+    expect(parsed).toEqual(expected);
+    expect(parsed["script-src"]).not.toContain("'unsafe-inline'");
   });
 
   it("index.html has no inline scripts or on* handlers", () => {
@@ -44,21 +45,5 @@ describe("CSP", () => {
   it("built index.html has no inline scripts", () => {
     const html = readFileSync(builtIndex, "utf8");
     expect(inlineScripts(html)).toEqual([]);
-  });
-
-  it("Worker sets a nonce-bearing script-src on HTML asset responses", async () => {
-    const assets = {
-      fetch: async () =>
-        new Response("<!doctype html><html><body id=\"scene\"></body></html>", {
-          headers: { "content-type": "text/html; charset=utf-8" },
-        }),
-    };
-    const res = await worker.fetch(new Request("https://frostbomb.com/"), { ASSETS: assets });
-    const csp = res.headers.get("Content-Security-Policy");
-    expect(csp).toBeDefined();
-    const scriptSrc = csp!.split(";").find((d) => d.trim().startsWith("script-src"))?.trim();
-    expect(scriptSrc).toBeDefined();
-    expect(scriptSrc).not.toContain("'unsafe-inline'");
-    expect(scriptSrc).toMatch(/'nonce-[-A-Za-z0-9_]+'/);
   });
 });

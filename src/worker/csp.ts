@@ -1,36 +1,46 @@
-/** Non‑Cloudflare `script-src` for static responses (`public/_headers`). HTML documents get a per-request nonce via the Worker. */
-export const STATIC_SCRIPT_SRC = "'self' https://static.cloudflareinsights.com";
+/** Canonical CSP directives; kept in sync with `Content-Security-Policy` under `/*` in `public/_headers`. */
+export const CSP_DIRECTIVES: Record<string, readonly string[]> = {
+  "default-src": ["'self'"],
+  "script-src": ["'self'", "https://static.cloudflareinsights.com"],
+  "style-src": ["'self'", "'unsafe-inline'"],
+  "font-src": ["'self'"],
+  "img-src": ["'self'", "data:", "blob:"],
+  "connect-src": ["'self'", "https://cloudflareinsights.com"],
+  "object-src": ["'none'"],
+  "base-uri": ["'self'"],
+  "form-action": ["'none'"],
+  "frame-ancestors": ["'none'"],
+};
 
-/** Matches `Content-Security-Policy` under `/*` in `public/_headers` (no per-request nonce). */
-export function staticContentSecurityPolicy(): string {
-  return [
-    "default-src 'self'",
-    `script-src ${STATIC_SCRIPT_SRC}`,
-    "style-src 'self' 'unsafe-inline'",
-    "font-src 'self'",
-    "img-src 'self' data: blob:",
-    "connect-src 'self' https://cloudflareinsights.com",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'none'",
-    "frame-ancestors 'none'",
-  ].join("; ");
+export type CspDirectiveMap = Record<string, readonly string[]>;
+
+export function serializeCsp(directives: CspDirectiveMap, options?: { nonce?: string }): string {
+  return Object.entries(directives)
+    .map(([name, sources]) => {
+      const values = [...sources];
+      if (name === "script-src" && options?.nonce) {
+        values.unshift(`'nonce-${options.nonce}'`);
+      }
+      return `${name} ${values.join(" ")}`;
+    })
+    .join("; ");
 }
 
-/** CSP for HTML documents: Cloudflare JS detections pick up `nonce-…` from this response header. */
-export function htmlContentSecurityPolicy(nonce: string): string {
-  return [
-    "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' https://static.cloudflareinsights.com`,
-    "style-src 'self' 'unsafe-inline'",
-    "font-src 'self'",
-    "img-src 'self' data: blob:",
-    "connect-src 'self' https://cloudflareinsights.com",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'none'",
-    "frame-ancestors 'none'",
-  ].join("; ");
+/** Parse a `Content-Security-Policy` header value into a directive map. */
+export function parseContentSecurityPolicy(header: string): Record<string, string[]> {
+  const directives: Record<string, string[]> = {};
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const space = trimmed.indexOf(" ");
+    if (space === -1) {
+      directives[trimmed] = [];
+      continue;
+    }
+    const name = trimmed.slice(0, space);
+    directives[name] = trimmed.slice(space + 1).trim().split(/\s+/).filter(Boolean);
+  }
+  return directives;
 }
 
 export function createCspNonce(): string {
@@ -41,9 +51,14 @@ export function createCspNonce(): string {
   return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+function isHtmlDocument(response: Response): boolean {
+  const type = response.headers.get("content-type") ?? "";
+  return type.includes("text/html");
+}
+
 export function applyHtmlContentSecurityPolicy(response: Response, nonce: string): Response {
   const headers = new Headers(response.headers);
-  headers.set("Content-Security-Policy", htmlContentSecurityPolicy(nonce));
+  headers.set("Content-Security-Policy", serializeCsp(CSP_DIRECTIVES, { nonce }));
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -51,14 +66,7 @@ export function applyHtmlContentSecurityPolicy(response: Response, nonce: string
   });
 }
 
-function isHtmlDocument(request: Request, response: Response): boolean {
-  const type = response.headers.get("content-type") ?? "";
-  if (type.includes("text/html")) return true;
-  const accept = request.headers.get("Accept") ?? "";
-  return response.ok && accept.includes("text/html");
-}
-
-export function withHtmlCspIfNeeded(request: Request, response: Response): Response {
-  if (!isHtmlDocument(request, response)) return response;
+export function withHtmlCspIfNeeded(response: Response): Response {
+  if (!isHtmlDocument(response)) return response;
   return applyHtmlContentSecurityPolicy(response, createCspNonce());
 }
