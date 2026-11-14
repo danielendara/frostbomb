@@ -1,3 +1,5 @@
+import { testTimeoutOverride } from "./test-timeout";
+
 export const QUALITY_DEMOTION_NOTICE_ID = "quality-demotion-notice";
 
 export const QUALITY_DEMOTION_NOTICE_MESSAGE =
@@ -7,11 +9,10 @@ const DEFAULT_DISMISS_MS = 4000;
 const FADE_MS = 350;
 
 function dismissMs(): number {
-  if (!import.meta.env.DEV) return DEFAULT_DISMISS_MS;
-  const override = (
-    window as Window & { __FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__?: number }
-  ).__FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__;
-  return override ?? DEFAULT_DISMISS_MS;
+  return testTimeoutOverride(
+    "__FROSTBOMB_QUALITY_DEMOTION_NOTICE_MS__",
+    DEFAULT_DISMISS_MS,
+  );
 }
 
 let visible = false;
