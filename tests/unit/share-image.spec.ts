@@ -3,6 +3,7 @@ import {
   canShareFiles,
   canvasToPngBlob,
   drawOnOpaqueCanvas,
+  pngObjectUrl,
   shareSnowflake,
   type ShareNavigator,
 } from "../../src/ui/share-image";
@@ -166,5 +167,25 @@ describe("canvasToPngBlob", () => {
 
   it("resolves null when encoding fails", async () => {
     await expect(canvasToPngBlob(fakeCanvas(null))).resolves.toBeNull();
+  });
+});
+
+describe("pngObjectUrl (save-PNG path)", () => {
+  it("rejects when toBlob yields null and creates no object URL", async () => {
+    const create = vi.spyOn(URL, "createObjectURL");
+    await expect(pngObjectUrl(fakeCanvas(null))).rejects.toThrow("Could not encode snowflake PNG");
+    expect(create).not.toHaveBeenCalled();
+    create.mockRestore();
+  });
+
+  it("returns a blob: URL via toBlob without calling toDataURL", async () => {
+    const canvas = fakeCanvas();
+    const toDataURL = vi.fn(() => "data:image/png;base64,AAAA");
+    (canvas as unknown as { toDataURL: unknown }).toDataURL = toDataURL;
+    const url = await pngObjectUrl(canvas);
+    expect(url.startsWith("blob:")).toBe(true);
+    expect(canvas.toBlob).toHaveBeenCalledWith(expect.any(Function), "image/png");
+    expect(toDataURL).not.toHaveBeenCalled();
+    URL.revokeObjectURL(url);
   });
 });

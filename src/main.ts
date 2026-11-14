@@ -39,7 +39,13 @@ import {
 } from "./ui/download";
 import { runExportAction } from "./ui/export-action";
 import { captureWallpaper, wallpaperFileName, wallpaperSize } from "./ui/wallpaper";
-import { canShareFiles, canvasToPngBlob, drawOnOpaqueCanvas, shareSnowflake } from "./ui/share-image";
+import {
+  canShareFiles,
+  canvasToPngBlob,
+  drawOnOpaqueCanvas,
+  pngObjectUrl,
+  shareSnowflake,
+} from "./ui/share-image";
 import { installStaleBuildRecovery, sessionStorageOrNull } from "./ui/stale-build";
 import { installClientErrorReporting, reportClientError } from "./ui/client-error";
 import { createUrlWriteCoalescer } from "./url-write-coalescer";
@@ -945,9 +951,7 @@ async function saveSnowflake() {
       scene.composer.render();
       // toBlob snapshots the bitmap at call time; name it before awaiting.
       const fileName = formatExportFileName(currentExportIdentity(), "png");
-      const blob = await canvasToPngBlob(canvas);
-      if (!blob) throw new Error("Could not encode snowflake PNG");
-      downloadHref(fileName, URL.createObjectURL(blob));
+      downloadHref(fileName, await pngObjectUrl(canvas));
     },
     scene,
     resumeAutoRotateFromPref,
