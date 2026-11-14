@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   canShareFiles,
+  canvasToPngBlob,
   drawOnOpaqueCanvas,
   shareSnowflake,
   type ShareNavigator,
@@ -152,5 +153,18 @@ describe("drawOnOpaqueCanvas", () => {
   it("throws when a 2D context is unavailable", () => {
     const out = { getContext: () => null } as unknown as HTMLCanvasElement;
     expect(() => drawOnOpaqueCanvas({ width: 1, height: 1 } as HTMLCanvasElement, "#000", () => out)).toThrow();
+  });
+});
+
+describe("canvasToPngBlob", () => {
+  it("requests image/png and resolves the blob", async () => {
+    const blob = new Blob(["png"], { type: "image/png" });
+    const canvas = fakeCanvas(blob);
+    await expect(canvasToPngBlob(canvas)).resolves.toBe(blob);
+    expect(canvas.toBlob).toHaveBeenCalledWith(expect.any(Function), "image/png");
+  });
+
+  it("resolves null when encoding fails", async () => {
+    await expect(canvasToPngBlob(fakeCanvas(null))).resolves.toBeNull();
   });
 });

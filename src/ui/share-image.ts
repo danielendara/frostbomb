@@ -51,7 +51,7 @@ export function drawOnOpaqueCanvas(
   return out;
 }
 
-function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }
 
