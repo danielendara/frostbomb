@@ -1,7 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_IDLE_TIMEOUT_MS, scheduleIdleTask } from "../../src/idle";
 
 describe("scheduleIdleTask", () => {
+  beforeEach(() => {
+    // Unit env is node: expose globalThis as `window` so stubbed globals are seen.
+    vi.stubGlobal("window", globalThis);
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
