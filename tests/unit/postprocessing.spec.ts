@@ -2,7 +2,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   PostprocessingPipeline,
-  scheduleIdleTask,
   shouldSkipPostprocessing,
   type PostprocessingPipelineOptions,
 } from "../../src/snowflake/postprocessing.ts";
@@ -307,23 +306,6 @@ describe("PostprocessingPipeline.requestLoad bounded retry", () => {
     await harness.frames(1_000);
     expect(importer).toHaveBeenCalledTimes(6);
     expect(errorSpy).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe("scheduleIdleTask", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("falls back to setTimeout when requestIdleCallback is missing", () => {
-    vi.useFakeTimers();
-    const task = vi.fn();
-    vi.stubGlobal("requestIdleCallback", undefined);
-    scheduleIdleTask(task);
-    expect(task).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(0);
-    expect(task).toHaveBeenCalledTimes(1);
-    vi.useRealTimers();
   });
 });
 
