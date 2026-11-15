@@ -1,4 +1,5 @@
 import { handleClientError } from "./client-error";
+import { withHtmlCspIfNeeded } from "./csp";
 
 // Keep in sync with `Strict-Transport-Security` in public/_headers.
 // Deliberately no includeSubDomains/preload (hard to undo).
@@ -10,13 +11,26 @@ function withHsts(res: Response): Response {
   return out;
 }
 
-// Minimal Worker entry. `assets.run_worker_first` routes only `/api/*`
-// here; every other request is served straight from static assets (SPA
-// fallback, `_headers`, caching) exactly as before.
+type Env = {
+  ASSETS: { fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> };
+};
+
+// `run_worker_first` targets documents and SPA routes (`/*` minus static paths); `/api/*`
+// is included. Hashed `/assets/*`, fonts, and a few root static files bypass the Worker.
+// HTML responses get a per-request CSP nonce for Cloudflare JS detections.
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env?: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === "/api/client-error") return withHsts(await handleClientError(request));
-    return withHsts(new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } }));
+    if (pathname.startsWith("/api/")) {
+      return withHsts(new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } }));
+    }
+
+    if (!env?.ASSETS) {
+      return withHsts(new Response("Asset binding missing", { status: 500, headers: { "cache-control": "no-store" } }));
+    }
+
+    const asset = await env.ASSETS.fetch(request);
+    return withHsts(withHtmlCspIfNeeded(asset));
   },
 };
