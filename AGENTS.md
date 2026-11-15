@@ -2,6 +2,10 @@
 
 Frostbomb: Vite + three.js snowflake app on a Cloudflare Worker. Node >= 22.12, npm.
 
+## Purpose and Proof
+
+Every agent-filed issue and every PR starts with the Purpose block from `.github` templates (plain language, before technical detail). Dependabot and one-line chores are exempt. Gabriel HOLDs a missing or vague block.
+
 ## Commands
 - Typecheck app: `npx tsc --noEmit` (`npm run build` = `tsc && vite build`)
 - Typecheck tests: `npm run typecheck:tests`
