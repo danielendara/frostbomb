@@ -2,6 +2,10 @@
 
 Frostbomb: Vite + three.js snowflake app on a Cloudflare Worker. Node >= 22.12, npm.
 
+## Purpose and proof (required)
+
+Every agent-filed issue and every PR must start with the Purpose block from the `.github` templates. Apply labels `priority:P1` | `priority:P2` | `priority:P3` and `value:high` | `value:medium` | `value:low`. A missing or vague Purpose block is a Gabriel HOLD. Dependabot and one-line chores are exempt.
+
 ## Commands
 - Typecheck app: `npx tsc --noEmit` (`npm run build` = `tsc && vite build`)
 - Typecheck tests: `npm run typecheck:tests`
