@@ -2,10 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error -- budget check is implemented as a Node .mjs script
-import {
-  collectBudgetFailures,
-  evaluateThreeChunkBudget,
-} from "../../scripts/check-three-chunk-budget.mjs";
+import { collectBudgetFailures, evaluateThreeChunkBudget } from "../../scripts/check-three-chunk-budget.mjs";
 
 const ROOT = resolve(__dirname, "../..");
 const budget = JSON.parse(
