@@ -133,20 +133,20 @@ npm test                   # pretest runs unit tests, then smoke Playwright proj
 
 `playwright.config.ts` always declares both projects; `npm test` and `npm run test:e2e:smoke` narrow to smoke via `--project=sequential-smoke`. Use `npm run test:e2e:full` for the full chromium suite.
 
-`npm run verify` (`scripts/verify.sh`) is the local pre-push gate: policy, docs hygiene, typecheck, lint, coverage, build, chunk budget, then e2e, fail-fast.
+`npm run verify` (`scripts/verify.sh`) is the local gate to run before pushing: policy, docs hygiene, typecheck, lint, coverage, build, chunk budget, then e2e, fail-fast. The git pre-push hook runs a shorter set (lint, both typechecks, unit tests).
 
 ### CI
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `push` to `main`, `pull_request`, and `workflow_dispatch` (optional `full_e2e` input, default `true`).
 
-Every run executes `npm run build`, the AGENTS.md policy check, the three.js chunk budget (`scripts/check-three-chunk-budget.mjs`), `npm run typecheck:tests`, and `npm run test:unit`; unless Playwright is skipped it then runs either `npm run test:e2e:smoke` (default) or `npm run test:e2e:full`. The smoke/full/skip decision comes from `scripts/e2e-mode.sh`, which `npm run verify` also uses locally (`--local`, diffing against `origin/main`).
+Every run executes `npm run build`, the AGENTS.md policy check, the three.js chunk budget (`scripts/check-three-chunk-budget.mjs`), `npm run typecheck:tests`, and `npm run test:unit`; unless Playwright is skipped it then runs either `npm run test:e2e:smoke` (default) or the full chromium suite as a separate 4-shard job (`npx playwright test --shard=N/4`). The smoke/full/skip decision comes from `scripts/e2e-mode.sh`, which `npm run verify` also uses locally (`--local`, diffing against `origin/main`).
 
 | When | Playwright |
 | --- | --- |
 | PR or push changes only `*.md`, `docs/*`, or `LICENSE` | **Skipped** (`skip_playwright`) |
 | PR from `dependabot[bot]` that changes only `package-lock.json` / `pnpm-lock.yaml` / `yarn.lock` | **Skipped** |
 | Otherwise | **Runs** — smoke by default |
-| PR has label `full-e2e` | Full suite (`npm run test:e2e:full`) |
+| PR has label `full-e2e` | Full suite (4 shards) |
 | PR or push touches `src/snowflake/*`, `src/ui/*`, `src/main.ts`, `src/style.css`, `index.html`, `playwright.config.ts`, `vite.config.ts`, `src/*` paths matching `canvas` / `webgl` / `export`, or `tests/*` except `*.smoke.spec.ts` | Full suite |
 | `workflow_dispatch` with `full_e2e: true` | Full suite |
 | `workflow_dispatch` with `full_e2e: false` | Smoke only |
@@ -166,7 +166,7 @@ Every snowflake has a unique seed. Share a specific crystal by appending `?seed=
 
 `https://frostbomb.com/?seed=k3m7q`
 
-Copy Link also keeps the look and Lab state: `pink`, `prism`, `glow`, `rotate` and `lab` flags (`1` on, `0` off), plus Lab temperature `t` (°C) and supersaturation `ss` (percent, 0–100). For example:
+Copy Link also keeps the look and Lab state: `pink`, `prism`, `glow`, `rotate` and `lab` flags (`1` on; when off, `glow`, `rotate` and `lab` are written as `0` and `pink` and `prism` are left out), plus Lab temperature `t` (°C) and supersaturation `ss` (percent, 0–100). For example:
 
 `https://frostbomb.com/?seed=k3m7q&pink=1&glow=1&lab=1&t=-15.0&ss=60`
 
