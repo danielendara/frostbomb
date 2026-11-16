@@ -1,7 +1,6 @@
 {
   "assetsDir": "dist/client/assets",
   "chunkNamePrefix": "three-",
-  "maxRawBytes": 595000,
-  "maxGzipBytes": 147000,
-  "headroomPolicy": "Raw limit ~2% above last measured build (same proportional headroom as gzip). Gzip is the primary transfer-cost gate."
+  "maxRawBytes": 583000,
+  "maxGzipBytes": 147000
 }

@@ -39,17 +39,17 @@ node scripts/shots.mjs --label=<before|after|...>   # -> docs/pr-shots/rendering
 | RICH initial JS | ≤ +15 KiB gz total across rendering changes |
 | Postprocessing chunk | never fetched on LITE |
 
-## Bundle (`npm run build`, client chunks; measured @ df8f411)
+## Bundle (`npm run build`, client chunks; measured @ branch)
 
-| chunk | gzip KiB | raw budget |
-|---|---|---|
-| `three-*.js` | 145.24 | 595000 B max raw (582846 B measured); 147000 B max gzip |
-| `build-*.js` (contains postprocessing) | 74.70 |
+| chunk | gzip KiB |
+|---|---|
+| `three-*.js` (core only; addons lazy with mesh-export) | 134.55 |
+| `build-*.js` (contains postprocessing) | 74.71 |
 | `tweakpane-*.js` | 30.37 |
-| `index-*.js` | 32.55 |
+| `index-*.js` | 32.57 |
 | `index-*.css` | 5.38 |
-| `index.html` | 4.16 |
-| `mesh-export-*.js` | 1.02 |
+| `index.html` | 4.15 |
+| `mesh-export-*.js` | 12.01 |
 | `frost.worker-*.js` | not reported by vite (4.19 kB raw) |
 
 (`gzip KiB` here is vite's "kB" figure, 1 kB = 1000 B.)

@@ -28,18 +28,12 @@ export function collectBudgetFailures(budget, rawTotal, gzipTotal) {
 }
 
 /**
- * @param {unknown} budget
  * @returns {string[]}
  */
-export function budgetFailureHelpLines(budget) {
-  const policy =
-    typeof budget.headroomPolicy === "string" && budget.headroomPolicy.trim() !== ""
-      ? budget.headroomPolicy.trim()
-      : "Set headroomPolicy in scripts/three-chunk-budget.json.";
+export function budgetFailureHelpLines() {
   return [
-    `intended headroom: ${policy}`,
     "when over budget: re-measure with `npm run build` then `node scripts/check-three-chunk-budget.mjs`;",
-    "if the growth is real, trim three.js usage or split the chunk;",
+    "if the growth is real, trim three.js usage or adjust vite chunking;",
     "otherwise raise maxRawBytes and maxGzipBytes together in the same PR using the new measured sizes.",
   ];
 }
@@ -71,7 +65,7 @@ export function evaluateThreeChunkBudget(budget, measured) {
   if (failures.length === 0) {
     return { ok: true };
   }
-  return { ok: false, failures, helpLines: budgetFailureHelpLines(budget) };
+  return { ok: false, failures, helpLines: budgetFailureHelpLines() };
 }
 
 /**

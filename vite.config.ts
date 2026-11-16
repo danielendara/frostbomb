@@ -17,8 +17,9 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         manualChunks: (id: string) => {
-          if (id.includes('node_modules/three')) return 'three';
-          return undefined;
+          if (!id.includes('node_modules/three')) return undefined;
+          if (id.includes('/addons/') || id.includes('/examples/')) return undefined;
+          return 'three';
         },
       },
     },
