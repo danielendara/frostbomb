@@ -10,7 +10,7 @@ The package `deploy` script is `npm run build && wrangler deploy`. The README do
 - [ ] **Unit:** `npm run test:unit`
 - [ ] **E2E (smoke):** `npm run test:e2e:smoke` — default Playwright coverage (same as CI smoke). `npm test` also ends in smoke-only e2e via `--project=sequential-smoke`; `pretest` runs unit tests first.
 - [ ] **E2E (full, before risky UI/canvas/test changes):** `npm run test:e2e:full`, or add the `full-e2e` label on the PR so CI runs the full chromium suite (see `.github/workflows/ci.yml`).
-- [ ] Confirm this release does not accidentally change the Worker deploy path (`wrangler.jsonc` name `frostbombsite`, `main` = `src/worker/index.ts`, SPA asset fallback, `run_worker_first` limited to `/api/*`, `package.json` `deploy` script)
+- [ ] Confirm this release does not accidentally change the Worker deploy path (`wrangler.jsonc` name `frostbombsite`, `main` = `src/worker/index.ts`, SPA asset fallback, `run_worker_first` = `/*` minus `!/assets/*`, `!/fonts/*`, `!/favicon.svg`, `!/og-image.png` and `!/fallback-flake.webp`, `package.json` `deploy` script)
 - [ ] **Database:** frostbomb has no D1/KV/R2 bindings today. If a future change adds persisted state or migrations, apply and verify those migrations on production **before** merging to `main`.
 
 ## Deploy
@@ -38,7 +38,7 @@ npm run preview
 
 After the Worker is live at https://frostbomb.com:
 
-1. **Headers / CSP** — `curl -sI https://frostbomb.com/` should include `Content-Security-Policy` from `public/_headers` (also `X-Content-Type-Options: nosniff`).
+1. **Headers / CSP** — `curl -sI https://frostbomb.com/` should include a `Content-Security-Policy` with the directives from `public/_headers` plus a `'nonce-…'` in `script-src` (also `X-Content-Type-Options: nosniff`).
    Then load the site and confirm the browser console shows no CSP violations (this covers the Cloudflare Web Analytics beacon and the edge bot-check script; HTML responses use a per-request `script-src` nonce set by the Worker).
 2. **postprocessing is not modulepreloaded** — fetch the live HTML and confirm there is no `<link rel="modulepreload"` whose href contains `postprocessing`. `vite.config.ts` filters those deps in `build.modulePreload.resolveDependencies` so first paint stays on the lightweight pipeline.
 3. **Smoke** — open the site, confirm a crystal renders, and that Lab Mode / export still work.
@@ -46,7 +46,7 @@ After the Worker is live at https://frostbomb.com:
 
 ## Client errors in Workers Logs
 
-Browser failures are reported to `POST /api/client-error`, and the Worker writes each one as a single `console.error` JSON line with `"event":"client_error"`. The Worker only runs for `/api/*` (`assets.run_worker_first`); every other request is served straight from static assets.
+Browser failures are reported to `POST /api/client-error`, and the Worker writes each one as a single `console.error` JSON line with `"event":"client_error"`. The Worker runs first for every path except the static ones excluded in `assets.run_worker_first` (hashed `/assets/*`, `/fonts/*` and three root files). It answers `/api/*` itself and passes everything else to the static assets, adding HSTS and the per-request CSP nonce on HTML.
 
 To view them: Cloudflare dashboard → Workers & Pages → `frostbombsite` → **Observability** → **Logs** (Workers Logs, enabled by `observability.enabled` in `wrangler.jsonc`). Filter on `event = client_error`, then group by `kind` or `build`. For a live tail, use `npx wrangler tail frostbombsite --format pretty`.
 
@@ -54,7 +54,7 @@ Each report is a fixed allowlist, and the Worker rejects anything else with `400
 
 | Field | Meaning |
 | --- | --- |
-| `kind` | `error`, `unhandledrejection`, `webgl-context-lost`, `frost-worker`, `chunk-reload`, `chunk-load`, `postprocessing`, `export` |
+| `kind` | `error`, `unhandledrejection`, `webgl-context-lost`, `webgl-unavailable`, `frost-worker`, `chunk-reload`, `chunk-load`, `postprocessing`, `export` |
 | `message` | Error message, ≤300 chars, URL query strings and fragments stripped |
 | `source`, `line`, `col` | Same-origin script path (no query) and position, or `external` |
 | `build` | Hashed main bundle name, e.g. `index-61FAqeWf`: tells you which deploy a report came from |
