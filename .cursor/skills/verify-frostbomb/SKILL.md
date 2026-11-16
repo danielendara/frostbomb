@@ -5,7 +5,7 @@ description: Drive the Frostbomb snowflake web app (Vite + three.js, Cloudflare 
 
 # Verify Frostbomb
 
-Surface: a single-page web app (canvas crystal, Lab Mode, share/export, URL state) plus a tiny Worker (`/api/client-error`). Everything runs locally; CI is local-only, so `npm run verify` is the gate.
+Surface: a single-page web app (canvas crystal, Lab Mode, share/export, URL state) plus a tiny Worker (`/api/client-error`). Everything runs locally. `npm run verify` is the full gate; GitHub Actions runs a subset on pushes to `main` and on PRs.
 
 ## Launch
 ```bash

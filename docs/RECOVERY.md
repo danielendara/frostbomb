@@ -7,13 +7,13 @@ This is the recovery runbook for frostbomb: how to roll back a bad deploy and co
 - If a deploy or merge happened in the last ~30 min and the site breaks, **roll back code first**, investigate after.
 - Never run a bare `wrangler rollback`: without a version ID it can pick a PR preview version. Always pass an explicit version ID from `npx wrangler versions list` or `npx wrangler deployments list`.
 - Cloudflare deploys are done from a maintainer machine.
-- **Before merging** any release that adds database migrations (not applicable to frostbomb today), apply and verify those migrations on production first. frostbomb has **no D1, KV, R2, or other bindings** in `wrangler.jsonc`.
+- **Before merging** any release that adds database migrations (not applicable to frostbomb today), apply and verify those migrations on production first. frostbomb has **no D1, KV, R2 or other data bindings** in `wrangler.jsonc` (only the static `ASSETS` binding).
 
 ---
 
 ## frostbomb: static site + tiny Worker
 
-- **Hosting:** Cloudflare Worker `frostbombsite` with static assets (SPA fallback). The Worker only handles `/api/client-error`. **No D1, KV, R2 or other bindings** (verified in `wrangler.jsonc`). Live at `frostbomb.com`.
+- **Hosting:** Cloudflare Worker `frostbombsite` with static assets (SPA fallback). The Worker runs first for every path except hashed assets, fonts and three root files (`assets.run_worker_first`): it answers `/api/client-error`, returns 404 for other `/api/*`, and passes everything else to the static assets with HSTS and a per-request CSP nonce on HTML. **No D1, KV, R2 or other data bindings** (verified in `wrangler.jsonc`; the only binding is static `ASSETS`). Live at `frostbomb.com`.
 - **Deploy path:** Workers Builds auto-deploys `main` on merge to GitHub `main` (**UNVERIFIED:** exact build/version IDs change every deploy; list them with wrangler before rollback).
 - **Rollback (RTO est. 30-60 s CLI, 1-2 min dashboard):**
 ```bash
