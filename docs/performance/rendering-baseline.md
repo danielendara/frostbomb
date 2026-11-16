@@ -39,11 +39,11 @@ node scripts/shots.mjs --label=<before|after|...>   # -> docs/pr-shots/rendering
 | RICH initial JS | ≤ +15 KiB gz total across rendering changes |
 | Postprocessing chunk | never fetched on LITE |
 
-## Bundle (`npm run build`, client chunks; measured @ e4a0ad9)
+## Bundle (`npm run build`, client chunks; measured @ df8f411)
 
-| chunk | gzip KiB |
-|---|---|
-| `three-*.js` | 145.24 |
+| chunk | gzip KiB | raw budget |
+|---|---|---|
+| `three-*.js` | 145.24 | 595000 B max raw (582846 B measured); 147000 B max gzip |
 | `build-*.js` (contains postprocessing) | 74.70 |
 | `tweakpane-*.js` | 30.37 |
 | `index-*.js` | 32.55 |
