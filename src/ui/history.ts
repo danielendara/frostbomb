@@ -42,7 +42,11 @@ export function parseStoredEntries(value: unknown): SeedEntry[] {
       kept:
         item && typeof item === "object" && typeof item.seed === "string" ? item.kept === true : false,
     };
-    if (entries.some((e) => e.seed === entry.seed)) continue;
+    const duplicate = entries.find((e) => e.seed === entry.seed);
+    if (duplicate) {
+      duplicate.kept ||= entry.kept;
+      continue;
+    }
     entries.push(entry);
   }
   return applyCaps(entries);
