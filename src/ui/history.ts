@@ -21,17 +21,27 @@ export interface SeedEntry {
  */
 type StoredEntry = string | { seed: string; kept: true };
 
+/** Same rule as `parseSeed` in url-state: valid wire shape, stored lowercase. */
+function normalizeStoredSeed(raw: string): string | null {
+  return SEED_PATTERN.test(raw) ? raw.toLowerCase() : null;
+}
+
 export function parseStoredEntries(value: unknown): SeedEntry[] {
   if (!Array.isArray(value)) return [];
   const entries: SeedEntry[] = [];
   for (const item of value) {
-    const entry: SeedEntry | null =
+    const seed =
       typeof item === "string"
-        ? { seed: item, kept: false }
+        ? normalizeStoredSeed(item)
         : item && typeof item === "object" && typeof item.seed === "string"
-          ? { seed: item.seed, kept: item.kept === true }
+          ? normalizeStoredSeed(item.seed)
           : null;
-    if (!entry || !SEED_PATTERN.test(entry.seed)) continue;
+    if (!seed) continue;
+    const entry: SeedEntry = {
+      seed,
+      kept:
+        item && typeof item === "object" && typeof item.seed === "string" ? item.kept === true : false,
+    };
     if (entries.some((e) => e.seed === entry.seed)) continue;
     entries.push(entry);
   }
@@ -51,10 +61,12 @@ function applyCaps(entries: readonly SeedEntry[]): SeedEntry[] {
 
 /** Move/insert `seed` to the front (keeping its Keep state), then apply the caps. */
 export function withSeedAdded(entries: readonly SeedEntry[], seed: string): SeedEntry[] {
-  const existing = entries.find((e) => e.seed === seed);
+  const normalized = normalizeStoredSeed(seed);
+  if (!normalized) return applyCaps([...entries]);
+  const existing = entries.find((e) => e.seed === normalized);
   return applyCaps([
-    { seed, kept: existing?.kept ?? false },
-    ...entries.filter((e) => e.seed !== seed),
+    { seed: normalized, kept: existing?.kept ?? false },
+    ...entries.filter((e) => e.seed !== normalized),
   ]);
 }
 
@@ -146,7 +158,8 @@ export class SeedHistoryManager {
   }
 
   public addSeed(seedVal: string): void {
-    if (!seedVal || !SEED_PATTERN.test(seedVal)) return;
+    const seed = normalizeStoredSeed(seedVal);
+    if (!seed) return;
 
     // Lab/Nakaya grow(keepSeed) during the undo window would otherwise miss the
     // newest-seed guard (clear emptied the unkept seeds) and clobber the backup.
@@ -155,11 +168,11 @@ export class SeedHistoryManager {
     }
 
     // Performance optimization: prevent redundant localStorage/DOM writes if seed is already newest
-    if (this.entries[0]?.seed === seedVal) {
+    if (this.entries[0]?.seed === seed) {
       return;
     }
 
-    this.entries = withSeedAdded(this.entries, seedVal);
+    this.entries = withSeedAdded(this.entries, seed);
     this.saveToStorage();
   }
 

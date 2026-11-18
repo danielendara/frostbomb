@@ -191,6 +191,13 @@ describe('Recent Seeds persistence migration', () => {
     ]);
   });
 
+  it('lowercases valid seeds so recent chips match the active seed label', () => {
+    expect(parseStoredEntries(['Alpha', { seed: 'BRAVO', kept: true }, 'alpha'])).toEqual([
+      { seed: 'alpha', kept: false },
+      { seed: 'bravo', kept: true },
+    ]);
+  });
+
   it('drops invalid and duplicate entries using SEED_PATTERN', () => {
     expect(
       parseStoredEntries(['alpha', '<script>', 42, null, { seed: 'bad seed!', kept: true }, { kept: true }, 'alpha', { seed: 'bravo', kept: true }]),
