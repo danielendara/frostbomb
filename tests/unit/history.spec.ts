@@ -133,6 +133,16 @@ describe('SeedHistoryManager clear/undo', () => {
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).toEqual([]);
   });
 
+  it('addSeed normalizes mixed case before updating the list', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(['alpha', 'bravo', 'charlie']));
+    const manager = new SeedHistoryManager({ onSelectSeed: vi.fn() });
+    const setItem = vi.spyOn(localStorage, 'setItem');
+    setItem.mockClear();
+    manager.addSeed('ALPHA');
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
+  });
+
   it('double-clear during the undo window does not wipe the seed backup', () => {
     const manager = createManager();
 
@@ -177,6 +187,14 @@ describe('Recent Seeds cap math', () => {
     ]);
   });
 
+  it("withSeedAdded normalizes case, dedupes, and keeps Keep state", () => {
+    const entries = parseStoredEntries([{ seed: 'alpha', kept: true }, 'bravo']);
+    expect(withSeedAdded(entries, 'ALPHA')).toEqual([
+      { seed: 'alpha', kept: true },
+      { seed: 'bravo', kept: false },
+    ]);
+  });
+
   it('caps kept seeds at KEPT_CAP when loading', () => {
     const stored = seedsN('keep', KEPT_CAP + 3).map((seed) => ({ seed, kept: true }));
     expect(parseStoredEntries(stored)).toHaveLength(KEPT_CAP);
@@ -189,6 +207,18 @@ describe('Recent Seeds persistence migration', () => {
       { seed: 'alpha', kept: false },
       { seed: 'bravo', kept: false },
     ]);
+  });
+
+  it('lowercases valid seeds so recent chips match the active seed label', () => {
+    expect(parseStoredEntries(['Alpha', { seed: 'BRAVO', kept: true }, 'alpha'])).toEqual([
+      { seed: 'alpha', kept: false },
+      { seed: 'bravo', kept: true },
+    ]);
+  });
+
+  it('keeps a Keep flag when a case-variant duplicate collapses', () => {
+    expect(parseStoredEntries(['Alpha', { seed: 'alpha', kept: true }])).toEqual([{ seed: 'alpha', kept: true }]);
+    expect(parseStoredEntries([{ seed: 'ALPHA', kept: true }, 'alpha'])).toEqual([{ seed: 'alpha', kept: true }]);
   });
 
   it('drops invalid and duplicate entries using SEED_PATTERN', () => {
