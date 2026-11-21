@@ -76,6 +76,7 @@ export function withSeedAdded(entries: readonly SeedEntry[], seed: string): Seed
 
 export interface HistoryManagerOptions {
   onSelectSeed: (seed: string) => void;
+  getViewState: () => { currentSeedLabel: string; isLabMode: boolean; isGuideOpen: boolean };
   /** Called after another tab changed the stored list and entries were replaced. */
   onExternalChange?: () => void;
 }
@@ -85,6 +86,7 @@ export class SeedHistoryManager {
   private backupEntries: SeedEntry[] | null = null;
   private undoTimeoutId: number | null = null;
   private onSelectSeed: (seed: string) => void;
+  private getViewState: HistoryManagerOptions["getViewState"];
   private onExternalChange: (() => void) | undefined;
 
   // Change detection cache to prevent layout thrashing
@@ -96,6 +98,7 @@ export class SeedHistoryManager {
 
   constructor(options: HistoryManagerOptions) {
     this.onSelectSeed = options.onSelectSeed;
+    this.getViewState = options.getViewState;
     this.onExternalChange = options.onExternalChange;
     this.loadFromStorage();
     window.addEventListener("storage", (e) => this.handleStorageEvent(e));
@@ -181,7 +184,7 @@ export class SeedHistoryManager {
   }
 
   /** Clears unkept seeds only; kept seeds stay listed. Undo restores exactly what was cleared. */
-  public clear(currentSeedLabel: string, isLabMode: boolean, isGuideOpen: boolean): void {
+  public clear(): void {
     if (!this.entries.some((e) => !e.kept)) return;
 
     if (this.undoTimeoutId !== null) {
@@ -201,7 +204,7 @@ export class SeedHistoryManager {
       }
     }
 
-    this.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
+    this.updateUI();
     announce("Recent seeds history cleared. You can undo this action.");
 
     requestAnimationFrame(() => {
@@ -225,14 +228,14 @@ export class SeedHistoryManager {
       // Events were ignored during the window; re-read so the next write isn't stale.
       this.loadFromStorage();
       this.onExternalChange?.();
-      this.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
+      this.updateUI();
       if (undoWasFocused) {
         document.getElementById("guide-toggle")?.focus();
       }
     }, timeoutDuration);
   }
 
-  public undoClear(currentSeedLabel: string, isLabMode: boolean, isGuideOpen: boolean): void {
+  public undoClear(): void {
     // Put the cleared seeds back in their old places; seeds still listed keep
     // any Keep change made during the undo window.
     const current = this.entries;
@@ -245,7 +248,7 @@ export class SeedHistoryManager {
       this.undoTimeoutId = null;
     }
     this.saveToStorage();
-    this.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
+    this.updateUI();
     announce("Recent seeds history restored");
 
     setTimeout(() => {
@@ -269,11 +272,12 @@ export class SeedHistoryManager {
     clearBtn.setAttribute("aria-label", `Clear seed history (${itemLabel})`);
   }
 
-  public updateUI(currentSeedLabel: string, isLabMode: boolean, isGuideOpen: boolean): void {
+  public updateUI(): void {
     const container = document.getElementById("recent-seeds-container");
     const listEl = document.getElementById("recent-seeds-list");
     if (!container || !listEl) return;
 
+    const { currentSeedLabel, isLabMode, isGuideOpen } = this.getViewState();
     const seedsStr = this.entries.map((e) => (e.kept ? `${e.seed}*` : e.seed)).join(",");
     const hasBackup = this.backupEntries !== null;
     if (
@@ -351,7 +355,7 @@ export class SeedHistoryManager {
       keepBtn.addEventListener("click", () => {
         visualPress(keepBtn);
         if (!this.setKept(seedVal, !kept)) return;
-        this.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
+        this.updateUI();
         const again = Array.from(listEl.querySelectorAll<HTMLButtonElement>("button.seed-keep")).find(
           (b) => b.dataset.seed === seedVal,
         );
@@ -377,7 +381,7 @@ export class SeedHistoryManager {
 
       undoBtn.addEventListener("click", () => {
         visualPress(undoBtn);
-        this.undoClear(currentSeedLabel, isLabMode, isGuideOpen);
+        this.undoClear();
       });
 
       listEl.appendChild(infoSpan);

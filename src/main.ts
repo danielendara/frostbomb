@@ -212,6 +212,7 @@ requestAnimationFrame(() => {
 
 // History Manager
 const historyManager = new SeedHistoryManager({
+  getViewState: () => ({ currentSeedLabel, isLabMode, isGuideOpen }),
   onExternalChange: () => updateRecentSeedsUI(),
   onSelectSeed: (seedVal) => {
     urlWrites.flush();
@@ -284,12 +285,12 @@ const labPanel = new LabPanel({
 labQualityAfterAutoDemotion.sync = (tier) => labPanel.syncQuality(tier);
 
 function updateRecentSeedsUI() {
-  historyManager.updateUI(currentSeedLabel, isLabMode, isGuideOpen);
+  historyManager.updateUI();
 }
 
 document.getElementById("btn-clear-history")?.addEventListener("click", () => {
   visualPress("btn-clear-history");
-  historyManager.clear(currentSeedLabel, isLabMode, isGuideOpen);
+  historyManager.clear();
 });
 
 function grow(
