@@ -218,6 +218,81 @@ describe("initKeyboardShortcuts key auto-repeat", () => {
   });
 });
 
+describe("initKeyboardShortcuts panel visibility", () => {
+  let h: Harness;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    h = makeCtx();
+    dispose = initKeyboardShortcuts(h.ctx);
+  });
+
+  afterEach(() => {
+    dispose();
+  });
+
+  it.each(["Field Guide", "Lab Mode"])("exits Photo Mode before closing %s", (panel) => {
+    h.ctx.isUIHidden = () => true;
+    h.state.guideOpen = panel === "Field Guide";
+    h.ctx.isLabMode = () => panel === "Lab Mode";
+
+    keydown("Escape");
+
+    expect(h.handlers.onEscapeUIHidden).toHaveBeenCalledOnce();
+    expect(h.handlers.onEscapeGuide).not.toHaveBeenCalled();
+    expect(h.handlers.onEscapeLab).not.toHaveBeenCalled();
+  });
+
+  it("closes the visible Field Guide before Lab Mode", () => {
+    h.state.guideOpen = true;
+    h.ctx.isLabMode = () => true;
+    h.handlers.onEscapeGuide.mockImplementation(() => {
+      h.state.guideOpen = false;
+    });
+
+    keydown("Escape");
+    expect(h.handlers.onEscapeGuide).toHaveBeenCalledOnce();
+    expect(h.handlers.onEscapeLab).not.toHaveBeenCalled();
+
+    keydown("Escape");
+    expect(h.handlers.onEscapeLab).toHaveBeenCalledOnce();
+    expect(h.handlers.onEscapeUIHidden).not.toHaveBeenCalled();
+  });
+
+  it("orbits and regrows in Photo Mode even with the Field Guide open", () => {
+    h.ctx.isUIHidden = () => true;
+    h.state.guideOpen = true;
+
+    expect(keydown("ArrowLeft").defaultPrevented).toBe(true);
+    expect(keydown(" ").defaultPrevented).toBe(true);
+    expect(h.handlers.onRotateView).toHaveBeenCalledWith(-0.1, 0);
+    expect(h.handlers.onRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("leaves arrows and Space to the visible Field Guide", () => {
+    h.state.guideOpen = true;
+
+    expect(keydown("ArrowLeft").defaultPrevented).toBe(false);
+    expect(keydown(" ").defaultPrevented).toBe(false);
+    expect(h.handlers.onRotateView).not.toHaveBeenCalled();
+    expect(h.handlers.onRefresh).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["g", "onToggleGuide"],
+    ["?", "onNavigateShortcuts"],
+    ["l", "onToggleLab"],
+  ])("%s exits Photo Mode before calling %s", (key, handler) => {
+    h.ctx.isUIHidden = () => true;
+
+    keydown(key);
+
+    expect(h.handlers.onEscapeUIHidden).toHaveBeenCalledOnce();
+    expect(h.handlers[handler]).toHaveBeenCalledOnce();
+    expect(h.handlers.onEscapeUIHidden).toHaveBeenCalledBefore(h.handlers[handler]);
+  });
+});
+
 describe("initKeyboardShortcuts arrows vs. Lab pane widgets", () => {
   let h: Harness;
   let dispose: () => void;

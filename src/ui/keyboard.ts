@@ -63,17 +63,17 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
   const handleKeyDown = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase();
 
-    // Global escape should always work to close overlays
+    // Escape restores hidden UI before acting on its panels.
     if (k === "escape") {
-      if (ctx.isGuideOpen()) {
+      if (ctx.isUIHidden()) {
+        ctx.onEscapeUIHidden();
+        return;
+      } else if (ctx.isGuideOpen()) {
         ctx.onEscapeGuide();
         visualPress("guide-close");
         return;
       } else if (ctx.isLabMode()) {
         ctx.onEscapeLab();
-        return;
-      } else if (ctx.isUIHidden()) {
-        ctx.onEscapeUIHidden();
         return;
       }
     }
@@ -86,8 +86,8 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
 
     // Don't hijack arrows if we're in the guide (allow scrolling) unless focused on diagram
     const isDiagramFocused = ctx.isDiagramFocused();
-    const isGuideOpen = ctx.isGuideOpen();
-    if (isGuideOpen && !isDiagramFocused && k.startsWith("arrow")) return;
+    const isGuideVisible = ctx.isGuideOpen() && !ctx.isUIHidden();
+    if (isGuideVisible && !isDiagramFocused && k.startsWith("arrow")) return;
 
     // A focused Lab slider owns its arrows (or a widget already consumed the
     // key), so the camera must not orbit at the same time.
@@ -95,7 +95,7 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
       return;
 
     // Space should scroll down the guide instead of refreshing if guide is open and active
-    if (k === " " && isGuideOpen && !isDiagramFocused) return;
+    if (k === " " && isGuideVisible && !isDiagramFocused) return;
 
     // A held key must not re-fire a discrete action (a held R would regrow ~30
     // times a second, pushing a history entry each time). Space still has its
@@ -106,6 +106,10 @@ export function initKeyboardShortcuts(ctx: KeyboardHandlerContext): () => void {
     }
 
     const delta = e.shiftKey ? 0.3 : 0.1;
+
+    if ((k === "g" || k === "?" || k === "l") && ctx.isUIHidden()) {
+      ctx.onEscapeUIHidden();
+    }
 
     switch (k) {
       case "arrowup":
