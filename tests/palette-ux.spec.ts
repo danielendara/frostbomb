@@ -362,6 +362,27 @@ test("Photo Mode keeps focus out of hidden UI and restores it to btn-ui via Esc 
   await expect(btnUI).toBeFocused();
 });
 
+test("Photo Mode Esc restores the UI with the Field Guide still open", async ({ page }) => {
+  const fieldGuide = page.locator("#field-guide");
+  const masthead = page.locator(".masthead");
+
+  await page.locator("#guide-toggle").click();
+  await expect(fieldGuide).toBeVisible();
+  await page.keyboard.press("h");
+  await expect(masthead).toHaveClass(/ui-hidden/);
+  await expect(fieldGuide).toBeHidden();
+
+  await page.keyboard.press("Escape");
+  await expect(masthead).not.toHaveClass(/ui-hidden/);
+  await expect(page.locator("#a11y-announcer")).toContainText(/Photo Mode exited.*UI restored/i, {
+    timeout: 15_000,
+  });
+  await expect(fieldGuide).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(fieldGuide).toBeHidden();
+});
+
 test("Lab Mode container receives focus when Lab Mode is activated", async ({
   page,
 }) => {
