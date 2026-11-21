@@ -6,6 +6,7 @@ import {
   RECENT_CAP,
   SeedHistoryManager,
   STORAGE_KEY,
+  type HistoryManagerOptions,
   parseStoredEntries,
   serializeEntries,
   withSeedAdded,
@@ -20,7 +21,15 @@ vi.mock('../../src/ui/feedback', () => ({
 }));
 
 const SEEDS = ['alpha', 'bravo', 'charlie'] as const;
-const CURRENT = SEEDS[0];
+const defaultViewState: HistoryManagerOptions['getViewState'] = () => ({
+  currentSeedLabel: SEEDS[0],
+  isLabMode: false,
+  isGuideOpen: false,
+});
+
+function newManager(options: Partial<HistoryManagerOptions> = {}) {
+  return new SeedHistoryManager({ onSelectSeed: vi.fn(), getViewState: defaultViewState, ...options });
+}
 
 function mountHistoryDom(): void {
   document.body.innerHTML = `
@@ -32,10 +41,13 @@ function mountHistoryDom(): void {
   `;
 }
 
-function createManager(seeds: readonly string[] = SEEDS): SeedHistoryManager {
+function createManager(
+  seeds: readonly string[] = SEEDS,
+  getViewState = defaultViewState,
+): SeedHistoryManager {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(seeds));
-  const manager = new SeedHistoryManager({ onSelectSeed: vi.fn() });
-  manager.updateUI(CURRENT, false, false);
+  const manager = newManager({ getViewState });
+  manager.updateUI();
   return manager;
 }
 
@@ -67,7 +79,7 @@ describe('SeedHistoryManager clear/undo', () => {
     const container = document.getElementById('recent-seeds-container');
     const clearBtn = document.getElementById('btn-clear-history') as HTMLButtonElement;
 
-    manager.clear(CURRENT, false, false);
+    manager.clear();
 
     expect(manager.getSeeds()).toEqual([]);
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -89,8 +101,8 @@ describe('SeedHistoryManager clear/undo', () => {
   it('undo restores seeds, storage, and focuses clear', () => {
     const manager = createManager();
 
-    manager.clear(CURRENT, false, false);
-    manager.undoClear(CURRENT, false, false);
+    manager.clear();
+    manager.undoClear();
 
     expect(manager.getSeeds()).toEqual([...SEEDS]);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).toEqual([...SEEDS]);
@@ -115,7 +127,7 @@ describe('SeedHistoryManager clear/undo', () => {
     const manager = createManager();
     const container = document.getElementById('recent-seeds-container');
 
-    manager.clear(CURRENT, false, false);
+    manager.clear();
     expect(undoButton()).not.toBeNull();
     expect(document.activeElement?.id).toBe('btn-undo-history');
 
@@ -128,14 +140,76 @@ describe('SeedHistoryManager clear/undo', () => {
     expect(container?.style.display).toBe('none');
     expect(document.activeElement?.id).toBe('guide-toggle');
 
-    manager.undoClear(CURRENT, false, false);
+    manager.undoClear();
     expect(manager.getSeeds()).toEqual([]);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).toEqual([]);
   });
 
+  it.each([
+    ['Lab Mode', 'isLabMode'],
+    ['Field Guide', 'isGuideOpen'],
+  ] as const)('expiry keeps Recent Seeds hidden after opening %s', (_panel, flag) => {
+    const viewState = defaultViewState();
+    const manager = createManager(SEEDS, () => viewState);
+    const container = document.getElementById('recent-seeds-container');
+    manager.setKept('bravo', true);
+    manager.clear();
+
+    viewState[flag] = true;
+    manager.updateUI();
+    expect(container?.style.display).toBe('none');
+
+    vi.advanceTimersByTime(10_000);
+
+    expect(container?.style.display).toBe('none');
+  });
+
+  it('expiry highlights only the seed selected during the undo window', () => {
+    const viewState = defaultViewState();
+    const manager = createManager(SEEDS, () => viewState);
+    manager.setKept('alpha', true);
+    manager.setKept('bravo', true);
+    manager.clear();
+
+    viewState.currentSeedLabel = 'bravo';
+    manager.updateUI();
+    vi.advanceTimersByTime(10_000);
+
+    const pills = [...document.querySelectorAll('#recent-seeds-list .seed-pill')];
+    expect(pills.map((pill) => [
+      pill.textContent,
+      pill.classList.contains('is-active'),
+      pill.getAttribute('aria-current'),
+    ])).toEqual([
+      ['alpha', false, 'false'],
+      ['bravo', true, 'true'],
+    ]);
+
+    document.querySelector<HTMLButtonElement>('.seed-keep[data-seed="alpha"]')?.click();
+
+    expect(document.querySelector('.seed-keep[data-seed="alpha"]')?.getAttribute('aria-pressed')).toBe('false');
+    expect(document.querySelector('.seed-pill.is-active[aria-current="true"]')?.textContent).toBe('bravo');
+  });
+
+  it('Keep reads the current view when clicked after expiry', () => {
+    const viewState = defaultViewState();
+    const manager = createManager(SEEDS, () => viewState);
+    manager.setKept('alpha', true);
+    manager.setKept('bravo', true);
+    manager.clear();
+    vi.advanceTimersByTime(10_000);
+
+    const keep = document.querySelector<HTMLButtonElement>('.seed-keep[data-seed="alpha"]');
+    viewState.currentSeedLabel = 'bravo';
+    keep?.click();
+
+    expect(manager.getKeptSeeds()).toEqual(['bravo']);
+    expect(document.querySelector('.seed-pill.is-active[aria-current="true"]')?.textContent).toBe('bravo');
+  });
+
   it('addSeed normalizes mixed case before updating the list', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(['alpha', 'bravo', 'charlie']));
-    const manager = new SeedHistoryManager({ onSelectSeed: vi.fn() });
+    const manager = newManager();
     const setItem = vi.spyOn(localStorage, 'setItem');
     setItem.mockClear();
     manager.addSeed('ALPHA');
@@ -146,18 +220,18 @@ describe('SeedHistoryManager clear/undo', () => {
   it('double-clear during the undo window does not wipe the seed backup', () => {
     const manager = createManager();
 
-    manager.clear(CURRENT, false, false);
+    manager.clear();
     expect(undoButton()).not.toBeNull();
 
     manager.addSeed('delta');
-    manager.clear(CURRENT, false, false);
+    manager.clear();
 
     expect(manager.getSeeds()).toEqual([]);
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     expect(undoButton()).not.toBeNull();
     expect(announce).toHaveBeenCalledTimes(1);
 
-    manager.undoClear(CURRENT, false, false);
+    manager.undoClear();
 
     expect(manager.getSeeds()).toEqual([...SEEDS]);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).toEqual([...SEEDS]);
@@ -291,8 +365,8 @@ describe('SeedHistoryManager Keep toggle', () => {
   it('toggling Keep does not select or regrow the seed', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(SEEDS));
     const onSelectSeed = vi.fn();
-    const manager = new SeedHistoryManager({ onSelectSeed });
-    manager.updateUI(CURRENT, false, false);
+    const manager = newManager({ onSelectSeed });
+    manager.updateUI();
 
     keepToggle('charlie')?.click();
 
@@ -309,7 +383,7 @@ describe('SeedHistoryManager Keep toggle', () => {
       'bravo',
       { seed: 'charlie', kept: true },
     ]);
-    const reloaded = new SeedHistoryManager({ onSelectSeed: vi.fn() });
+    const reloaded = newManager();
     expect(reloaded.getKeptSeeds()).toEqual(['charlie']);
   });
 
@@ -327,7 +401,7 @@ describe('SeedHistoryManager Keep toggle', () => {
       STORAGE_KEY,
       JSON.stringify([...seedsN('keep', KEPT_CAP).map((seed) => ({ seed, kept: true })), 'extra']),
     );
-    const manager = new SeedHistoryManager({ onSelectSeed: vi.fn() });
+    const manager = newManager();
 
     expect(manager.setKept('extra', true)).toBe(false);
     expect(manager.getKeptSeeds()).toHaveLength(KEPT_CAP);
@@ -338,11 +412,11 @@ describe('SeedHistoryManager Keep toggle', () => {
   it('Clear removes only unkept seeds and counts only them', () => {
     const manager = createManager();
     manager.setKept('bravo', true);
-    manager.updateUI(CURRENT, false, false);
+    manager.updateUI();
     const clearBtn = document.getElementById('btn-clear-history') as HTMLButtonElement;
     expect(clearBtn.textContent).toBe('Clear (2)');
 
-    manager.clear(CURRENT, false, false);
+    manager.clear();
 
     expect(manager.getSeeds()).toEqual(['bravo']);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).toEqual([{ seed: 'bravo', kept: true }]);
@@ -358,8 +432,8 @@ describe('SeedHistoryManager Keep toggle', () => {
     const manager = createManager();
     manager.setKept('bravo', true);
 
-    manager.clear(CURRENT, false, false);
-    manager.undoClear(CURRENT, false, false);
+    manager.clear();
+    manager.undoClear();
 
     expect(manager.getSeeds()).toEqual([...SEEDS]);
     expect(manager.getKeptSeeds()).toEqual(['bravo']);
@@ -373,11 +447,11 @@ describe('SeedHistoryManager Keep toggle', () => {
   it('Clear is unavailable when every listed seed is kept', () => {
     const manager = createManager(['alpha']);
     manager.setKept('alpha', true);
-    manager.updateUI(CURRENT, false, false);
+    manager.updateUI();
 
     const clearBtn = document.getElementById('btn-clear-history') as HTMLButtonElement;
     expect(clearBtn.hidden).toBe(true);
-    manager.clear(CURRENT, false, false);
+    manager.clear();
     expect(manager.getSeeds()).toEqual(['alpha']);
     expect(undoButton()).toBeNull();
   });
@@ -424,7 +498,7 @@ describe('SeedHistoryManager cross-tab sync', () => {
 
   function make(onExternalChange = vi.fn()) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(SEEDS));
-    return { manager: new SeedHistoryManager({ onSelectSeed: vi.fn(), onExternalChange }), onExternalChange };
+    return { manager: newManager({ onExternalChange }), onExternalChange };
   }
 
   it('adopts an external kept entry and keeps it when this tab adds a seed', () => {
@@ -478,8 +552,8 @@ describe('SeedHistoryManager cross-tab sync', () => {
 
   it('ignores events during the undo window, then re-reads storage when it closes', () => {
     const { manager, onExternalChange } = make();
-    manager.updateUI(CURRENT, false, false);
-    manager.clear(CURRENT, false, false);
+    manager.updateUI();
+    manager.clear();
     const external = JSON.stringify([{ seed: 'bravo', kept: true }]);
     emit(STORAGE_KEY, external);
     expect(onExternalChange).not.toHaveBeenCalled();
@@ -492,10 +566,10 @@ describe('SeedHistoryManager cross-tab sync', () => {
 
   it('still restores cleared seeds with Undo after an ignored event', () => {
     const { manager } = make();
-    manager.updateUI(CURRENT, false, false);
-    manager.clear(CURRENT, false, false);
+    manager.updateUI();
+    manager.clear();
     emit(STORAGE_KEY, JSON.stringify(['zulu']));
-    manager.undoClear(CURRENT, false, false);
+    manager.undoClear();
     expect(manager.getSeeds()).toEqual([...SEEDS]);
   });
 });
