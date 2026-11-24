@@ -50,6 +50,17 @@ export function effectiveRotateFlag(
   return null;
 }
 
+/** Encode rotate for share URLs: in-memory intent first, then persisted explicit choice. */
+export function rotateShareFlag(
+  rotatePref: boolean | undefined,
+  storedRotate: boolean | undefined,
+  reducedMotion: boolean,
+): boolean | null {
+  const fromPref = effectiveRotateFlag(rotatePref, reducedMotion);
+  if (fromPref !== null) return fromPref;
+  return effectiveRotateFlag(storedRotate, reducedMotion);
+}
+
 /** A blocked/missing/corrupt value all fall back to pink/prism/lab off and rotate unset
  * (today's default), same as before rotate prefs existed. */
 export function loadModePrefs(): ModePrefs {

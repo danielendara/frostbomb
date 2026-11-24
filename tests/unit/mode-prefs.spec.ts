@@ -4,6 +4,7 @@ import {
   effectiveRotateFlag,
   loadModePrefs,
   resolveRotatePref,
+  rotateShareFlag,
   saveModePrefs,
   MODE_PREFS_KEY,
 } from "../../src/mode-prefs";
@@ -36,6 +37,22 @@ describe("effectiveRotateFlag", () => {
   ] as const)("pref=%s reducedMotion=%s -> %s", (pref, reduced, expected) => {
     expect(effectiveRotateFlag(pref, reduced)).toBe(expected);
   });
+});
+
+describe("rotateShareFlag", () => {
+  it.each([
+    [true, undefined, false, true],
+    [undefined, false, false, false],
+    [undefined, true, false, true],
+    [undefined, undefined, false, null],
+    [undefined, false, true, false],
+    [true, false, false, true],
+  ] as const)(
+    "rotatePref=%s stored=%s reducedMotion=%s -> %s",
+    (rotatePref, stored, reduced, expected) => {
+      expect(rotateShareFlag(rotatePref, stored, reduced)).toBe(expected);
+    },
+  );
 });
 
 describe("mode prefs read/write", () => {
