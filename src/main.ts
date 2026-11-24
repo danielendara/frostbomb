@@ -839,7 +839,6 @@ function buildShareUrl(): string {
 }
 
 async function copyLink(failureAnnounce = "Failed to copy link"): Promise<boolean> {
-  urlWrites.flush();
   return copyTextToClipboard(
     buildShareUrl(),
     {
