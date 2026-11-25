@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { glowCheckbox } from "./e2e-helpers";
 
 async function openLab(page: import("@playwright/test").Page) {
   const status = page.locator("#lab-status");
@@ -6,10 +7,6 @@ async function openLab(page: import("@playwright/test").Page) {
     await page.keyboard.press("l");
     await expect(status).toHaveText("ON", { timeout: 15000 });
   }
-}
-
-function glowCheckbox(page: import("@playwright/test").Page) {
-  return page.locator('.tp-lblv:has-text("Glow") input');
 }
 
 test("O toggles Glow in the Lab checkbox and P and M still work afterward", async ({ page }) => {

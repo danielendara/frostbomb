@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { installAnnouncerSpy, waitForSeedChange } from "./e2e-helpers";
 
 /**
  * Back goes back a crystal.
@@ -191,27 +192,39 @@ test("a restore announces once, not once per mode", async ({ page }) => {
   await page.locator("#btn-pink").click();
   await page.locator("#btn-prism").click();
   await page.locator("#refresh").click();
+  await waitForSeedChange(page, "abcde");
+  await installAnnouncerSpy(page);
   // Turn the look off on the second entry so Back has to change both modes.
   await page.locator("#btn-pink").click();
   await page.locator("#btn-prism").click();
-  // The announcer debounces by 50 ms; let the click's own line land before listening.
-  await expect(page.locator("#a11y-announcer")).toContainText("Prism mode disabled");
-
-  await page.locator("#a11y-announcer").evaluate((el) => {
-    const heard: string[] = [];
-    (window as unknown as { __heard: string[] }).__heard = heard;
-    new MutationObserver(() => {
-      if (el.textContent) heard.push(el.textContent);
-    }).observe(el, { childList: true, characterData: true, subtree: true });
+  await expect
+    .poll(async () => {
+      const heard = await page.evaluate(
+        () => (window as unknown as { __heard?: string[] }).__heard ?? [],
+      );
+      return heard.some((m) => /Prism mode disabled/.test(m));
+    })
+    .toBe(true);
+  await page.evaluate(() => {
+    (window as unknown as { __heard: string[] }).__heard.length = 0;
   });
 
   await page.goBack();
   await expectSeed(page, "abcde");
   await expectLook(page, { pink: true, prism: true });
 
-  await expect(page.locator("#a11y-announcer")).toContainText("Loaded seed abcde");
+  await expect
+    .poll(async () => {
+      const heard = await page.evaluate(
+        () => (window as unknown as { __heard?: string[] }).__heard ?? [],
+      );
+      return heard.filter((m) => /Loaded seed/.test(m)).length;
+    })
+    .toBe(1);
   const heard = await page.evaluate(() => (window as unknown as { __heard: string[] }).__heard);
-  expect(heard.filter((m) => /Loaded seed/.test(m))).toHaveLength(1);
+  const loadedSeedLines = heard.filter((m) => /Loaded seed/.test(m));
+  expect(loadedSeedLines).toHaveLength(1);
+  expect(loadedSeedLines[0]).toMatch(/Loaded seed abcde/);
   expect(heard.filter((m) => /Pink mode|Prism mode/.test(m))).toEqual([]);
 });
 
@@ -294,19 +307,9 @@ async function activateSkipLink(page: import("@playwright/test").Page) {
   await page.waitForFunction(() => location.hash === "#field-notes");
 }
 
-async function startLoadedSeedWatch(page: import("@playwright/test").Page) {
-  await page.locator("#a11y-announcer").evaluate((el) => {
-    const heard: string[] = [];
-    (window as unknown as { __heard: string[] }).__heard = heard;
-    new MutationObserver(() => {
-      if (el.textContent) heard.push(el.textContent);
-    }).observe(el, { childList: true, characterData: true, subtree: true });
-  });
-}
-
 async function expectNoLoadedSeedAfterHashBack(page: import("@playwright/test").Page) {
   const searchBeforeSkip = await page.evaluate(() => location.search);
-  await startLoadedSeedWatch(page);
+  await installAnnouncerSpy(page);
   await activateSkipLink(page);
   expect(await page.evaluate(() => location.search)).toBe(searchBeforeSkip);
   await page.goBack();
