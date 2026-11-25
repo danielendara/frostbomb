@@ -41,17 +41,17 @@ node scripts/shots.mjs --label=<before|after|...>   # -> docs/pr-shots/rendering
 
 ## Bundle (`npm run build`, client chunks; measured @ branch)
 
-| chunk | gzip KiB |
-|---|---|
-| `three-*.js` (core only; addons lazy with mesh-export) | 134.55 |
-| `build-*.js` (contains postprocessing) | 74.71 |
-| `tweakpane-*.js` | 30.37 |
-| `index-*.js` | 32.57 |
-| `index-*.css` | 5.38 |
-| `index.html` | 4.15 |
-| `mesh-export-*.js` | 12.01 |
-| `scene-environment-*.js` | 0.52 |
-| `svg-export-*.js` | 1.20 |
-| `frost.worker-*.js` | 4.19 (vite lists size; no gzip column for this chunk) |
+| chunk | gzip KiB | raw kB |
+|---|---|---|
+| `three-*.js` (core only; addons lazy with mesh-export) | 134.55 | |
+| `build-*.js` (contains postprocessing) | 74.71 | |
+| `tweakpane-*.js` | 30.37 | |
+| `index-*.js` | 32.57 | |
+| `index-*.css` | 5.38 | |
+| `index.html` | 4.15 | |
+| `mesh-export-*.js` | 12.01 | |
+| `scene-environment-*.js` | 0.52 | |
+| `svg-export-*.js` | 1.20 | |
+| `frost.worker-*.js` | unreported | 4.19 |
 
-(`gzip KiB` here is vite's "kB" figure, 1 kB = 1000 B.)
+(`gzip KiB` is vite's gzip "kB" figure, 1 kB = 1000 B. Vite lists `frost.worker-*.js` with a single raw size line, no gzip column — e.g. `dist/client/assets/frost.worker-Du8qbJWT.js         4.19 kB` from `npm run build`.)
