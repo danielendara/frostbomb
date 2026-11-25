@@ -66,9 +66,17 @@ test("held 3D export: same-crystal popstate does not regrow, rotate change still
       history.pushState(null, "", "/?seed=abcde&rotate=0");
       dispatchEvent(new PopStateEvent("popstate"));
     });
-    await expect(page.locator("#a11y-announcer")).toContainText("Loaded seed abcde", {
-      timeout: 10_000,
-    });
+    await expect
+      .poll(
+        async () => {
+          const heard = await page.evaluate(
+            () => (window as unknown as { __heard?: string[] }).__heard ?? [],
+          );
+          return heard.some((m) => /Loaded seed abcde/.test(m));
+        },
+        { timeout: 10_000 },
+      )
+      .toBe(true);
     await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
 
     const download = page.waitForEvent("download", { timeout: 60_000 });

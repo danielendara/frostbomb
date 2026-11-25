@@ -218,10 +218,13 @@ test("a restore announces once, not once per mode", async ({ page }) => {
       const heard = await page.evaluate(
         () => (window as unknown as { __heard?: string[] }).__heard ?? [],
       );
-      return heard.filter((m) => /Loaded seed abcde/.test(m)).length;
+      return heard.filter((m) => /Loaded seed/.test(m)).length;
     })
     .toBe(1);
   const heard = await page.evaluate(() => (window as unknown as { __heard: string[] }).__heard);
+  const loadedSeedLines = heard.filter((m) => /Loaded seed/.test(m));
+  expect(loadedSeedLines).toHaveLength(1);
+  expect(loadedSeedLines[0]).toMatch(/Loaded seed abcde/);
   expect(heard.filter((m) => /Pink mode|Prism mode/.test(m))).toEqual([]);
 });
 
