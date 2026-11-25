@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { MARK_POSTPROCESSING_READY, markOnce } from "./perf-marks";
-import { scheduleIdleTask } from "../idle";
+import { DEFAULT_IDLE_TIMEOUT_MS, scheduleIdleTask } from "../idle";
 import { reportClientError } from "../ui/client-error";
 import type { QualityTier } from "./quality";
 
@@ -93,9 +93,6 @@ export interface PostprocessingPipelineOptions {
  */
 const RETRY_BACKOFF_MS = [2_000, 5_000];
 const MAX_LOAD_ATTEMPTS = RETRY_BACKOFF_MS.length + 1;
-
-/** Max wait before idle work runs even when the main thread stays busy. */
-export const POSTPROCESSING_IDLE_TIMEOUT_MS = 2_000;
 
 export class PostprocessingPipeline implements RenderPipeline {
   private renderer: THREE.WebGLRenderer;
@@ -192,7 +189,7 @@ export class PostprocessingPipeline implements RenderPipeline {
           this.isRequested = false;
         });
       },
-      { timeout: POSTPROCESSING_IDLE_TIMEOUT_MS },
+      { timeout: DEFAULT_IDLE_TIMEOUT_MS },
     );
   }
 

@@ -50,6 +50,8 @@ node scripts/shots.mjs --label=<before|after|...>   # -> docs/pr-shots/rendering
 | `index-*.css` | 5.38 |
 | `index.html` | 4.15 |
 | `mesh-export-*.js` | 12.01 |
-| `frost.worker-*.js` | not reported by vite (4.19 kB raw) |
+| `scene-environment-*.js` | 0.52 |
+| `svg-export-*.js` | 1.20 |
+| `frost.worker-*.js` | 4.19 (vite lists size; no gzip column for this chunk) |
 
 (`gzip KiB` here is vite's "kB" figure, 1 kB = 1000 B.)
