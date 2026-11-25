@@ -53,8 +53,6 @@ function createFrostMaps(): FrostMaps {
   return buffersToTextures(generateFrostBuffers());
 }
 
-let frostWorker: Worker | null = null;
-
 /** Bake frost maps off the main thread; falls back to sync when Workers are unavailable. */
 export function loadFrostMaps(): Promise<FrostMaps> {
   if (typeof Worker === "undefined") {
@@ -62,12 +60,9 @@ export function loadFrostMaps(): Promise<FrostMaps> {
   }
 
   return new Promise((resolve, reject) => {
-    frostWorker ??= new Worker(new URL("./frost.worker.ts", import.meta.url), {
+    const worker = new Worker(new URL("./frost.worker.ts", import.meta.url), {
       type: "module",
     });
-
-    const worker = frostWorker;
-    frostWorker = null;
 
     worker.onmessage = (event: MessageEvent<FrostBuffers>) => {
       worker.terminate();
