@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { installAnnouncerSpy, withHeldMeshExport } from "./e2e-helpers";
 
 // Upper bound on roll drift when auto-rotate is off (see auto-rotate-freeze.spec.ts).
 const MAX_Z_RATE = 0.3 * (0.08 + 0.04 * 0.3) * 1.1;
@@ -30,74 +31,55 @@ test("held 3D export: same-crystal popstate does not regrow, rotate change still
 }) => {
   test.setTimeout(120_000);
 
-  let releaseExport!: () => void;
-  const exportGate = new Promise<void>((resolve) => {
-    releaseExport = resolve;
-  });
-  let markRequested!: () => void;
-  const requested = new Promise<void>((resolve) => {
-    markRequested = resolve;
-  });
-  await page.route(/mesh-export\.ts/, async (route) => {
-    markRequested();
-    await exportGate;
-    await route.continue();
-  });
+  await withHeldMeshExport(page, async ({ releaseExport, requested }) => {
+    await page.goto("/?seed=abcde&rotate=1");
+    await expect(page.locator("#seed-display")).toHaveText("abcde");
+    await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
 
-  await page.goto("/?seed=abcde&rotate=1");
-  await expect(page.locator("#seed-display")).toHaveText("abcde");
-  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+    // Hold the export: the app pauses scene auto-rotate until the gated module loads.
+    await page.locator("#btn-save-3d").click();
+    await requested;
 
-  // Hold the export: the app pauses scene auto-rotate until the gated module loads.
-  await page.locator("#btn-save-3d").click();
-  await requested;
+    // Fresh announcer spy: only popstate-driven "Loaded seed" lines count.
+    await installAnnouncerSpy(page);
+    const loadedSeedCount = () =>
+      page.evaluate(
+        () =>
+          ((window as unknown as { __heard?: string[] }).__heard ?? []).filter((m) =>
+            /Loaded seed/.test(m),
+          ).length,
+      );
 
-  // Fresh announcer spy: only popstate-driven "Loaded seed" lines count.
-  await page.locator("#a11y-announcer").evaluate((el) => {
-    const heard: string[] = [];
-    (window as unknown as { __heard: string[] }).__heard = heard;
-    new MutationObserver(() => {
-      if (el.textContent) heard.push(el.textContent);
-    }).observe(el, { childList: true, characterData: true, subtree: true });
-  });
-  const loadedSeedCount = () =>
-    page.evaluate(
-      () =>
-        ((window as unknown as { __heard?: string[] }).__heard ?? []).filter((m) =>
-          /Loaded seed/.test(m),
-        ).length,
-    );
+    // Same crystal as on screen (the ignored `x` param only changes the string
+    // so the popstate handler reaches the semantic compare).
+    await page.evaluate(() => {
+      history.pushState(null, "", "/?seed=abcde&rotate=1&x=1");
+      dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await page.waitForTimeout(500);
+    expect(await loadedSeedCount()).toBe(0);
+    await expect(page.locator("#seed-display")).toHaveText("abcde");
+    await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
 
-  // Same crystal as on screen (the ignored `x` param only changes the string
-  // so the popstate handler reaches the semantic compare).
-  await page.evaluate(() => {
-    history.pushState(null, "", "/?seed=abcde&rotate=1&x=1");
-    dispatchEvent(new PopStateEvent("popstate"));
-  });
-  await page.waitForTimeout(500);
-  expect(await loadedSeedCount()).toBe(0);
-  await expect(page.locator("#seed-display")).toHaveText("abcde");
-  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "true");
+    // A genuine rotate flip on the same seed must still apply (regrow + rotate off).
+    await page.evaluate(() => {
+      history.pushState(null, "", "/?seed=abcde&rotate=0");
+      dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await expect(page.locator("#a11y-announcer")).toContainText("Loaded seed abcde", {
+      timeout: 10_000,
+    });
+    await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
 
-  // A genuine rotate flip on the same seed must still apply (regrow + rotate off).
-  await page.evaluate(() => {
-    history.pushState(null, "", "/?seed=abcde&rotate=0");
-    dispatchEvent(new PopStateEvent("popstate"));
+    const download = page.waitForEvent("download", { timeout: 60_000 });
+    releaseExport();
+    await download;
+    await expect(page.locator("#btn-save-3d")).not.toHaveAttribute("aria-busy", "true", {
+      timeout: 30_000,
+    });
+    await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
+    await expectSceneAutoRotateOff(page);
   });
-  await expect(page.locator("#a11y-announcer")).toContainText("Loaded seed abcde", {
-    timeout: 10_000,
-  });
-  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
-
-  const download = page.waitForEvent("download", { timeout: 60_000 });
-  releaseExport();
-  await download;
-  await expect(page.locator("#btn-save-3d")).not.toHaveAttribute("aria-busy", "true", {
-    timeout: 30_000,
-  });
-  await expect(page.locator("#btn-rotate")).toHaveAttribute("aria-pressed", "false");
-  await expectSceneAutoRotateOff(page);
-  await page.unroute(/mesh-export\.ts/);
 });
 
 test("held 3D export: pressing A during export leaves rotate off after resume", async ({
