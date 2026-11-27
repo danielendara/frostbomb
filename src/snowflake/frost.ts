@@ -59,7 +59,7 @@ export function loadFrostMaps(): Promise<FrostMaps> {
     return Promise.resolve(createFrostMaps());
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const worker = new Worker(new URL("./frost.worker.ts", import.meta.url), {
       type: "module",
     });
@@ -72,7 +72,8 @@ export function loadFrostMaps(): Promise<FrostMaps> {
     worker.onerror = (event) => {
       worker.terminate();
       reportClientError("frost-worker", event.error ?? event.message ?? "Frost worker failed");
-      reject(event.error ?? new Error("Frost worker failed"));
+      // Same path as when Workers are missing: keep the flake usable on-thread.
+      resolve(createFrostMaps());
     };
   });
 }
